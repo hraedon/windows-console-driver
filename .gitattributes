@@ -1,0 +1,3 @@
+# Hash-bound fixtures must survive checkouts byte-identical (the WEL
+# autocrlf lesson: CRLF materialization breaks SHA-256 binding).
+tests/fixtures/** -text
