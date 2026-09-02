@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Backups xmlns="https://www.microsoft.com/management/gpo-backup-synthetic">
+  <BackupInf>
+    <Guid>{99999999-8888-7777-6666-555555555555}</Guid>
+    <GPOGuid>{11111111-2222-3333-4444-555555555555}</GPOGuid>
+    <DomainName>corp.example.com</DomainName>
+    <DomainGuid>{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}</DomainGuid>
+    <Sid>S-1-5-21-1004336348-1177238915-682003330</Sid>
+    <Comment>synthetic fixture, not a real backup</Comment>
+  </BackupInf>
+</Backups>

@@ -2,8 +2,8 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.author_scripts_entry",
   "surface": "gpmc-server2025",
-  "revision": 0,
-  "intent": "Author startup script entries on a disposable GPO via the GPMC Scripts (Startup/Shutdown) editor, with deliberately distinctive values, so that what Windows actually writes to scripts.ini and psscripts.ini can be independently observed.",
+  "revision": 1,
+  "intent": "Author startup script entries on a disposable GPO via the GPMC Scripts (Startup/Startup) editor, with deliberately distinctive values, so that what Windows actually writes to scripts.ini and psscripts.ini can be independently observed.",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
@@ -51,12 +51,20 @@
   "envelope": {
     "require": [
       {
-        "fact": "scripts_ini.machine",
-        "predicate": "present and parses; sections carry exactly the parameterized entries in authored order"
+        "fact": "scripts_ini.machine.present",
+        "predicate": "post.scripts_ini.machine.present == True"
       },
       {
-        "fact": "version.machine",
-        "predicate": "greater than pre-state machine version"
+        "fact": "scripts_ini.machine.config_shape",
+        "predicate": "post.scripts_ini.machine.config_shape == 'none'"
+      },
+      {
+        "fact": "scripts_ini.machine.Startup.0.script",
+        "predicate": "post['scripts_ini.machine.Startup.0.script'] == args['startup_cmd.0.script']"
+      },
+      {
+        "fact": "scripts_ini.ps.machine.present",
+        "predicate": "post.scripts_ini.ps.machine.present == True"
       }
     ],
     "allow": [
@@ -66,16 +74,16 @@
     ],
     "forbid": [
       {
-        "scope": "gpc_extension_lists",
-        "predicate": "contains none of ['{3125E937-EB16-4b4c-9934-544FC6D24D26}', '{A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB}']"
+        "scope": "ad.gPCMachineExtensionNames",
+        "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and 'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope"
       },
       {
-        "scope": "sysvol_paths",
-        "predicate": "every path is under this GPO's GUID directory"
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
       },
       {
-        "scope": "policies_container",
-        "predicate": "GPC object set equals pre-state set"
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
       }
     ],
     "derive": [
@@ -83,6 +91,28 @@
       { "relation": "post.version.user == pre.version.user" }
     ],
     "convergence": { "window_seconds": 90, "poll_seconds": 5, "reproduce": 2 }
+  },
+  "structured_checks": [
+    {
+      "id": "startup_entries_match_parameters",
+      "checks": "The post-state scripts.ini machine Startup section carries exactly the parameterized entries from args.startup_cmd (script, parameters, authored order, no extras). Beyond the bounded evaluator: list-valued comparison implemented in the assertion layer."
+    },
+    {
+      "id": "ps_entries_match_parameters",
+      "checks": "The psscripts.ini machine Startup section carries exactly the entries from args.startup_ps1."
+    },
+    {
+      "id": "ps_order_recorded",
+      "checks": "The psscripts config shape records the ps_order setting: powershell_first maps to the StartExecutePSFirst/EndExecutePSFirst keys, default to their absence — whichever shape Windows actually writes is itself an R2 answer, so this check asserts the recorded value equals the authored intent after normalization, not a pre-chosen key name."
+    },
+    {
+      "id": "sysvol_paths_contained",
+      "checks": "Every relative path in post.scope.sysvol_relpaths stays under this GPO's GUID directory. Backs the sysvol_contained fact the declarative forbid consumes; computed by the observer, asserted here."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are bound into predicates under the `args` namespace; the runtime flattens the parameter tree into dotted-index keys (args['startup_cmd.0.script']). The envelope engine itself is namespace-agnostic; merging args is transaction-executor work.",
+    "fact_vocabulary": "Fact keys reference gpo_observers' declared scheme (gpo_identity.*, ad.*, version.*, scripts_ini.*, sysvol.*, scope.*). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
   },
   "cleanup": {
     "strategy": "remove_gpo",

@@ -1,65 +1,127 @@
-# Driver profile: gpmc-server2025 (STUB — unqualified)
+# Driver profile: gpmc-server2025
+#
+# Status: STRUCTURALLY TYPED, CONTENT UNQUALIFIED. The shape is the typed TOML
+# documented in wcd.profiles; every substantive value below (selectors,
+# dependencies, commit-boundary facts) is an initial hypothesis from the
+# manual evidence regime and carries an UNVERIFIED marker where it has never
+# been observed on a real Server 2025 GPMC console. The first estate window
+# (driver-development mode, checkpoint-backed estate) validates each marker
+# and fills the fingerprints. Nothing here authorises qualified execution.
 
-Status: sketch only. Nothing here is qualified. The first estate window
-validates every claim marked `# UNVERIFIED` and fills the fingerprint values.
-This file exists so the profile schema has a concrete shape to build against.
+[profile]
+surface = "gpmc-server2025"
+description = "GPMC / GPME (gpmc.msc, group policy editor snap-ins)"
+os_family = "Windows Server 2025"
+os_build_family = "26100"
+# UNVERIFIED: presumed first commit point; validated at the spike.
+first_commit_point = "ok_startup_scripts_dialog"
 
-## Surface identity
+# Action classifications (contract section 6). The commit-boundary facts are
+# initial facts from the manual regime, to be validated by the spike.
 
-- surface: GPMC / GPME (gpmc.msc, group policy editor snap-ins)
-- OS family: Windows Server 2025 (build 26100 family)
-- # UNVERIFIED: snap-in binary list + versions + content hashes
-  (e.g. gpmc.msc, GPMCNET.dll, gpedit-related modules under System32)
+[actions.open_gpo_editor]
+class = "orientation_only"
+notes = "launches/attaches the editor window (pre-elevated at the setup boundary)"
 
-## Known commit-boundary facts (from the manual evidence regime)
+[actions.navigate_tree]
+class = "orientation_only"
+notes = "scope-pane navigation; reads surface state only"
 
-These are initial facts from human-run captures, to be validated by the
-driver-development spike:
+[actions.open_startup_scripts_dialog]
+class = "orientation_only"
+notes = "opens the Scripts (Startup/Shutdown) property sheet"
 
-- Startup/Shutdown Scripts dialog: writes `scripts.ini` under
-  `Machine\Scripts\` when the dialog closes with OK. `# UNVERIFIED`
-- Scripts dialog PowerShell tab: the "For this GPO, run scripts in the
-  following order" dropdown writes `psscripts.ini` state. `# UNVERIFIED`
-- whether OK on a child script-entry dialog is itself a commit point:
-  `# UNVERIFIED`
-- Folder Redirection Properties: warns on unreachable UNC, writes at OK.
-  `# UNVERIFIED` (R3 scope)
-- Registry/File Security dialogs: three mutually exclusive propagation radio
-  options; code mapping is the R4 question. `# UNVERIFIED` (R4 scope)
+[actions.add_script_entry]
+class = "reversible_pre_commit"
+notes = "child dialog; cancel undoes; UNVERIFIED whether an OK inside the child dialog is itself a commit point"
 
-## Action classifications (v0 sketch)
+[actions.set_ps_order]
+class = "reversible_pre_commit"
+notes = "PowerShell-order dropdown selection; UNVERIFIED whether it persists before the parent OK"
 
-| Action | Class | Notes |
-|---|---|---|
-| open_gpo_editor | orientation_only | launches/attaches editor window |
-| navigate_tree | orientation_only | scope-pane navigation |
-| open_startup_scripts_dialog | orientation_only | opens property sheet |
-| add_script_entry | reversible_pre_commit | child dialog; cancel undoes |
-| set_ps_order | reversible_pre_commit | dropdown selection |
-| ok_startup_scripts_dialog | commit_point | presumed scripts.ini flush |
-| cancel_dialog | reversible_pre_commit | closes without commit |
+[actions.ok_startup_scripts_dialog]
+class = "commit_point"
+notes = "UNVERIFIED: presumed scripts.ini flush under Machine\\Scripts at dialog OK (manual-regime hypothesis)"
 
-## Selectors (to be populated from real UIA dumps at the spike)
+[actions.cancel_dialog]
+class = "reversible_pre_commit"
+notes = "closes without commit"
 
-`# UNVERIFIED`: no selector below has been observed on a real guest.
+# Selectors. Every selector below is UNVERIFIED: no UIA dump has been taken
+# on a real guest console yet. automation_id fields are absent until the spike
+# observes them; title_regex values are the classic-dialog guesses.
 
-- startup_scripts_dialog: { class: "", title-regex: "Startup Properties" }
-- scripts_tab: { automation_id: "", name: "Scripts" }
-- add_button: { name: "Add..." }
-- script_name_field: { automation_id: "" }
-- script_parameters_field: { automation_id: "" }
-- ps_order_dropdown: { automation_id: "" }
+[selectors.startup_scripts_dialog]
+# UNVERIFIED: title text from classic GPMC; expect localisation dependency.
+title_regex = "Startup Properties"
 
-## Selector dependencies (drives the compatibility predicate)
+[selectors.scripts_tab]
+# UNVERIFIED: tab identified by display name until an automation_id exists.
+name = "Scripts"
 
-- dialogs identified by title-regex → strong dependency on UI language
-- control identity by automation_id → strong on binary version, weak on
-  language
-- no coordinate selectors declared in v0 (coordinates remain the last rung;
-  DPI would bind if any are added)
+[selectors.add_button]
+name = "Add..."
 
-## Fingerprint expectations
+[selectors.script_name_field]
+# UNVERIFIED: identification strategy not yet chosen (automation_id vs label).
+name_regex = "Script Name"
 
-`# UNVERIFIED`: title/class/rect/UIA-digest baselines for the property sheet
-and each child dialog, captured at qualification time and re-checked by the
-predicate before every qualified run.
+[selectors.script_parameters_field]
+name_regex = "Script Parameters"
+
+[selectors.ps_order_dropdown]
+name_regex = "following order"
+
+# Selector dependencies: what the compatibility predicate checks, per rung.
+# Title/name selectors bind UI language strongly. Once the spike observes
+# automation_ids, those selectors become binary_version-bound (strong) and the
+# language binding weakens. No coordinate selectors are declared; DPI would
+# bind only if any are added.
+
+[[selector_dependencies]]
+selector = "startup_scripts_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "scripts_tab"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "add_button"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "script_name_field"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "script_parameters_field"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "ps_order_dropdown"
+dependency = "ui_language"
+strength = "strong"
+
+# Whole-surface fingerprint dependencies ride on the dialog set, not one
+# selector: the property sheet and child dialogs are fingerprinted together
+# at qualification time.
+[[selector_dependencies]]
+selector = "startup_scripts_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "startup_scripts_dialog"
+dependency = "binary_version"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "startup_scripts_dialog"
+dependency = "os_build"
+strength = "provenance"
