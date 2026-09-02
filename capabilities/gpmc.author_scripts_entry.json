@@ -1,0 +1,96 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_scripts_entry",
+  "surface": "gpmc-server2025",
+  "revision": 0,
+  "intent": "Author startup script entries on a disposable GPO via the GPMC Scripts (Startup/Shutdown) editor, with deliberately distinctive values, so that what Windows actually writes to scripts.ini and psscripts.ini can be independently observed.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["startup_cmd", "startup_ps1", "ps_order"],
+    "properties": {
+      "startup_cmd": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["script", "parameters"],
+          "properties": {
+            "script": { "type": "string" },
+            "parameters": { "type": "string" }
+          }
+        }
+      },
+      "startup_ps1": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["script", "parameters"],
+          "properties": {
+            "script": { "type": "string" },
+            "parameters": { "type": "string" }
+          }
+        }
+      },
+      "ps_order": {
+        "type": "string",
+        "enum": ["default", "powershell_first"]
+      }
+    }
+  },
+  "channel_contract": {
+    "setup": ["powershell"],
+    "operation_under_test": ["gpmc_ui"],
+    "orientation": ["uia", "hwnd", "screenshot"],
+    "input_delivery": ["helper_input", "hyperv_input"],
+    "oracle": ["gpo_observers"],
+    "cleanup": ["powershell"]
+  },
+  "first_commit_point": "startup-scripts-dialog-ok",
+  "envelope": {
+    "require": [
+      {
+        "fact": "scripts_ini.machine",
+        "predicate": "present and parses; sections carry exactly the parameterized entries in authored order"
+      },
+      {
+        "fact": "version.machine",
+        "predicate": "greater than pre-state machine version"
+      }
+    ],
+    "allow": [
+      { "category": "timestamps" },
+      { "category": "replication_metadata" },
+      { "category": "file_mtime" }
+    ],
+    "forbid": [
+      {
+        "scope": "gpc_extension_lists",
+        "predicate": "contains none of ['{3125E937-EB16-4b4c-9934-544FC6D24D26}', '{A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB}']"
+      },
+      {
+        "scope": "sysvol_paths",
+        "predicate": "every path is under this GPO's GUID directory"
+      },
+      {
+        "scope": "policies_container",
+        "predicate": "GPC object set equals pre-state set"
+      }
+    ],
+    "derive": [
+      { "relation": "post.version.machine > pre.version.machine" },
+      { "relation": "post.version.user == pre.version.user" }
+    ],
+    "convergence": { "window_seconds": 90, "poll_seconds": 5, "reproduce": 2 }
+  },
+  "cleanup": {
+    "strategy": "remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

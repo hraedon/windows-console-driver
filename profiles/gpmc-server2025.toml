@@ -1,0 +1,65 @@
+# Driver profile: gpmc-server2025 (STUB — unqualified)
+
+Status: sketch only. Nothing here is qualified. The first estate window
+validates every claim marked `# UNVERIFIED` and fills the fingerprint values.
+This file exists so the profile schema has a concrete shape to build against.
+
+## Surface identity
+
+- surface: GPMC / GPME (gpmc.msc, group policy editor snap-ins)
+- OS family: Windows Server 2025 (build 26100 family)
+- # UNVERIFIED: snap-in binary list + versions + content hashes
+  (e.g. gpmc.msc, GPMCNET.dll, gpedit-related modules under System32)
+
+## Known commit-boundary facts (from the manual evidence regime)
+
+These are initial facts from human-run captures, to be validated by the
+driver-development spike:
+
+- Startup/Shutdown Scripts dialog: writes `scripts.ini` under
+  `Machine\Scripts\` when the dialog closes with OK. `# UNVERIFIED`
+- Scripts dialog PowerShell tab: the "For this GPO, run scripts in the
+  following order" dropdown writes `psscripts.ini` state. `# UNVERIFIED`
+- whether OK on a child script-entry dialog is itself a commit point:
+  `# UNVERIFIED`
+- Folder Redirection Properties: warns on unreachable UNC, writes at OK.
+  `# UNVERIFIED` (R3 scope)
+- Registry/File Security dialogs: three mutually exclusive propagation radio
+  options; code mapping is the R4 question. `# UNVERIFIED` (R4 scope)
+
+## Action classifications (v0 sketch)
+
+| Action | Class | Notes |
+|---|---|---|
+| open_gpo_editor | orientation_only | launches/attaches editor window |
+| navigate_tree | orientation_only | scope-pane navigation |
+| open_startup_scripts_dialog | orientation_only | opens property sheet |
+| add_script_entry | reversible_pre_commit | child dialog; cancel undoes |
+| set_ps_order | reversible_pre_commit | dropdown selection |
+| ok_startup_scripts_dialog | commit_point | presumed scripts.ini flush |
+| cancel_dialog | reversible_pre_commit | closes without commit |
+
+## Selectors (to be populated from real UIA dumps at the spike)
+
+`# UNVERIFIED`: no selector below has been observed on a real guest.
+
+- startup_scripts_dialog: { class: "", title-regex: "Startup Properties" }
+- scripts_tab: { automation_id: "", name: "Scripts" }
+- add_button: { name: "Add..." }
+- script_name_field: { automation_id: "" }
+- script_parameters_field: { automation_id: "" }
+- ps_order_dropdown: { automation_id: "" }
+
+## Selector dependencies (drives the compatibility predicate)
+
+- dialogs identified by title-regex → strong dependency on UI language
+- control identity by automation_id → strong on binary version, weak on
+  language
+- no coordinate selectors declared in v0 (coordinates remain the last rung;
+  DPI would bind if any are added)
+
+## Fingerprint expectations
+
+`# UNVERIFIED`: title/class/rect/UIA-digest baselines for the property sheet
+and each child dialog, captured at qualification time and re-checked by the
+predicate before every qualified run.
