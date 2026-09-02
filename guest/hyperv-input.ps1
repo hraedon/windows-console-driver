@@ -282,7 +282,7 @@ try {
             } elseif ($action -eq 'text') {
                 # MEASURED on the Server 2025 host (2026-09-02, MPMLABHV01):
                 # Msvm_Keyboard exposes only PressKey/ReleaseKey/TypeKey/
-                # IsKeyPressed — there is NO TypeText method, and PressKey
+                # IsKeyPressed - there is NO TypeText method, and PressKey
                 # takes a UInt32 virtual-key code with no scanCode parameter.
                 # Text is therefore typed per character via PressKey with a
                 # char-to-VK map (shift applied for upper/symbol forms).
