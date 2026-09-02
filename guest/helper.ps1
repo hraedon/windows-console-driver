@@ -475,6 +475,11 @@ function Invoke-Screenshot {
 }
 
 # --- SendInput interop, loaded ONLY when a real injection happens ------------
+# Initialized eagerly: StrictMode rejects a get on a not-yet-set script
+# variable, and this function runs in the console session where that throw
+# would abort the injection (found live in the first console-session run;
+# dry-run tests on a desktop that forbids injection could not reach it).
+$script:InputSupportLoaded = $false
 function Initialize-InputSupport {
     if ($script:InputSupportLoaded) { return }
     Add-Type -TypeDefinition @'

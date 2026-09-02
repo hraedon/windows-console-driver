@@ -7,7 +7,8 @@
     guest/hyperv-input.ps1 implements the Hyper-V input backend
     (docs/contract.md section 9). It runs on the Hyper-V host and injects
     keyboard and mouse input into a guest via Msvm_Keyboard (PressKey,
-    TypeText) and Msvm_SyntheticMouse (absolute position, button state). It
+    per-character PressKey; this build of Msvm_Keyboard has no TypeText) and
+    Msvm_SyntheticMouse (absolute position, button state). It
     is the fallback used when the in-guest helper (helper.ps1) is defeated,
     and only when the capability's channel contract admits hyperv_input.
 
@@ -44,8 +45,10 @@
     state: click is one down/up pair, double is two, down/up are single
     states, always preceded by the absolute move. Keys go through
     Msvm_Keyboard.PressKey, which takes the virtual-key code the WMI
-    contract calls "keyCode" (a scancode path is not implemented -- recorded
-    as a limitation); TypeText sends whole strings and is the -Text route.
+    contract calls "keyCode". MEASURED on Server 2025 (MPMLABHV01,
+    2026-09-02): Msvm_Keyboard has no TypeText and PressKey has no
+    scanCode parameter, so -Action text types per character through
+    PressKey with a char-to-VK map and refuses unmapped characters.
 
     NAMING GUARD. -VMName must match ^[Ll]ab[A-Za-z0-9]{1,12}$: disposable
     guests only, the same estate naming convention capture_guest_console.ps1
@@ -277,12 +280,81 @@ try {
                 }
                 $injected += 1
             } elseif ($action -eq 'text') {
-                $result = Invoke-CimMethod -InputObject $keyboard[0] -MethodName TypeText `
-                    -Arguments @{ unicodeText = $text }
-                if ($result.ReturnValue -ne 0) {
-                    throw "Msvm_Keyboard.TypeText failed with $($result.ReturnValue)."
+                # MEASURED on the Server 2025 host (2026-09-02, MPMLABHV01):
+                # Msvm_Keyboard exposes only PressKey/ReleaseKey/TypeKey/
+                # IsKeyPressed — there is NO TypeText method, and PressKey
+                # takes a UInt32 virtual-key code with no scanCode parameter.
+                # Text is therefore typed per character via PressKey with a
+                # char-to-VK map (shift applied for upper/symbol forms).
+                # Characters outside the map are refused rather than skipped.
+                $map = New-Object 'System.Collections.Generic.Dictionary[char,object]'
+                for ([int]$i = 0; $i -lt 26; $i++) {
+                    $upper = [char](65 + $i); $lower = [char](97 + $i)
+                    $map[$lower] = @{ vk = [uint32](0x41 + $i); shift = $false }
+                    $map[$upper] = @{ vk = [uint32](0x41 + $i); shift = $true }
                 }
-                $injected += $text.Length
+                for ([int]$d = 0; $d -lt 10; $d++) {
+                    $digit = [char](48 + $d)
+                    $map[$digit] = @{ vk = [uint32](0x30 + $d); shift = $false }
+                }
+                $symbols = @{
+                    ' ' = @{ vk = [uint32]0x20; shift = $false }
+                    '!' = @{ vk = [uint32]0x31; shift = $true }
+                    '@' = @{ vk = [uint32]0x32; shift = $true }
+                    '#' = @{ vk = [uint32]0x33; shift = $true }
+                    '$' = @{ vk = [uint32]0x34; shift = $true }
+                    '%' = @{ vk = [uint32]0x35; shift = $true }
+                    '^' = @{ vk = [uint32]0x36; shift = $true }
+                    '&' = @{ vk = [uint32]0x37; shift = $true }
+                    '*' = @{ vk = [uint32]0x38; shift = $true }
+                    '(' = @{ vk = [uint32]0x39; shift = $true }
+                    ')' = @{ vk = [uint32]0x30; shift = $true }
+                    '-' = @{ vk = [uint32]0xBD; shift = $false }
+                    '_' = @{ vk = [uint32]0xBD; shift = $true }
+                    '=' = @{ vk = [uint32]0xBB; shift = $false }
+                    '+' = @{ vk = [uint32]0xBB; shift = $true }
+                    '[' = @{ vk = [uint32]0xDB; shift = $false }
+                    ']' = @{ vk = [uint32]0xDD; shift = $false }
+                    '\' = @{ vk = [uint32]0xDC; shift = $false }
+                    ';' = @{ vk = [uint32]0xBA; shift = $false }
+                    ':' = @{ vk = [uint32]0xBA; shift = $true }
+                    "'" = @{ vk = [uint32]0xDE; shift = $false }
+                    '"' = @{ vk = [uint32]0xDE; shift = $true }
+                    ',' = @{ vk = [uint32]0xBC; shift = $false }
+                    '<' = @{ vk = [uint32]0xBC; shift = $true }
+                    '.' = @{ vk = [uint32]0xBE; shift = $false }
+                    '>' = @{ vk = [uint32]0xBE; shift = $true }
+                    '/' = @{ vk = [uint32]0xBF; shift = $false }
+                    '?' = @{ vk = [uint32]0xBF; shift = $true }
+                    '`' = @{ vk = [uint32]0xC0; shift = $false }
+                    '~' = @{ vk = [uint32]0xC0; shift = $true }
+                    "`t" = @{ vk = [uint32]0x09; shift = $false }
+                    "`n" = @{ vk = [uint32]0x0D; shift = $false }
+                }
+                foreach ($ch in $symbols.Keys) { $map[$ch] = $symbols[$ch] }
+
+                foreach ($ch in $text.ToCharArray()) {
+                    if (-not $map.ContainsKey($ch)) {
+                        throw "character '$ch' (U+$([int]$ch)) has no VK mapping; refusing rather than skipping."
+                    }
+                    $entry = $map[$ch]
+                    if ($entry.shift) {
+                        $null = Invoke-CimMethod -InputObject $keyboard[0] -MethodName PressKey `
+                            -Arguments @{ keyCode = [uint32]0x10 }
+                    }
+                    $result = Invoke-CimMethod -InputObject $keyboard[0] -MethodName PressKey `
+                        -Arguments @{ keyCode = $entry.vk }
+                    if ($result.ReturnValue -ne 0) {
+                        throw "Msvm_Keyboard.PressKey($($entry.vk)) failed with $($result.ReturnValue)."
+                    }
+                    $null = Invoke-CimMethod -InputObject $keyboard[0] -MethodName ReleaseKey `
+                        -Arguments @{ keyCode = $entry.vk }
+                    if ($entry.shift) {
+                        $null = Invoke-CimMethod -InputObject $keyboard[0] -MethodName ReleaseKey `
+                            -Arguments @{ keyCode = [uint32]0x10 }
+                    }
+                    $injected += 1
+                }
             } else {
                 $mouse = @(Get-CimAssociatedInstance -InputObject $vm -ResultClassName Msvm_SyntheticMouse)
                 if ($mouse.Count -ne 1) {
