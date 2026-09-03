@@ -98,7 +98,15 @@ param(
 
     # Capture the whole virtual screen instead of the foreground window rect
     # (same effect as the request field "full": true).
-    [switch] $Full
+    [switch] $Full,
+
+    # File-IPC mode: when set, the request is read from this path and the
+    # response written to the response path instead of stdin/stdout. The
+    # launcher task uses this so the helper can run with -WindowStyle Hidden
+    # (cmd redirection via the task left a visible elevated console window on
+    # the desktop per request -- found live in the first estate window).
+    [string] $RequestFile,
+    [string] $ResponseFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -167,6 +175,7 @@ function Get-StringSha256Hex {
 # --- Win32 read-side interop -------------------------------------------------
 Add-Type -TypeDefinition @'
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -217,6 +226,53 @@ public static class WcdNative
 
     [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int nIndex);
+
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    public static List<object> EnumTopLevelWindows()
+    {
+        var windows = new List<object>();
+        EnumWindows((hWnd, lParam) =>
+        {
+            var visible = IsWindowVisible(hWnd);
+            var sbTitle = new StringBuilder(512);
+            GetWindowText(hWnd, sbTitle, 512);
+            var sbClass = new StringBuilder(256);
+            GetClassName(hWnd, sbClass, 256);
+            uint pid = 0;
+            GetWindowThreadProcessId(hWnd, out pid);
+            RECT r;
+            bool hasRect = GetWindowRect(hWnd, out r);
+            var entry = new Dictionary<string, object>();
+            entry["hwnd"] = (long)hWnd;
+            entry["title"] = sbTitle.ToString();
+            entry["class"] = sbClass.ToString();
+            entry["pid"] = (int)pid;
+            entry["visible"] = visible;
+            entry["minimized"] = IsIconic(hWnd);
+            entry["rect"] = hasRect
+                ? (object)new Dictionary<string, object> {
+                    { "left", (int)r.Left }, { "top", (int)r.Top },
+                    { "right", (int)r.Right }, { "bottom", (int)r.Bottom }
+                }
+                : (object)null;
+            windows.Add(entry);
+            return true;
+        }, IntPtr.Zero);
+        return windows;
+    }
 }
 '@
 
@@ -1000,6 +1056,48 @@ function Invoke-Dispatch {
         throw 'the request is missing the "action" field'
     }
     switch -CaseSensitive ("$action") {
+        'windows' {
+            # Desktop-wide top-level window enumeration: orientation for
+            # launch orchestration (a launched window may exist while no
+            # window has foreground). Facts, never interpretation.
+            $windows = [WcdNative]::EnumTopLevelWindows()
+            return @{
+                exit = 0
+                payload = @{
+                    ok = $true
+                    action = 'windows'
+                    count = $windows.Count
+                    windows = @($windows.ToArray())
+                    notes = @($script:notes)
+                }
+            }
+        }
+        'surface' {
+            # Restore + foreground a window by hwnd: the launch primitive's
+            # final step (a launched-but-not-surfaced window is a finding,
+            # not an error). Refuses when the hwnd is not a real window.
+            $hwndRaw = Get-Prop -Object $Request -Name 'hwnd'
+            if ($null -eq $hwndRaw) { throw 'surface: missing "hwnd"' }
+            $hwnd = [IntPtr][long]"$hwndRaw"
+            if (-not [WcdNative]::IsWindow($hwnd)) { throw "surface: hwnd $hwndRaw is not a window" }
+            $restored = [WcdNative]::ShowWindow($hwnd, 9)   # SW_RESTORE
+            Start-Sleep -Milliseconds 300
+            $foregrounded = [WcdNative]::SetForegroundWindow($hwnd)
+            Start-Sleep -Milliseconds 300
+            $fgHwnd = [WcdNative]::GetForegroundWindow()
+            return @{
+                exit = 0
+                payload = @{
+                    ok = $true
+                    action = 'surface'
+                    hwnd = $hwndRaw
+                    restored = [bool]$restored
+                    set_foreground_return = [bool]$foregrounded
+                    now_foreground = ($fgHwnd -eq $hwnd)
+                    notes = @($script:notes)
+                }
+            }
+        }
         'context' {
             $session = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
             $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
@@ -1080,6 +1178,14 @@ try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
 
 function Read-RequestJson {
+    if ($RequestFile) {
+        # File-IPC mode: read the whole request file as UTF-8 bytes.
+        $bytes = [IO.File]::ReadAllBytes($RequestFile)
+        if ($bytes.Length -eq 0) {
+            throw "the request file $RequestFile is empty"
+        }
+        return [System.Text.Encoding]::UTF8.GetString($bytes)
+    }
     $stream = [Console]::OpenStandardInput()
     $buffer = New-Object byte[] 8192
     $memory = [System.IO.MemoryStream]::new()
@@ -1120,7 +1226,11 @@ try {
 
 try {
     $json = ConvertTo-Json -InputObject $result.payload -Compress -Depth 16
-    [Console]::Out.WriteLine($json)
+    if ($ResponseFile) {
+        [IO.File]::WriteAllText($ResponseFile, $json, [System.Text.Encoding]::UTF8)
+    } else {
+        [Console]::Out.WriteLine($json)
+    }
 } catch {
     [Console]::Error.WriteLine(("helper: failed to serialize the response: " + $_.Exception.Message))
 }
