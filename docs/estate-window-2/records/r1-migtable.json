@@ -1,0 +1,89 @@
+{
+  "state": "verified",
+  "verdict": "transaction reached verified",
+  "envelope_result": {
+    "status": "satisfied",
+    "satisfied": [
+      "require[0] fact='migtable'",
+      "require[1] fact='migtable.xml_parses'",
+      "require[2] fact='migtable.mapping_count'",
+      "require[3] fact='migtable.gpmc_namespace'",
+      "require[4] fact='migtable.first_mapping_type'"
+    ],
+    "violated": [],
+    "unclassified": [],
+    "characterization": "satisfied: 5 clause(s) held; 18 delta entries all covered\n  covered changed: migtable.present (category 'content')\n  covered added: migtable.bytes (category 'unclassified')\n  covered added: migtable.encoding.bom (category 'unclassified')\n  covered added: migtable.mapping.0.destination (category 'unclassified')\n  covered added: migtable.mapping.0.source (category 'unclassified')\n  covered added: migtable.mapping.0.type (category 'unclassified')\n  covered added: migtable.mapping.1.destination (category 'uncla"
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability setup.author_migration_table prepared over GPO None"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability setup.author_migration_table invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'commit_migration_table_save' (profile class 'commit_point')"
+    },
+    {
+      "sequence": 4,
+      "from_state": "commit_attempted",
+      "to_state": "verified",
+      "reason": "converged after 2 polls, 2 reproductions"
+    }
+  ],
+  "provenance": {
+    "capability": "setup.author_migration_table",
+    "run_sheet": "setup.author_migration_table",
+    "transaction_id": "bbcc6a6a-8c54-40e8-a63c-d7e458094234",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": {
+            "stdout": "System.__ComObject\r\nSystem.__ComObject\r\nSystem.__ComObject\r\nSystem.__ComObject\r\nsaved=C:\\gpo-studio\\manual\\r01-migtable\\studio.migtable"
+          }
+        },
+        {
+          "index": 1,
+          "step": "commit[commit_migration_table_save]",
+          "ok": true,
+          "detail": {
+            "boundary": "commit_migration_table_save"
+          }
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": {
+            "stdout": "removed_dir=C:\\gpo-studio\\manual\\r01-migtable"
+          }
+        }
+      ]
+    },
+    "notes": [
+      "recovery checkpoint present: True"
+    ]
+  }
+}
