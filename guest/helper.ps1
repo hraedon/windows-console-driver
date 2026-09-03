@@ -584,6 +584,8 @@ public static class WcdInput
     public const uint INPUT_KEYBOARD = 1;
     public const uint KEYEVENTF_KEYUP = 0x0002;
     public const uint KEYEVENTF_UNICODE = 0x0004;
+    public const uint KEYEVENTF_SCANCODE = 0x0008;
+    public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     public const uint MOUSEEVENTF_MOVE = 0x0001;
     public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     public const uint MOUSEEVENTF_LEFTUP = 0x0004;
@@ -598,12 +600,49 @@ public static class WcdInput
     [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int nIndex);
 
+    [DllImport("user32.dll")]
+    public static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, IntPtr dwExtraInfo);
+
+    // Separate Add-Type compilation from WcdNative, so these are declared
+    // here rather than referenced across types.
+    [DllImport("user32.dll")]
+    public static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    // Ensure a window owns the keyboard foreground before injection. Each
+    // task-scheduler helper invocation creates a console process that briefly
+    // takes foreground (measured 2026-09-03), so a caller-directed key event
+    // races whatever window wins that churn. The synthetic ALT tap satisfies
+    // the foreground-lock that otherwise refuses SetForegroundWindow from a
+    // background process. Returns whether hwnd provably owns foreground.
+    public static bool EnsureForeground(IntPtr hwnd)
+    {
+        if (!IsWindow(hwnd)) { return false; }
+        keybd_event(0x12, 0, 0, IntPtr.Zero);
+        keybd_event(0x12, 0, 2, IntPtr.Zero);
+        bool set = SetForegroundWindow(hwnd);
+        return set && GetForegroundWindow() == hwnd;
+    }
+
     private static INPUT Key(uint vk, uint flags)
     {
+        // MEASURED in the first estate window (2026-09-03): VK-only events
+        // (wScan = 0, no KEYEVENTF_SCANCODE) are silently dropped by legacy
+        // targets -- the MMC treeview never saw a single arrow key. Always
+        // carry the scancode (MAPVK_VK_TO_VSC = 0) alongside the VK.
         INPUT i = new INPUT();
         i.type = INPUT_KEYBOARD;
         i.u.ki.wVk = (ushort)vk;
-        i.u.ki.dwFlags = flags;
+        i.u.ki.wScan = (ushort)MapVirtualKey(vk, 0);
+        i.u.ki.dwFlags = flags | KEYEVENTF_SCANCODE;
         return i;
     }
 
@@ -679,12 +718,30 @@ public static class WcdInput
 
     public static int SendChord(uint vk, string[] modifiers)
     {
+        // Arrow, navigation, and Windows-key codes are EXTENDED keys: without
+        // KEYEVENTF_EXTENDEDKEY the scancode path delivers their numpad
+        // twins, which a treeview ignores (measured 2026-09-03).
+        uint ext = IsExtendedKey(vk) ? KEYEVENTF_EXTENDEDKEY : 0;
         var events = new List<INPUT>();
         foreach (string m in modifiers) { events.Add(Key(ModifierVk(m), 0)); }
-        events.Add(Key(vk, 0));
-        events.Add(Key(vk, KEYEVENTF_KEYUP));
+        events.Add(Key(vk, ext));
+        events.Add(Key(vk, KEYEVENTF_KEYUP | ext));
         for (int i = modifiers.Length - 1; i >= 0; i--) { events.Add(Key(ModifierVk(modifiers[i]), KEYEVENTF_KEYUP)); }
         return SendBatch(events);
+    }
+
+    private static bool IsExtendedKey(uint vk)
+    {
+        switch (vk)
+        {
+            case 0x21: case 0x22: case 0x23: case 0x24: // PGUP PGDN END HOME
+            case 0x25: case 0x26: case 0x27: case 0x28: // LEFT UP RIGHT DOWN
+            case 0x2D: case 0x2E:                        // INSERT DELETE
+            case 0x5B: case 0x5C: case 0x5D:            // LWIN RWIN APPS
+            case 0xA3: case 0xA5:                        // RCTRL RALT
+                return true;
+            default: return false;
+        }
     }
 
     private static uint ModifierVk(string modifier)
@@ -813,6 +870,17 @@ function Invoke-KeyAction {
     }
 
     Initialize-InputSupport
+    # focus_hwnd: ensure the named window owns the keyboard foreground before
+    # the events are sent (contract section 7 context assertion, inject-side).
+    $focusHwndRaw = Get-Prop -Object $Request -Name 'focus_hwnd'
+    $focusEnsured = $null
+    if ($null -ne $focusHwndRaw) {
+        $focusHwnd = [IntPtr][long]"$focusHwndRaw"
+        $focusEnsured = [WcdInput]::EnsureForeground($focusHwnd)
+        if (-not $focusEnsured) {
+            throw ("key: could not bring hwnd " + $focusHwndRaw + " to the foreground; refusing to inject into an unknown target")
+        }
+    }
     $events = 0
     if ($text) {
         $sent = [WcdInput]::SendUnicodeText($text)
@@ -843,6 +911,7 @@ function Invoke-KeyAction {
             text_sha256 = $textSha
             chords_sent = $chords.Count
             injected_events = $events
+            focus_ensured = $focusEnsured
             secret_shaped_warning = $secretWarning
             notes = @($script:notes)
         }
@@ -924,6 +993,15 @@ function Invoke-MouseAction {
     }
 
     Initialize-InputSupport
+    # focus_hwnd: same ensure-foreground discipline as the key action -- a
+    # click into a window that is not foreground may not land where intended.
+    $focusHwndRaw = Get-Prop -Object $Request -Name 'focus_hwnd'
+    if ($null -ne $focusHwndRaw) {
+        $focusHwnd = [IntPtr][long]"$focusHwndRaw"
+        if (-not [WcdInput]::EnsureForeground($focusHwnd)) {
+            throw ("mouse: could not bring hwnd " + $focusHwndRaw + " to the foreground; refusing to click blind")
+        }
+    }
     $sent = [WcdInput]::SendMouse($screenX, $screenY, "$button", "$mouseAction")
     if ($sent -lt 1) {
         throw 'SendInput accepted no mouse events; the injection state is unknown'

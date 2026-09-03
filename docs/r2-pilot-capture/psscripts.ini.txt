@@ -1,0 +1,8 @@
+first 4 bytes: FF FE 0D 00
+CR count: 6  LF count: 6  size: 226 bytes
+
+[ScriptsConfig]
+StartExecutePSFirst=true
+[Startup]
+0CmdLine=zz-studio-marker.ps1
+0Parameters=-Mode Alpha

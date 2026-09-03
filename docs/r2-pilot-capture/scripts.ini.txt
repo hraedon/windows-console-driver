@@ -1,0 +1,8 @@
+first 4 bytes: FF FE 0D 00
+CR count: 6  LF count: 6  size: 234 bytes
+
+[Startup]
+0CmdLine=zz-studio-marker.cmd
+0Parameters=/c alpha beta
+1CmdLine=zz-studio-second.cmd
+1Parameters=
