@@ -1,0 +1,12 @@
+{
+  "name": "setup.author_migration_table",
+  "surface": "gpmc-server2025",
+  "steps": [
+    {"action": "guest", "phase": "setup", "script": "dir_clean", "args": ["{args.staging_dir}"]},
+
+    {"action": "guest", "phase": "gesture", "script": "migtable_com", "args": ["{args.migtable_path}"]},
+    {"action": "commit", "profile_action": "commit_migration_table_save", "boundary": "commit_migration_table_save"},
+
+    {"action": "guest", "phase": "cleanup", "script": "dir_clean", "args": ["{args.staging_dir}"]}
+  ]
+}

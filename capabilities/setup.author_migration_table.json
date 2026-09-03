@@ -1,0 +1,85 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "setup.author_migration_table",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "gpo_transaction": false,
+  "run_sheet": "setup.author_migration_table",
+  "intent": "Author one migration table through the GPMC COM API (GPMgmt.GPM CreateMigrationTable/AddEntry/Save) and read the bytes back -- a setup-only transaction with no interactive step that exercises the full engine plumbing (ensure-console, recovery check, pre-oracle, prepare/arm, commit crossing, converge/reproduce, envelope, cleanup) at near-zero surface risk (work order R1).",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["staging_dir", "migtable_path"],
+    "properties": {
+      "staging_dir": { "type": "string" },
+      "migtable_path": { "type": "string" }
+    }
+  },
+  "channel_contract": {
+    "setup": ["powershell"],
+    "operation_under_test": ["gpmc_com"],
+    "orientation": [],
+    "input_delivery": [],
+    "oracle": ["gpo_observers"],
+    "cleanup": ["powershell"]
+  },
+  "first_commit_point": "commit_migration_table_save",
+  "fact_plan": {
+    "observers": [
+      {"name": "migration_table", "params": {"path": "{args.migtable_path}"}}
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "migtable",
+        "predicate": "post.migtable.present == True"
+      },
+      {
+        "fact": "migtable.xml_parses",
+        "predicate": "post.migtable.xml_parses == True"
+      },
+      {
+        "fact": "migtable.mapping_count",
+        "predicate": "post.migtable.mapping_count == 4"
+      },
+      {
+        "fact": "migtable.gpmc_namespace",
+        "predicate": "'GPOOperations/MigrationTable' in post.migtable.root_tag"
+      },
+      {
+        "fact": "migtable.first_mapping_type",
+        "predicate": "post['migtable.mapping.0.type'] in ['User', 'GlobalGroup', 'LocalGroup', 'UNCPath']"
+      }
+    ],
+    "allow": [
+      { "category": "timestamps" }
+    ],
+    "forbid": [],
+    "derive": [],
+    "convergence": { "window_seconds": 30, "poll_seconds": 5, "reproduce": 2 }
+  },
+  "structured_checks": [
+    {
+      "id": "namespace_recorded",
+      "checks": "The root element tag is recorded verbatim; whether GPMC's namespace matches migration.py's hardcoded {http://www.microsoft.com/GroupPolicy/Types} is the R1 answer, registered from the record. The require clause carries the informal check; the exact comparison is analysis work on the record."
+    },
+    {
+      "id": "entry_shape_recorded",
+      "checks": "Each mapping's Source/Destination fields (Identifier/Sid/Name children, types) are recorded as dotted facts; the four authored rows make split vs flat shapes visible."
+    }
+  ],
+  "bindings": {
+    "args": "Bound at load time by wcd.exec_transaction.",
+    "fact_vocabulary": "migtable.* facts come from the migration_table observer (controller-side XML parse of transported bytes)."
+  },
+  "cleanup": {
+    "strategy": "remove_staging_dir",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

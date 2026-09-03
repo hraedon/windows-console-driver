@@ -47,6 +47,47 @@ notes = "UNVERIFIED: presumed scripts.ini flush under Machine\\Scripts at dialog
 class = "reversible_pre_commit"
 notes = "closes without commit"
 
+# Actions added 2026-09-03 for the R3/R4/R5 capability set. The R2 classes
+# above stay untouched: they are qualified by the R2 pilot, not re-typed
+# opportunistically. The new rows carry the same UNVERIFIED discipline --
+# hypotheses to be validated by their captures, refined per capability.
+
+[actions.open_property_dialog]
+class = "reversible_pre_commit"
+notes = "opens a property sheet or child dialog (double-click / Properties / Add); cancel before a commit point undoes it"
+
+[actions.interact_dialog_control]
+class = "reversible_pre_commit"
+notes = "typing, tabbing, radio/dropdown selection inside a dialog before its OK; in-memory/surface state only"
+
+[actions.ok_child_dialog]
+class = "potentially_mutating"
+notes = "OK inside a child dialog (Add script entry, Add Key...): UNVERIFIED whether it flushes before the parent OK -- R2 left this open; the first crossing moves the transaction to commit-attempted, which is the conservative reading"
+
+[actions.ok_folder_redirect_dialog]
+class = "commit_point"
+notes = "OK on a Folder Redirection property page; presumed fdeploy.ini flush point (UNVERIFIED until R3)"
+
+[actions.ok_security_entry_dialog]
+class = "potentially_mutating"
+notes = "OK on a Template Security Policy Setting dialog; may append the GptTmpl.inf entry per dialog (UNVERIFIED until R4)"
+
+[actions.ok_policy_setting_dialog]
+class = "potentially_mutating"
+notes = "OK on an Administrative Templates policy dialog; may write Registry.pol per setting (UNVERIFIED until R5)"
+
+[actions.close_editor_window]
+class = "commit_point"
+notes = "closing the GPME editor window flushes pending snap-in state; declared as the last-resort commit point for capabilities whose per-dialog OKs stay potentially_mutating"
+
+[actions.commit_migration_table_save]
+class = "commit_point"
+notes = "the GPMC COM Save call behind the R1 setup-only transaction (GPMgmt.GPM MigrationTable.Save writes the .migtable file); programmatic surface, declared so the zero-GUI transaction still crosses a classified boundary"
+
+# Selectors added with the same action rows. Name-based criteria bind UI
+# language strongly (contract section 6); automation_ids replace these as
+# the captures observe them.
+
 # Selectors. Every selector below is UNVERIFIED: no UIA dump has been taken
 # on a real guest console yet. automation_id fields are absent until the spike
 # observes them; title_regex values are the classic-dialog guesses.
@@ -71,6 +112,14 @@ name_regex = "Script Parameters"
 
 [selectors.ps_order_dropdown]
 name_regex = "following order"
+
+# Selectors for the R3/R4/R5 dialog families (UNVERIFIED until their
+# captures; classic-dialog guesses carried from the manual regime).
+[selectors.property_sheet_dialog]
+title_regex = "Properties"
+
+[selectors.security_entry_dialog]
+title_regex = "Template Security Policy"
 
 # Selector dependencies: what the compatibility predicate checks, per rung.
 # Title/name selectors bind UI language strongly. Once the spike observes
@@ -125,3 +174,25 @@ strength = "strong"
 selector = "startup_scripts_dialog"
 dependency = "os_build"
 strength = "provenance"
+
+# The new dialog family (property sheets + policy dialogs share one window
+# class with the Scripts sheet): fingerprinted together at qualification.
+[[selector_dependencies]]
+selector = "property_sheet_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "property_sheet_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "security_entry_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "security_entry_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"

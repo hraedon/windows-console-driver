@@ -59,6 +59,12 @@ SYSTEM_FILE_RELPATHS: frozenset[str] = frozenset(
         "machine/scripts/psscripts.ini",
         "user/scripts/scripts.ini",
         "user/scripts/psscripts.ini",
+        # R3/R4 additions: files whose bytes dedicated observers transport and
+        # parse (gpttmpl_inf, fdeploy_ini). Hashing them here would duplicate
+        # the dedicated facts and drown the delta in noise -- same rule as
+        # GPT.INI above.
+        "machine/microsoft/windows nt/secedit/gpttmpl.inf",
+        "user/documents & settings/fdeploy.ini",
     }
 )
 
@@ -159,13 +165,15 @@ def capture_snapshot(
     facts["scope.sysvol_relpaths"] = make_fact(
         "scope.sysvol_relpaths", list(scope.sysvol_relpaths)
     )
-    # The containment boolean the declarative forbid clause consumes: every
-    # reported relative path starts with this GPO's GUID directory (same rule
-    # as delta.check_sysvol_containment, emitted as an ordinary structural
-    # fact so bounded predicate expressions can reference it).
-    prefix = "{" + gpo.gpo_guid.upper() + "}/"
+    # The containment boolean the declarative forbid clause consumes. The
+    # relpaths are relative to THIS GPO's directory (psl.scope_forbid), so
+    # containment means no path escapes it (no parent traversal, no
+    # absolute). Emitted as an ordinary structural fact so bounded predicate
+    # expressions can reference it.
     contained = all(
-        isinstance(relpath, str) and relpath.upper().startswith(prefix)
+        isinstance(relpath, str)
+        and not relpath.startswith("/")
+        and ".." not in relpath.split("/")
         for relpath in scope.sysvol_relpaths
     )
     facts["scope.sysvol_contained"] = make_fact("scope.sysvol_contained", contained)

@@ -623,14 +623,72 @@ public static class WcdInput
     // races whatever window wins that churn. The synthetic ALT tap satisfies
     // the foreground-lock that otherwise refuses SetForegroundWindow from a
     // background process. Returns whether hwnd provably owns foreground.
+    // SECOND ESTATE WINDOW (2026-09-03): right after a modal child dialog
+    // closes, the parent can persistently refuse the plain ALT-tap route, so
+    // this retries with sleeps and falls back to AttachThreadInput (the
+    // classic way to grant a background thread the right to set foreground).
     public static bool EnsureForeground(IntPtr hwnd)
     {
         if (!IsWindow(hwnd)) { return false; }
-        keybd_event(0x12, 0, 0, IntPtr.Zero);
-        keybd_event(0x12, 0, 2, IntPtr.Zero);
-        bool set = SetForegroundWindow(hwnd);
-        return set && GetForegroundWindow() == hwnd;
+        for (int attempt = 0; attempt < 6; attempt++)
+        {
+            keybd_event(0x12, 0, 0, IntPtr.Zero);
+            keybd_event(0x12, 0, 2, IntPtr.Zero);
+            bool set = SetForegroundWindow(hwnd);
+            if (set && GetForegroundWindow() == hwnd) { return true; }
+            System.Threading.Thread.Sleep(150 + (100 * attempt));
+        }
+        return AttachInputAndSetForeground(hwnd);
     }
+
+    private static bool AttachInputAndSetForeground(IntPtr hwnd)
+    {
+        uint unusedPid;
+        uint targetThread = GetWindowThreadProcessId(GetForegroundWindow(), out unusedPid);
+        uint thisThread = GetCurrentThreadId();
+        bool attached = false;
+        try
+        {
+            if (targetThread != 0 && targetThread != thisThread)
+            {
+                attached = AttachThreadInput(thisThread, targetThread, true);
+            }
+            for (int attempt = 0; attempt < 4; attempt++)
+            {
+                bool set = SetForegroundWindow(hwnd);
+                if (set && GetForegroundWindow() == hwnd) { return true; }
+                System.Threading.Thread.Sleep(120);
+            }
+            return GetForegroundWindow() == hwnd;
+        }
+        finally
+        {
+            if (attached) { AttachThreadInput(thisThread, targetThread, false); }
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    // Separate Add-Type compilation from WcdNative: this class declares its
+    // own copy of any user32 entry point it needs.
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
 
     private static INPUT Key(uint vk, uint flags)
     {
@@ -1200,14 +1258,30 @@ function Invoke-Dispatch {
             $depth = Convert-IntProp -Value (Get-Prop -Object $Request -Name 'depth') -Name 'depth'
             if ($null -eq $depth) { $depth = 4 }
             if ($depth -lt 1 -or $depth -gt 12) { throw "uia_dump: depth must be within 1..12, got $depth" }
-            $fgHwnd = [WcdNative]::GetForegroundWindow()
-            if ($fgHwnd -eq [IntPtr]::Zero) { throw 'uia_dump: no foreground window to dump' }
-            $dump = Invoke-UiaDump -Hwnd $fgHwnd -Depth $depth
+            # Optional hwnd: dump a SPECIFIC window rather than the foreground.
+            # MEASURED 2026-09-03 (second estate window): each task-scheduler
+            # invocation's own console takes and holds foreground while the
+            # helper runs, so a foreground-only dump self-shadows -- it sees
+            # the helper console, not the surface. Targeting by hwnd makes
+            # orientation z-order-independent. Facts either way; no
+            # interpretation.
+            $hwndGiven = Convert-IntProp -Value (Get-Prop -Object $Request -Name 'hwnd') -Name 'hwnd'
+            if ($null -ne $hwndGiven) {
+                $targetHwnd = [IntPtr][long]"$hwndGiven"
+                if (-not [WcdNative]::IsWindow($targetHwnd)) {
+                    throw "uia_dump: hwnd $hwndGiven is not a valid window on this desktop"
+                }
+            } else {
+                $targetHwnd = [WcdNative]::GetForegroundWindow()
+                if ($targetHwnd -eq [IntPtr]::Zero) { throw 'uia_dump: no foreground window to dump' }
+            }
+            $dump = Invoke-UiaDump -Hwnd $targetHwnd -Depth $depth
             return @{
                 exit = 0
                 payload = @{
                     ok = $true
                     action = 'uia_dump'
+                    hwnd = $targetHwnd.ToInt64()
                     depth = $depth
                     truncated = $dump.truncated
                     element_count = $dump.elements.Count
@@ -1217,16 +1291,28 @@ function Invoke-Dispatch {
             }
         }
         'screenshot' {
-            $fgHwnd = [WcdNative]::GetForegroundWindow()
-            if (-not $FullMode -and $fgHwnd -eq [IntPtr]::Zero) {
-                throw 'screenshot: no foreground window to capture (send "full": true for the whole virtual screen)'
+            $hwndGiven = Convert-IntProp -Value (Get-Prop -Object $Request -Name 'hwnd') -Name 'hwnd'
+            if ($null -ne $hwndGiven) {
+                # Same self-shadow rule as uia_dump: capture a specific window.
+                $targetHwnd = [IntPtr][long]"$hwndGiven"
+                if (-not [WcdNative]::IsWindow($targetHwnd)) {
+                    throw "screenshot: hwnd $hwndGiven is not a valid window on this desktop"
+                }
+            } elseif (-not $FullMode) {
+                $targetHwnd = [WcdNative]::GetForegroundWindow()
+                if ($targetHwnd -eq [IntPtr]::Zero) {
+                    throw 'screenshot: no foreground window to capture (send "full": true for the whole virtual screen)'
+                }
+            } else {
+                $targetHwnd = [IntPtr]::Zero
             }
-            $capture = Invoke-Screenshot -Hwnd $fgHwnd -FullMode $FullMode
+            $capture = Invoke-Screenshot -Hwnd $targetHwnd -FullMode $FullMode
             return @{
                 exit = 0
                 payload = @{
                     ok = $true
                     action = 'screenshot'
+                    hwnd = if ($FullMode) { $null } else { $targetHwnd.ToInt64() }
                     full = $capture.full
                     rect = $capture.rect
                     width = $capture.width
@@ -1239,6 +1325,93 @@ function Invoke-Dispatch {
             }
         }
         'key' { return Invoke-KeyAction -Request $Request -DryRunMode $DryRunMode }
+        'keys' {
+            # COMPOSITE key sequence in ONE invocation. MEASURED 2026-09-03:
+            # popup surfaces (context menus, ComboBox dropdowns) close when
+            # the next task invocation's console steals foreground, so a
+            # menu opened in one invocation cannot be selected in the next.
+            # "steps" is an ordered list of {text} and/or {vks} entries with
+            # an inter-step delay; focus is ensured ONCE up front.
+            $stepsRaw = Get-Prop -Object $Request -Name 'steps'
+            if ($null -eq $stepsRaw) { throw 'keys: "steps" array is required' }
+            $stepsRaw = @($stepsRaw)
+            if ($stepsRaw.Count -eq 0) { throw 'keys: "steps" is empty' }
+            $delayMs = Convert-IntProp -Value (Get-Prop -Object $Request -Name 'delay_ms') -Name 'delay_ms'
+            if ($null -eq $delayMs) { $delayMs = 150 }
+            if ($delayMs -lt 0 -or $delayMs -gt 2000) { throw "keys: delay_ms must be 0..2000, got $delayMs" }
+            foreach ($entry in $stepsRaw) {
+                if ($entry -isnot [System.Management.Automation.PSCustomObject]) {
+                    throw 'keys: each step must be an object'
+                }
+                $hasText = $null -ne (Get-Prop -Object $entry -Name 'text')
+                $hasVks = $null -ne (Get-Prop -Object $entry -Name 'vks')
+                $hasClick = $null -ne (Get-Prop -Object $entry -Name 'click')
+                if (-not $hasText -and -not $hasVks -and -not $hasClick) {
+                    throw 'keys: each step needs text, vks, or click'
+                }
+            }
+            Initialize-InputSupport
+            $focusHwndRaw = Get-Prop -Object $Request -Name 'focus_hwnd'
+            if ($null -ne $focusHwndRaw) {
+                $focusHwnd = [IntPtr][long]"$focusHwndRaw"
+                if (-not [WcdInput]::EnsureForeground($focusHwnd)) {
+                    throw ("keys: could not bring hwnd " + $focusHwndRaw + " to the foreground")
+                }
+            }
+            $total = 0
+            foreach ($entry in $stepsRaw) {
+                $clickRaw = Get-Prop -Object $entry -Name 'click'
+                if ($null -ne $clickRaw) {
+                    # {"click":[x,y]}: window-relative click on the focused
+                    # window, so a control can be clicked and typed into
+                    # within this same invocation (dialog focus resets across
+                    # invocations -- measured 2026-09-03).
+                    $clickRaw = @($clickRaw)
+                    $clickX = Convert-IntProp -Value $clickRaw[0] -Name 'keys[].click[0]'
+                    $clickY = Convert-IntProp -Value $clickRaw[1] -Name 'keys[].click[1]'
+                    $focusHwndForClick = [IntPtr][long]"$focusHwndRaw"
+                    $rect = [WcdInput+RECT]::new()
+                    if (-not [WcdInput]::GetWindowRect($focusHwndForClick, [ref]$rect)) {
+                        throw 'keys: GetWindowRect failed for the focus window'
+                    }
+                    $total += [WcdInput]::SendMouse($rect.Left + $clickX, $rect.Top + $clickY, 'left', 'click')
+                    if ($delayMs -gt 0) { Start-Sleep -Milliseconds $delayMs }
+                    continue
+                }
+                $text = Get-Prop -Object $entry -Name 'text'
+                $vksRaw = Get-Prop -Object $entry -Name 'vks'
+                if ($text) {
+                    # PER-CHARACTER with inter-char delay: combobox autocomplete
+                    # dropdowns swallow batched unicode text (measured
+                    # 2026-09-03 in the Select Registry Key dialog).
+                    foreach ($ch in "$text".ToCharArray()) {
+                        $total += [WcdInput]::SendUnicodeText([string]$ch)
+                        if ($delayMs -gt 0) { Start-Sleep -Milliseconds $delayMs }
+                    }
+                }
+                if ($null -ne $vksRaw) {
+                    $vksRaw = @($vksRaw)
+                    foreach ($chord in $vksRaw) {
+                        $vk = Convert-IntProp -Value (Get-Prop -Object $chord -Name 'vk') -Name 'keys[].vks[].vk'
+                        $modsRaw = Get-Prop -Object $chord -Name 'modifiers'
+                        $mods = @()
+                        if ($null -ne $modsRaw) { $mods = @($modsRaw | ForEach-Object { "$_" }) }
+                        $total += [WcdInput]::SendChord([uint32]$vk, [string[]]$mods)
+                    }
+                }
+                if ($delayMs -gt 0) { Start-Sleep -Milliseconds $delayMs }
+            }
+            return @{
+                exit = 0
+                payload = @{
+                    ok = $true
+                    action = 'keys'
+                    steps = $stepsRaw.Count
+                    injected_events = $total
+                    notes = @($script:notes)
+                }
+            }
+        }
         'mouse' { return Invoke-MouseAction -Request $Request -DryRunMode $DryRunMode }
         'wait_foreground' { return Invoke-WaitForeground -Request $Request }
         default {

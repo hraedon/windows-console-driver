@@ -1,0 +1,101 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_folder_redirection",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "gpo_transaction": true,
+  "run_sheet": "gpmc.author_folder_redirection",
+  "intent": "Author one Basic-mode Documents folder-redirection rule with non-default option flags on a disposable GPO through the Folder Redirection snap-in, so the file the Folder Redirection CSE actually consumes (fdeploy.ini under User\\Documents & Settings, not User Shell Folders), its keying, and its option-flag encoding can be read off the capture.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["gpo_name", "domain_dns", "root_path"],
+    "properties": {
+      "gpo_name": { "type": "string" },
+      "domain_dns": { "type": "string" },
+      "root_path": { "type": "string" }
+    }
+  },
+  "channel_contract": {
+    "setup": ["powershell"],
+    "operation_under_test": ["gpmc_ui"],
+    "orientation": ["uia", "hwnd", "screenshot"],
+    "input_delivery": ["helper_input", "hyperv_input"],
+    "oracle": ["gpo_observers"],
+    "cleanup": ["powershell"]
+  },
+  "first_commit_point": "ok-folder-redirect-dialog",
+  "fact_plan": {
+    "observers": [
+      {"name": "r2_core", "params": {}},
+      {"name": "fdeploy_ini", "params": {"relpath": "User\\Documents & Settings\\fdeploy.ini"}}
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "fdeploy",
+        "predicate": "post.fdeploy.present == True"
+      },
+      {
+        "fact": "fdeploy.encoding",
+        "predicate": "post.fdeploy.encoding.crlf_only == True"
+      },
+      {
+        "fact": "fdeploy.entries_present",
+        "predicate": "post.fdeploy.section_names != []"
+      }
+    ],
+    "allow": [
+      { "category": "timestamps" },
+      { "category": "replication_metadata" },
+      { "category": "file_mtime" }
+    ],
+    "forbid": [
+      {
+        "scope": "ad.gPCMachineExtensionNames",
+        "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and 'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope"
+      },
+      {
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
+      },
+      {
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
+      }
+    ],
+    "derive": [
+      { "relation": "post.version.user > pre.version.user" },
+      { "relation": "post.version.machine == pre.version.machine" }
+    ],
+    "convergence": { "window_seconds": 120, "poll_seconds": 6, "reproduce": 2 }
+  },
+  "structured_checks": [
+    {
+      "id": "root_path_recorded_verbatim",
+      "checks": "The authored root path appears in the recorded fdeploy entries (value-level check done at analysis from the record; the bounded evaluator cannot reach list contents)."
+    },
+    {
+      "id": "option_flags_recorded",
+      "checks": "The three non-default Settings-tab flags (exclusive rights off, move contents on, redirect-back-on-removal) are located in the recorded entries -- which key encodes which flag is an R3 answer registered from this record."
+    },
+    {
+      "id": "user_shell_folders_absent",
+      "checks": "No 'User Shell Folders' artifact appears in the SYSVOL fingerprint (the sysvol per-file facts cover every non-system file; absence of a User Shell Folders file under User\\ is visible there)."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are bound into predicates at load time by wcd.exec_transaction.",
+    "fact_vocabulary": "fdeploy.* facts come from gpo_observers.fdeploy_ini. section_names is the ordered section-name list the observer emits; entry-level facts are dotted per index."
+  },
+  "cleanup": {
+    "strategy": "backup_then_remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

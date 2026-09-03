@@ -1,0 +1,147 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_admin_template_user",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "gpo_transaction": true,
+  "run_sheet": "gpmc.author_admin_template_user",
+  "intent": "Enable one user-side-only Administrative Templates setting (Registry CSE) on a fresh disposable GPO, so the upper-16-bit version delta -- and whether a user-only edit leaves the machine counter alone -- gets its real test (work order R5, the discriminating edit; a flat +1 publication would corrupt it).",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "gpo_name",
+      "domain_dns"
+    ],
+    "properties": {
+      "gpo_name": {
+        "type": "string"
+      },
+      "domain_dns": {
+        "type": "string"
+      }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "gpmc_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell"
+    ]
+  },
+  "first_commit_point": "ok-policy-setting-dialog",
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "r2_core",
+        "params": {}
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "sysvol",
+        "predicate": "post.sysvol.passes_match == True"
+      },
+      {
+        "fact": "ad.gPCUserExtensionNames",
+        "predicate": "'35378EAC-683F-11D2-A89A-00C04FBBCFA2' in post.ad.gPCUserExtensionNames"
+      }
+    ],
+    "allow": [
+      {
+        "category": "timestamps"
+      },
+      {
+        "category": "replication_metadata"
+      },
+      {
+        "category": "file_mtime"
+      }
+    ],
+    "forbid": [
+      {
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
+      },
+      {
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.version.user == pre.version.user + 1"
+      },
+      {
+        "relation": "post.version.machine == pre.version.machine"
+      },
+      {
+        "relation": "post.version.raw != pre.version.raw"
+      },
+      {
+        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
+      },
+      {
+        "relation": "post.scope.extension_lists.user != pre.scope.extension_lists.user"
+      },
+      {
+        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
+      },
+      {
+        "relation": "post.ad.versionNumber == post.version.user * 65536 + post.version.machine"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 120,
+      "poll_seconds": 6,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "user_registry_pol_appeared",
+      "checks": "User\\Registry.pol appears in the post SYSVOL fingerprint and the machine side gains nothing (predicted by the sysvol-family require; machine-half invariance is the derive relation)."
+    },
+    {
+      "id": "version_packing_answer",
+      "checks": "user +1 with machine unchanged is the R5 discriminator against publication.py's flat +1. Disproven here is the finding."
+    }
+  ],
+  "bindings": {
+    "args": "Bound at load time by wcd.exec_transaction.",
+    "fact_vocabulary": "r2_core snapshot supplies version/sysvol/scope/ad facts."
+  },
+  "cleanup": {
+    "strategy": "backup_then_remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

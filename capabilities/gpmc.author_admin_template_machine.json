@@ -1,0 +1,144 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_admin_template_machine",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "gpo_transaction": true,
+  "run_sheet": "gpmc.author_admin_template_machine",
+  "intent": "Enable one machine-side Administrative Templates setting (Registry CSE) on a fresh disposable GPO, so the machine-half version delta in GPT.INI/AD -- and the packed-32-bit-field derive relations -- get their real test (work order R5, reading #1).",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "gpo_name",
+      "domain_dns"
+    ],
+    "properties": {
+      "gpo_name": {
+        "type": "string"
+      },
+      "domain_dns": {
+        "type": "string"
+      }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "gpmc_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell"
+    ]
+  },
+  "first_commit_point": "ok-policy-setting-dialog",
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "r2_core",
+        "params": {}
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "sysvol",
+        "predicate": "post.sysvol.passes_match == True"
+      },
+      {
+        "fact": "ad.gPCMachineExtensionNames",
+        "predicate": "'35378EAC-683F-11D2-A89A-00C04FBBCFA2' in post.ad.gPCMachineExtensionNames"
+      }
+    ],
+    "allow": [
+      {
+        "category": "timestamps"
+      },
+      {
+        "category": "replication_metadata"
+      },
+      {
+        "category": "file_mtime"
+      }
+    ],
+    "forbid": [
+      {
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
+      },
+      {
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.version.machine == pre.version.machine + 1"
+      },
+      {
+        "relation": "post.version.user == pre.version.user"
+      },
+      {
+        "relation": "post.version.raw != pre.version.raw"
+      },
+      {
+        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
+      },
+      {
+        "relation": "post.scope.extension_lists.machine != pre.scope.extension_lists.machine"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
+      },
+      {
+        "relation": "post.ad.versionNumber == post.version.user * 65536 + post.version.machine"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 120,
+      "poll_seconds": 6,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "registry_pol_appeared",
+      "checks": "Machine\\Registry.pol appears in the post SYSVOL fingerprint. The sysvol family require clause predicts the addition (the file has no dedicated observer; its appearance is the expected artifact of this capability)."
+    },
+    {
+      "id": "version_packing_answer",
+      "checks": "The derive relations ARE the R5 answer: machine +1 with user unchanged confirms the low 16 bits moved on a machine-only edit. A disproven characterize here is the packed-field finding, registered from the record."
+    }
+  ],
+  "bindings": {
+    "args": "Bound at load time by wcd.exec_transaction.",
+    "fact_vocabulary": "r2_core snapshot supplies version/sysvol/scope/ad facts. The sysvol-family require predicts per-file additions (Registry.pol) because this capability's artifact has no dedicated observer."
+  },
+  "cleanup": {
+    "strategy": "remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

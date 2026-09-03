@@ -1,0 +1,529 @@
+{
+  "name": "gpmc.author_registry_security",
+  "surface": "gpmc-server2025",
+  "steps": [
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpo_create",
+      "args": [
+        "{args.gpo_name}",
+        "R4: security propagation codes via wcd"
+      ],
+      "output_as": "setup.gpo"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpme_launch",
+      "args": [
+        "{out.setup.gpo.guid}",
+        "{args.domain_dns}"
+      ]
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_gpo_editor",
+      "title_regex": "Group Policy",
+      "timeout_ms": 90000
+    },
+    {
+      "action": "context",
+      "profile_action": "navigate_tree",
+      "assert_window_regex": "Group Policy"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Computer Configuration$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Policies$",
+      "control_type": "ListItem",
+      "double": true,
+      "soft": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Windows Settings$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Security Settings$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Registry$",
+      "control_type": "ListItem",
+      "index": 0,
+      "settle_ms": 1500
+    },
+    {
+      "action": "keys",
+      "profile_action": "open_property_dialog",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "alt"
+              ]
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 600,
+      "label": "Alt+A -> DOWN -> ENTER (Add Key)"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_property_dialog",
+      "title_regex": "Select Registry Key",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "dump",
+      "label": "select dialog after combo click"
+    },
+    {
+      "action": "shot",
+      "name": "r4-select-dialog"
+    },
+    {
+      "action": "keys",
+      "profile_action": "interact_dialog_control",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^(Selected key:|Folder:)",
+            "offset_x": 0,
+            "offset_y": 16
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "ctrl"
+              ]
+            }
+          ]
+        },
+        {
+          "text": "{args.key1_path}"
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 30,
+      "label": "combo click + ctrl+a + path + ENTER (one invocation)"
+    },
+    {
+      "action": "shot",
+      "name": "r4-after-type"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "interact_dialog_control",
+      "title_regex": "Database Security",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "keys",
+      "profile_action": "interact_dialog_control",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 300,
+      "label": "ENTER = OK on ACL (default ACL kept)",
+      "settle_ms": 2000
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "ok_security_entry_dialog",
+      "title_regex": "Add Object",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "interact_dialog_control",
+      "name_regex": "{args.key1_radio_regex}"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "ok_security_entry_dialog",
+      "name_regex": "^OK$",
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Registry$",
+      "control_type": "ListItem",
+      "index": 0,
+      "settle_ms": 1500
+    },
+    {
+      "action": "keys",
+      "profile_action": "open_property_dialog",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "alt"
+              ]
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 600,
+      "label": "Alt+A -> DOWN -> ENTER (Add Key)"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_property_dialog",
+      "title_regex": "Select Registry Key",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "dump",
+      "label": "select dialog after combo click"
+    },
+    {
+      "action": "shot",
+      "name": "r4-select-dialog"
+    },
+    {
+      "action": "keys",
+      "profile_action": "interact_dialog_control",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^(Selected key:|Folder:)",
+            "offset_x": 0,
+            "offset_y": 16
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "ctrl"
+              ]
+            }
+          ]
+        },
+        {
+          "text": "{args.key2_path}"
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 30,
+      "label": "combo click + ctrl+a + path + ENTER (one invocation)"
+    },
+    {
+      "action": "shot",
+      "name": "r4-after-type"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "interact_dialog_control",
+      "title_regex": "Database Security",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "keys",
+      "profile_action": "interact_dialog_control",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 300,
+      "label": "ENTER = OK on ACL (default ACL kept)",
+      "settle_ms": 2000
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "ok_security_entry_dialog",
+      "title_regex": "Add Object",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "interact_dialog_control",
+      "name_regex": "{args.key2_radio_regex}"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "ok_security_entry_dialog",
+      "name_regex": "^OK$",
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Registry$",
+      "control_type": "ListItem",
+      "index": 0,
+      "settle_ms": 1500
+    },
+    {
+      "action": "keys",
+      "profile_action": "open_property_dialog",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "alt"
+              ]
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 600,
+      "label": "Alt+A -> DOWN -> ENTER (Add Key)"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_property_dialog",
+      "title_regex": "Select Registry Key",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "dump",
+      "label": "select dialog after combo click"
+    },
+    {
+      "action": "shot",
+      "name": "r4-select-dialog"
+    },
+    {
+      "action": "keys",
+      "profile_action": "interact_dialog_control",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^(Selected key:|Folder:)",
+            "offset_x": 0,
+            "offset_y": 16
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "ctrl"
+              ]
+            }
+          ]
+        },
+        {
+          "text": "{args.key3_path}"
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 30,
+      "label": "combo click + ctrl+a + path + ENTER (one invocation)"
+    },
+    {
+      "action": "shot",
+      "name": "r4-after-type"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "interact_dialog_control",
+      "title_regex": "Database Security",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "keys",
+      "profile_action": "interact_dialog_control",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 300,
+      "label": "ENTER = OK on ACL (default ACL kept)",
+      "settle_ms": 2000
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "ok_security_entry_dialog",
+      "title_regex": "Add Object",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "interact_dialog_control",
+      "name_regex": "{args.key3_radio_regex}"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "ok_security_entry_dialog",
+      "name_regex": "^OK$",
+      "settle_ms": 2000
+    },
+    {
+      "action": "key",
+      "profile_action": "close_editor_window",
+      "vks": [
+        {
+          "vk": 115,
+          "modifiers": [
+            "alt"
+          ]
+        }
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "gpo_backup",
+      "args": [
+        "{args.gpo_name}",
+        "C:\\gpo-studio\\manual\\r04-secsettings\\backup"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "gpo_remove",
+      "args": [
+        "{args.gpo_name}"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "task_unregister",
+      "args": [
+        "WCDLaunchGPME"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "zz_requery"
+    }
+  ]
+}

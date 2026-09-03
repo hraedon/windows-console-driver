@@ -99,6 +99,15 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     ("scripts_ini.*.policy.*", "content", None),
     ("scripts_ini.*.scripts_config.*", "content", None),
     ("scripts_ini.*.*.*.*", "content", None),
+    # GptTmpl.inf (R4): encoding, section shapes, quoted-CSV entries, keys.
+    ("gpttmpl.present", "content", None),
+    ("gpttmpl.*", "content", None),
+    # fdeploy.ini (R3): encoding, section shapes, entries.
+    ("fdeploy.present", "content", None),
+    ("fdeploy.*", "content", None),
+    # Migration table (R1): the GPMC-authored .migtable XML.
+    ("migtable.present", "content", None),
+    ("migtable.*", "content", None),
     # Collection integrity of the two independent enumeration passes.
     ("sysvol.passes_match", "structural", None),
     # Filesystem timestamps, should a future observer collect them.

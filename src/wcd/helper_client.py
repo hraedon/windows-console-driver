@@ -52,7 +52,7 @@ EXIT_ERROR = 2
 EXIT_INDETERMINATE = 3
 
 HELPER_ACTIONS: frozenset[str] = frozenset(
-    {"context", "uia_dump", "screenshot", "key", "mouse", "wait_foreground"}
+    {"context", "uia_dump", "screenshot", "key", "keys", "mouse", "wait_foreground"}
 )
 # The only actions that can move the user's session; every one of them accepts
 # the helper's -DryRun switch (or the request field "dry_run": true).
@@ -180,6 +180,7 @@ class ContextResponse(TypedDict):
 class UiaDumpResponse(TypedDict):
     ok: bool
     action: str
+    hwnd: int
     depth: int
     truncated: bool
     element_count: int
@@ -188,6 +189,7 @@ class UiaDumpResponse(TypedDict):
 class ScreenshotResponse(TypedDict):
     ok: bool
     action: str
+    hwnd: int | None
     full: bool
     rect: RectInfo | None
     width: int

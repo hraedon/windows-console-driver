@@ -167,7 +167,12 @@ try {
         'uSNChanged'
     )
     $intNames = @('versionNumber', 'gPCFunctionalityVersion', 'flags')
-    $getParams = @{ Identity = $GpoGuid; Properties = $attributeNames }
+    # MEASURED 2026-09-03 (first live run): Get-ADObject -Identity does not
+    # resolve a bare or braced GUID on Server 2025; the full DN does. The
+    # domain DN comes from the root DSE (a trivially extractable raw value).
+    $domainDn = (Get-ADRootDSE).defaultNamingContext
+    $gpcIdentity = 'CN={' + $GpoGuid + '},CN=Policies,CN=System,' + $domainDn
+    $getParams = @{ Identity = $gpcIdentity; Properties = $attributeNames }
     if ($Server -ne '') { $getParams['Server'] = $Server }
     $gpc = Get-ADObject @getParams
     if ($null -eq $gpc) { throw ('GPC object not found: ' + $GpoGuid) }
@@ -243,7 +248,12 @@ try {
     $versionMatch = [regex]::Match($text, '(?im)^\s*Version\s*=\s*([0-9]+)\s*$')
     if ($versionMatch.Success) { $versionRaw = $versionMatch.Groups[1].Value }
 
-    $adParams = @{ Identity = $GpoGuid; Properties = @('versionNumber') }
+    # Same measured Identity rule as ad_attributes: full DN, root-DSE domain.
+    $domainDn = (Get-ADRootDSE).defaultNamingContext
+    $adParams = @{
+        Identity  = 'CN={' + $GpoGuid + '},CN=Policies,CN=System,' + $domainDn
+        Properties = @('versionNumber')
+    }
     if ($Server -ne '') { $adParams['Server'] = $Server }
     $gpc = Get-ADObject @adParams
     if ($null -eq $gpc) { throw ('GPC object not found: ' + $GpoGuid) }
@@ -274,14 +284,13 @@ param(
 
 # Bytes only. Parsing scripts.ini / psscripts.ini is the controller's job;
 # this snippet never interprets the files it reads. Either file may be
-# absent; absence is reported as null, not as an error.
+# absent; absence is reported as null, not as an error. The whole Scripts
+# directory may be absent too -- a freshly created GPO carries no
+# Machine\Scripts at all (measured 2026-09-03, first live run) -- and that
+# is the pre-authoring state, reported as nulls, never an error.
 $ErrorActionPreference = 'Stop'
 
 try {
-    if (-not [System.IO.Directory]::Exists($ScriptsDir)) {
-        throw ('Scripts directory not found: ' + $ScriptsDir)
-    }
-
     $scriptsB64 = $null
     $psScriptsB64 = $null
 
@@ -331,7 +340,10 @@ $ErrorActionPreference = 'Stop'
 
 try {
     $extensionProps = @('gPCMachineExtensionNames', 'gPCUserExtensionNames')
-    $gpc = Get-ADObject -Identity $GpoGuid -Properties $extensionProps
+    # Same measured Identity rule as ad_attributes: full DN, root-DSE domain.
+    $domainDn = (Get-ADRootDSE).defaultNamingContext
+    $gpc = Get-ADObject -Identity ('CN={' + $GpoGuid + '},CN=Policies,CN=System,' + $domainDn) `
+        -Properties $extensionProps
     if ($null -eq $gpc) { throw ('GPC object not found: ' + $GpoGuid) }
 
     $machineList = $null
@@ -367,13 +379,19 @@ try {
     if (-not [System.IO.Directory]::Exists($SysvolGpoPath)) {
         throw ('GPO SYSVOL directory not found: ' + $SysvolGpoPath)
     }
-    $policiesDir = [System.IO.Path]::GetFullPath((Split-Path -Parent $SysvolGpoPath))
-    if (-not $policiesDir.EndsWith('\')) { $policiesDir = $policiesDir + '\' }
+    # MEASURED 2026-09-03 (second estate window): enumerating the PARENT
+    # Policies directory lists every GPO's tree, so containment under THIS
+    # GPO's GUID could never hold on a populated SYSVOL. The blast radius a
+    # transaction can touch is its OWN GPO directory; sibling GPOs are
+    # covered by the AD object-set check (policies_gpc_guids). Paths are
+    # relative to the GPO directory itself.
+    $gpoDir = [System.IO.Path]::GetFullPath($SysvolGpoPath)
+    if (-not $gpoDir.EndsWith('\')) { $gpoDir = $gpoDir + '\' }
 
     $relpaths = New-Object 'System.Collections.Generic.List[string]'
-    $items = @(Get-ChildItem -LiteralPath $policiesDir -Force -Recurse)
+    $items = @(Get-ChildItem -LiteralPath $gpoDir -Force -Recurse)
     foreach ($item in $items) {
-        $relative = $item.FullName.Substring($policiesDir.Length).Replace('\', '/')
+        $relative = $item.FullName.Substring($gpoDir.Length).Replace('\', '/')
         if ($relative.StartsWith('/')) { $relative = $relative.Substring(1) }
         if ($relative -eq '') { continue }
         $relpaths.Add($relative)

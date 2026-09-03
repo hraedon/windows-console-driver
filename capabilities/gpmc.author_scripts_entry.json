@@ -7,17 +7,28 @@
   "parameters": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["startup_cmd", "startup_ps1", "ps_order"],
+    "required": [
+      "startup_cmd",
+      "startup_ps1",
+      "ps_order"
+    ],
     "properties": {
       "startup_cmd": {
         "type": "array",
         "minItems": 1,
         "items": {
           "type": "object",
-          "required": ["script", "parameters"],
+          "required": [
+            "script",
+            "parameters"
+          ],
           "properties": {
-            "script": { "type": "string" },
-            "parameters": { "type": "string" }
+            "script": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "string"
+            }
           }
         }
       },
@@ -26,32 +37,67 @@
         "minItems": 1,
         "items": {
           "type": "object",
-          "required": ["script", "parameters"],
+          "required": [
+            "script",
+            "parameters"
+          ],
           "properties": {
-            "script": { "type": "string" },
-            "parameters": { "type": "string" }
+            "script": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "string"
+            }
           }
         }
       },
       "ps_order": {
         "type": "string",
-        "enum": ["default", "powershell_first"]
+        "enum": [
+          "default",
+          "powershell_first"
+        ]
       }
     }
   },
   "channel_contract": {
-    "setup": ["powershell"],
-    "operation_under_test": ["gpmc_ui"],
-    "orientation": ["uia", "hwnd", "screenshot"],
-    "input_delivery": ["helper_input", "hyperv_input"],
-    "oracle": ["gpo_observers"],
-    "cleanup": ["powershell"]
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "gpmc_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell"
+    ]
   },
   "first_commit_point": "startup-scripts-dialog-ok",
+  "run_sheet": "gpmc.author_scripts_entry",
+  "gpo_transaction": true,
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "r2_core",
+        "params": {}
+      }
+    ]
+  },
   "envelope": {
     "require": [
       {
-        "fact": "scripts_ini.machine.present",
+        "fact": "scripts_ini.machine",
         "predicate": "post.scripts_ini.machine.present == True"
       },
       {
@@ -63,14 +109,24 @@
         "predicate": "post['scripts_ini.machine.Startup.0.script'] == args['startup_cmd.0.script']"
       },
       {
-        "fact": "scripts_ini.ps.machine.present",
+        "fact": "scripts_ini.ps.machine",
         "predicate": "post.scripts_ini.ps.machine.present == True"
+      },
+      {
+        "fact": "ad.gPCMachineExtensionNames",
+        "predicate": "'{42B5FAAE-6536-11D2-AE5A-0000F87571E3}' in post.ad.gPCMachineExtensionNames and '{40B6664F-4972-11D1-A7CA-0000F87571E3}' in post.ad.gPCMachineExtensionNames"
       }
     ],
     "allow": [
-      { "category": "timestamps" },
-      { "category": "replication_metadata" },
-      { "category": "file_mtime" }
+      {
+        "category": "timestamps"
+      },
+      {
+        "category": "replication_metadata"
+      },
+      {
+        "category": "file_mtime"
+      }
     ],
     "forbid": [
       {
@@ -87,10 +143,33 @@
       }
     ],
     "derive": [
-      { "relation": "post.version.machine > pre.version.machine" },
-      { "relation": "post.version.user == pre.version.user" }
+      {
+        "relation": "post.version.machine == pre.version.machine + 1"
+      },
+      {
+        "relation": "post.version.user == pre.version.user"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == pre.version.ad_versionNumber + 1"
+      },
+      {
+        "relation": "post.version.raw != pre.version.raw"
+      },
+      {
+        "relation": "post.scope.extension_lists.machine != pre.scope.extension_lists.machine"
+      },
+      {
+        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
+      },
+      {
+        "relation": "post.ad.versionNumber == pre.ad.versionNumber + 1"
+      }
     ],
-    "convergence": { "window_seconds": 90, "poll_seconds": 5, "reproduce": 2 }
+    "convergence": {
+      "window_seconds": 90,
+      "poll_seconds": 5,
+      "reproduce": 2
+    }
   },
   "structured_checks": [
     {
@@ -103,7 +182,7 @@
     },
     {
       "id": "ps_order_recorded",
-      "checks": "The psscripts config shape records the ps_order setting: powershell_first maps to the StartExecutePSFirst/EndExecutePSFirst keys, default to their absence — whichever shape Windows actually writes is itself an R2 answer, so this check asserts the recorded value equals the authored intent after normalization, not a pre-chosen key name."
+      "checks": "The psscripts config shape records the ps_order setting: powershell_first maps to the StartExecutePSFirst/EndExecutePSFirst keys, default to their absence \u2014 whichever shape Windows actually writes is itself an R2 answer, so this check asserts the recorded value equals the authored intent after normalization, not a pre-chosen key name."
     },
     {
       "id": "sysvol_paths_contained",

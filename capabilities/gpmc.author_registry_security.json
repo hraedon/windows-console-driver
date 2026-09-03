@@ -1,0 +1,211 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_registry_security",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "gpo_transaction": true,
+  "run_sheet": "gpmc.author_registry_security",
+  "intent": "Author three Registry-security entries (one per propagation radio option) and one File Security entry on a disposable GPO through the Security Settings snap-in, so the integer propagation codes Windows writes to GptTmpl.inf can be read off the capture -- settling the contradiction between object_security.py (0=none/1=propagate/2=replace) and the spec-informed fixture (0=propagate/1=replace/2=do-not-allow).",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "gpo_name",
+      "domain_dns",
+      "key1_path",
+      "key1_radio_regex",
+      "key2_path",
+      "key2_radio_regex",
+      "key3_path",
+      "key3_radio_regex",
+      "file_path",
+      "file_radio_regex"
+    ],
+    "properties": {
+      "gpo_name": {
+        "type": "string"
+      },
+      "domain_dns": {
+        "type": "string"
+      },
+      "key1_path": {
+        "type": "string"
+      },
+      "key1_radio_regex": {
+        "type": "string"
+      },
+      "key2_path": {
+        "type": "string"
+      },
+      "key2_radio_regex": {
+        "type": "string"
+      },
+      "key3_path": {
+        "type": "string"
+      },
+      "key3_radio_regex": {
+        "type": "string"
+      },
+      "file_path": {
+        "type": "string"
+      },
+      "file_radio_regex": {
+        "type": "string"
+      }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "gpmc_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell"
+    ]
+  },
+  "first_commit_point": "ok-security-entry-dialog",
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "r2_core",
+        "params": {}
+      },
+      {
+        "name": "gpttmpl_inf",
+        "params": {
+          "relpath": "Machine\\Microsoft\\Windows NT\\SecEdit\\GptTmpl.inf"
+        }
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "gpttmpl",
+        "predicate": "post.gpttmpl.present == True"
+      },
+      {
+        "fact": "gpttmpl.encoding",
+        "predicate": "post.gpttmpl.encoding.crlf_only == True"
+      },
+      {
+        "fact": "gpttmpl.bom",
+        "predicate": "post.gpttmpl.encoding.bom == 'utf16le'"
+      },
+      {
+        "fact": "gpttmpl.alpha_code",
+        "predicate": "post['gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioAlpha.propagation_code'] == 0"
+      },
+      {
+        "fact": "gpttmpl.bravo_code",
+        "predicate": "post['gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioBravo.propagation_code'] == 2"
+      },
+      {
+        "fact": "gpttmpl.charlie_code",
+        "predicate": "post['gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioCharlie.propagation_code'] == 1"
+      },
+      {
+        "fact": "gpttmpl.codes_distinct",
+        "predicate": "post['gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioAlpha.propagation_code'] != post['gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioBravo.propagation_code'] and post['gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioBravo.propagation_code'] != post['gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioCharlie.propagation_code']"
+      },
+      {
+        "fact": "ad.gPCMachineExtensionNames",
+        "predicate": "'827D319E-6EAC-11D2-A4EA-00C04F79F83A' in post.ad.gPCMachineExtensionNames"
+      }
+    ],
+    "allow": [
+      {
+        "category": "timestamps"
+      },
+      {
+        "category": "replication_metadata"
+      },
+      {
+        "category": "file_mtime"
+      }
+    ],
+    "forbid": [
+      {
+        "scope": "ad.gPCMachineExtensionNames",
+        "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and 'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope"
+      },
+      {
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
+      },
+      {
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.version.machine == pre.version.machine + 3"
+      },
+      {
+        "relation": "post.version.user == pre.version.user"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == pre.version.ad_versionNumber + 3"
+      },
+      {
+        "relation": "post.ad.versionNumber == pre.ad.versionNumber + 3"
+      },
+      {
+        "relation": "post.version.raw != pre.version.raw"
+      },
+      {
+        "relation": "post.scope.extension_lists.machine != pre.scope.extension_lists.machine"
+      },
+      {
+        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 120,
+      "poll_seconds": 6,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "propagation_code_mapping_recorded",
+      "checks": "THE R4 ANSWER, read off the record after the capture: for each authored key, the radio option whose label was clicked (recorded in the run journal as the clicked element name) paired with the integer propagation_code the observer read. The pairing is registered in docs/claim-registry.md, never assumed here."
+    },
+    {
+      "id": "entry_shape_recorded",
+      "checks": "Every [Registry Keys]/[File Security] line records its shape (quoted_csv vs key_value). The native shape question (WI-038) is answered from the record: expected quoted_csv per the corpus spec -- but the record decides."
+    },
+    {
+      "id": "group_membership_keying_recorded",
+      "checks": "If [Group Membership] appears, its key names are recorded verbatim (SID-keyed vs name-keyed is an R4 answer; this capture authors no group membership, so presence of the section at all is informative)."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are bound into predicates under the `args` namespace at load time (literal substitution by wcd.exec_transaction).",
+    "fact_vocabulary": "gpttmpl.* facts come from gpo_observers.gpttmpl_inf; the r2_core snapshot supplies version/sysvol/scope/ad facts consumed by forbid and derive."
+  },
+  "cleanup": {
+    "strategy": "backup_then_remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

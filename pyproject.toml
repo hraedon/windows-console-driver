@@ -19,6 +19,9 @@ dev = [
   "ruff>=0.16,<0.17",
 ]
 
+[project.scripts]
+wcd = "wcd.cli:main"
+
 [tool.setuptools.package-data]
 wcd = ["py.typed"]
 gpo_observers = ["py.typed"]
@@ -41,3 +44,8 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.13"
 strict = true
 packages = ["wcd", "gpo_observers"]
+
+[tool.ruff.lint.per-file-ignores]
+# console_ops embeds Windows PowerShell snippets in string literals; the PS
+# pipeline lines cannot always be wrapped under 100 columns.
+"src/wcd/console_ops.py" = ["E501"]
