@@ -43,14 +43,26 @@ from gpo_observers.facts import FactSet, JSONValue, make_fact
 from gpo_observers.snapshots import GpoRef, capture_snapshot
 
 from . import console_ops
-from .envelope import AssertionResult, assert_envelope, converge, parse_envelope
+from .envelope import AssertionResult, converge, parse_envelope
 from .estate import EstateConfig
+from .leases import (
+    ContextMismatch,
+    ForegroundContext,
+    InteractiveContext,
+    Lease,
+    LeaseHeldError,
+    LeaseRegistry,
+    assert_context,
+)
 from .profiles import load_profile
 from .runsheets import GestureExecutor, RunSheet, RunSheetError, SheetContext, load_run_sheet
 from .transaction import GuardRefused, Transaction, TransitionEvent
 from .transport import SessionTransport
 
 _RECORD_STATES = ("verified", "disproven", "indeterminate")
+
+# Helper ``context`` reads (prepare baseline, per-crossing re-assertion).
+_HELPER_CONTEXT_TIMEOUT_S: float = 60.0
 
 
 class ExecTransactionError(RuntimeError):
@@ -374,8 +386,14 @@ def execute_transaction(
     paths: TransactionPaths,
     transport: SessionTransport,
     plan_provenance: dict[str, object] | None = None,
+    lease_registry: LeaseRegistry | None = None,
 ) -> dict[str, object]:
-    """Run one capability to a terminal state and return the record."""
+    """Run one capability to a terminal state and return the record.
+
+    ``lease_registry`` is injectable so tests (and the WEL backend) can
+    observe or pre-occupy the exclusive interactive-session lease; a fresh
+    :class:`~wcd.leases.LeaseRegistry` is used when omitted.
+    """
     capability_id = str(capability.get("id", "unnamed"))
     surface = str(capability.get("surface", estate.vm_name))
     sheet_name = capability.get("run_sheet")
@@ -393,6 +411,17 @@ def execute_transaction(
     txn = Transaction(transaction_id=str(uuid.uuid4()))
     events_out: list[dict[str, object]] = []
     gpo_transaction = bool(capability.get("gpo_transaction", True))
+    registry = lease_registry if lease_registry is not None else LeaseRegistry()
+    lease: Lease | None = None
+    # The prepared interactive context: the helper-context baseline every
+    # commit crossing is re-asserted against (contract section 7).
+    prepared_context: InteractiveContext | None = None
+
+    def finish(assertion: AssertionResult | None) -> dict[str, object]:
+        """Release the lease and emit the record. EVERY terminal path runs this."""
+        if lease is not None and registry.is_active(lease):
+            registry.release(lease)
+        return _emit(txn, assertion, provenance, events_out, capability_id, sheet.name)
 
     def abort_indeterminate(reason: str) -> None:
         if txn.state is not None and not txn.is_terminal:
@@ -412,6 +441,30 @@ def execute_transaction(
 
     def on_commit(boundary: str) -> None:
         declared_class = profile.classification(boundary)
+        # FRESH interactive-context assertion before EVERY commit crossing
+        # (contract section 7): an exact match against the context prepared
+        # at arm time, taken from the helper right here, fail-closed. On any
+        # deviation -- or an unreadable context -- the crossing NEVER
+        # proceeds and the transaction goes indeterminate; it is never a
+        # retry. This runs before the first crossing and on every later one.
+        if prepared_context is None:
+            raise RunSheetError(
+                f"no interactive context was asserted at prepare; refusing the "
+                f"crossing of {boundary!r}"
+            )
+        try:
+            fresh_context = _helper_context(transport)
+            assert_context(prepared_context, fresh_context)
+        except ExecTransactionError as exc:
+            raise RunSheetError(
+                f"interactive context unavailable at commit point {boundary!r}; the "
+                f"crossing did not proceed: {exc}"
+            ) from exc
+        except ContextMismatch as exc:
+            raise RunSheetError(
+                f"interactive context mismatch at commit point {boundary!r}; the crossing "
+                f"did not proceed ({exc})"
+            ) from exc
         if txn.state == "commit_attempted":
             # Later crossings are part of the same attempt (contract s2).
             return
@@ -430,18 +483,30 @@ def execute_transaction(
         abort_indeterminate(
             f"console never reached unlocked: {console_state.state} (notes: {console_state.notes})"
         )
-        return _emit(txn, None, provenance, events_out, capability_id, sheet.name)
+        return finish(None)
+
+    # -- 1b. exclusive interactive-session lease (contract section 7) ----------
+    # A real lease against a real registry: a second concurrent transaction
+    # for the same console is refused before anything moves.
+    try:
+        lease = registry.acquire(
+            f"wcd.console:{estate.vm_name}", f"wcd exec-transaction {txn.transaction_id}"
+        )
+    except LeaseHeldError as exc:
+        abort_indeterminate(f"interactive session lease unavailable: {exc}")
+        return finish(None)
+    provenance.notes.append(f"interactive session lease held: {lease.target_id}")
 
     # -- 2. recovery check ------------------------------------------------------
     recovery_ok = _checkpoint_exists(transport, estate)
     provenance.notes.append(f"recovery checkpoint present: {recovery_ok}")
 
     # -- 3. setup (setup role: programmatic) -------------------------------------
-    gpo_name = str(arguments.get("gpo_name", ""))
     executor = GestureExecutor(
         transport,
         guest_scripts_dir=paths.guest_scripts,
         host_scripts_dir=paths.host_scripts,
+        evidence_dir=Path(estate.evidence_dir) if estate.evidence_dir else paths.repo_root / "runs",
     )
     ctx = SheetContext(inputs=dict(arguments))
     setup_sheet = _setup_sheet(sheet, ctx)
@@ -459,9 +524,11 @@ def execute_transaction(
                 )
     except (RunSheetError, ExecTransactionError) as exc:
         abort_indeterminate(f"setup failed before prepare: {exc}")
-        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_name)
+        # Whatever setup managed to create before failing must still be
+        # cleaned: salvage the guid if the create step got that far.
+        cleanup = _cleanup(transport, executor, sheet, ctx, ctx.outputs.get("setup.gpo.guid"))
         provenance.cleanup.update(cleanup)
-        return _emit(txn, None, provenance, events_out, capability_id, sheet.name)
+        return finish(None)
 
     ref = GpoRef(
         gpo_guid=gpo_guid or "00000000-0000-0000-0000-000000000000",
@@ -474,16 +541,30 @@ def execute_transaction(
         pre_factset = _collect_facts(transport, ref, capability, arguments)
     except Exception as exc:
         abort_indeterminate(f"pre-oracle failed: {exc}")
-        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_name)
+        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_guid)
         provenance.cleanup.update(cleanup)
-        return _emit(txn, None, provenance, events_out, capability_id, sheet.name)
+        return finish(None)
 
     # -- 5. prepare + arm ----------------------------------------------------------
+    # Real precondition inputs (contract section 2 + 7): an actual exclusive
+    # lease (acquired in 1b), and an actual helper context snapshot asserted
+    # through the leases module's machinery. If the helper cannot provide a
+    # well-formed context, refuse BEFORE arming -- never silently pass.
+    try:
+        prepared_context = _helper_context(transport)
+    except ExecTransactionError as exc:
+        abort_indeterminate(
+            f"interactive context unavailable before prepare; refusing to arm: {exc}"
+        )
+        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_guid)
+        provenance.cleanup.update(cleanup)
+        return finish(None)
+
     try:
         txn.prepare(
             pre_oracle_done=True,
-            lease_held=True,
-            context_asserted=console_state.state == "unlocked",
+            lease_held=lease is not None and registry.is_active(lease),
+            context_asserted=prepared_context is not None,
             recovery_declared=recovery_ok,
             reason=f"capability {capability_id} prepared over GPO {gpo_guid}",
         )
@@ -492,9 +573,9 @@ def execute_transaction(
         record_event(txn.events[-1])
     except GuardRefused as exc:
         abort_indeterminate(f"prepare refused: {exc.reason}")
-        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_name)
+        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_guid)
         provenance.cleanup.update(cleanup)
-        return _emit(txn, None, provenance, events_out, capability_id, sheet.name)
+        return finish(None)
 
     envelope_result: AssertionResult | None = None
     try:
@@ -509,9 +590,9 @@ def execute_transaction(
     except RunSheetError as exc:
         abort_indeterminate(f"run-sheet aborted: {str(exc)[:300]}")
         provenance.steps.append(_truncate(exc.journal))
-        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_name)
+        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_guid)
         provenance.cleanup.update(cleanup)
-        return _emit(txn, None, provenance, events_out, capability_id, sheet.name)
+        return finish(None)
 
     # -- 6. post-oracle: converge + reproduce ---------------------------------------
     envelope = parse_envelope(_envelope_dict(capability, arguments))
@@ -532,15 +613,24 @@ def execute_transaction(
         convergence = converge(envelope, pre_values, categories, observe)
     except Exception as exc:
         abort_indeterminate(f"post-oracle observation failed: {exc}")
-        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_name)
+        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_guid)
         provenance.cleanup.update(cleanup)
-        return _emit(txn, None, provenance, events_out, capability_id, sheet.name)
+        return finish(None)
 
-    post_values = dict(convergence.frozen or {})
-    envelope_result = convergence.assertion if convergence.frozen else assert_envelope(
-        envelope, pre_values, post_values, categories
-    )
-    if convergence.status == "satisfied":
+    # The convergence assertion is THE assertion result: on a timeout it is
+    # the proper indeterminate result over no frozen state. It is never
+    # discarded and the envelope is never re-asserted against a fabricated
+    # empty post state (that would characterize an "everything removed"
+    # delta nobody observed).
+    envelope_result = convergence.assertion
+    if txn.state != "commit_attempted":
+        # The gesture phase crossed no commit point: there is no observed
+        # transition to resolve, so no verdict can be claimed either way.
+        txn.mark_indeterminate(
+            convergence.reason
+            or "post-oracle reached without a commit crossing; nothing to resolve"
+        )
+    elif convergence.status == "satisfied":
         txn.resolve(
             envelope_satisfied=True,
             reproduce_satisfied=True,
@@ -548,23 +638,30 @@ def execute_transaction(
             f"{convergence.reproduce_observed} reproductions",
         )
     elif convergence.status == "disproven":
+        # A genuinely violated envelope over the FROZEN observation:
+        # disproven is a result, with the characterized delta preserved.
         txn.resolve(
             envelope_satisfied=False,
             reproduce_satisfied=True,
             characterization=envelope_result.characterization[:512],
         )
     else:
-        txn.resolve(
-            envelope_satisfied=envelope_result.status == "satisfied",
-            reproduce_satisfied=False,
-            reason=convergence.reason or "convergence indeterminate",
+        # Timeout, reproduce non-reproduction, or unresolved clauses
+        # (contract section 3: "Timeout is not failure: it is
+        # indeterminate"). A run that merely failed to stabilize is NEVER
+        # published as disproven, and an indeterminate assertion result is
+        # never collapsed into a disproof.
+        txn.mark_indeterminate(
+            convergence.reason
+            or envelope_result.characterization[:512]
+            or "convergence indeterminate"
         )
     record_event(txn.events[-1])
 
     # -- 7. cleanup -------------------------------------------------------------------
-    cleanup_result = _cleanup(transport, executor, sheet, ctx, gpo_name)
+    cleanup_result = _cleanup(transport, executor, sheet, ctx, gpo_guid)
     provenance.cleanup.update(cleanup_result)
-    return _emit(txn, envelope_result, provenance, events_out, capability_id, sheet.name)
+    return finish(envelope_result)
 
 
 # ---------------------------------------------------------------------------
@@ -604,31 +701,106 @@ def _sysvol_path(domain_dns: str, gpo_guid: str) -> str:
     return f"\\\\{domain_dns}\\SYSVOL\\{domain_dns}\\Policies\\{{{gpo_guid}}}"
 
 
+def _helper_context(t: SessionTransport) -> InteractiveContext:
+    """One fresh helper ``context`` read, as the lease module's typed record.
+
+    Raises :class:`ExecTransactionError` when the helper cannot provide a
+    well-formed context. Fail-closed by design: a context that cannot be
+    read is never treated as a context that matches -- callers refuse
+    (before arming) or mark indeterminate (at a commit crossing).
+    """
+    result = t.helper({"action": "context"}, timeout=_HELPER_CONTEXT_TIMEOUT_S)
+    if result.outcome != "ok":
+        raise ExecTransactionError(f"helper context read failed: {result.error}")
+    payload = result.payload
+    session_raw = payload.get("session_id")
+    user = payload.get("user")
+    desktop_raw = payload.get("desktop")
+    if (
+        not isinstance(session_raw, int)
+        or isinstance(session_raw, bool)
+        or not isinstance(user, str)
+        or not user
+        or (desktop_raw is not None and not isinstance(desktop_raw, str))
+    ):
+        raise ExecTransactionError(
+            "helper context payload is not a well-formed interactive context "
+            f"(session_id/user/desktop malformed): keys={sorted(payload)}"
+        )
+    foreground: ForegroundContext | None = None
+    fg_raw = payload.get("foreground")
+    if fg_raw is not None:
+        if not isinstance(fg_raw, dict):
+            raise ExecTransactionError("helper context foreground is malformed")
+        hwnd = fg_raw.get("hwnd")
+        pid = fg_raw.get("pid")
+        process = fg_raw.get("process_name") or fg_raw.get("process")
+        fingerprint = fg_raw.get("uia_digest") or fg_raw.get("fingerprint")
+        if (
+            not isinstance(hwnd, int)
+            or isinstance(hwnd, bool)
+            or not isinstance(pid, int)
+            or isinstance(pid, bool)
+            or not isinstance(process, str)
+            or not process
+            or not isinstance(fingerprint, str)
+            or not fingerprint
+        ):
+            raise ExecTransactionError(
+                "helper context foreground is not a well-formed surface identity"
+            )
+        foreground = ForegroundContext(
+            hwnd=hwnd, pid=pid, process=process, fingerprint=fingerprint
+        )
+    return InteractiveContext(
+        session_id=session_raw,
+        user=user,
+        desktop=desktop_raw if isinstance(desktop_raw, str) else None,
+        foreground=foreground,
+    )
+
+
 def _cleanup(
     t: SessionTransport,
     executor: GestureExecutor,
     sheet: RunSheet,
     ctx: SheetContext,
-    gpo_name: str,
+    gpo_guid: str | None,
 ) -> dict[str, object]:
-    """The capability's cleanup: the run-sheet's cleanup phase + absence requery."""
+    """The capability's cleanup: the run-sheet's cleanup phase + absence requery.
+
+    Steps route through the guarded :meth:`GestureExecutor.execute` dispatch
+    (never the raw step executor), one step per dispatch, so every cleanup
+    step runs INDEPENDENTLY: a failed backup must never skip GPO removal (the
+    strict-absence discipline outranks evidence preservation, and a partial
+    cleanup is worse than a per-step error record).
+
+    The strict-absence re-query names the recorded evidence GPO by its GUID
+    (contract section 12: unique-named object, record its id, delete exactly
+    that object, strict absence re-query) -- never a DisplayName wildcard,
+    which would count unrelated residue from prior runs as a violation and a
+    concurrent run's GPO as a false positive.
+    """
     steps = tuple(s for s in sheet.steps if s.params.get("phase") == "cleanup")
     result: dict[str, object] = {}
     if not steps:
         result["ran"] = False
         result["note"] = "run-sheet declares no cleanup phase"
     else:
-        # Every cleanup step runs INDEPENDENTLY: a failed backup must never
-        # skip GPO removal (the strict-absence discipline outranks evidence
-        # preservation, and a partial cleanup is worse than a per-step error
-        # record).
         journal: list[object] = []
-        cleanup_sheet = RunSheet(name=f"{sheet.name}:cleanup", surface=sheet.surface, steps=steps)
-        for index, step in enumerate(cleanup_sheet.steps):
+        for index, step in enumerate(steps):
+            single = RunSheet(
+                name=f"{sheet.name}:cleanup[{index}]", surface=sheet.surface, steps=(step,)
+            )
             try:
-                detail = executor._execute_step(step, ctx, None)
+                step_journal = executor.execute(single, ctx)
                 journal.append(
-                    {"index": index, "step": step.label, "ok": True, "detail": _truncate(detail)}
+                    {
+                        "index": index,
+                        "step": step.label,
+                        "ok": True,
+                        "detail": _truncate(step_journal),
+                    }
                 )
             except Exception as exc:
                 journal.append(
@@ -636,20 +808,21 @@ def _cleanup(
                 )
         result["ran"] = True
         result["journal"] = _truncate(journal)
-    if gpo_name:
+    if gpo_guid:
         try:
-            stdout = t.guest(
-                "$l = @(Get-GPO -All | Where-Object { "
-                "$_.DisplayName -like 'zz-studio-evidence-*' }); "
-                "\"remaining=$($l.Count)\"",
-                timeout=120,
+            script = (
+                "$m = @(Get-GPO -All | Where-Object { $_.Id.ToString() -eq '"
+                + gpo_guid
+                + "' }); \"remaining=$($m.Count)\""
             )
+            stdout = t.guest(script, timeout=120)
             match = re.search(r"remaining=(\d+)", stdout)
             remaining = int(match.group(1)) if match else -1
-            result["zz_studio_evidence_remaining"] = remaining
+            result["evidence_gpo_guid"] = gpo_guid
+            result["evidence_gpo_remaining"] = remaining
             if remaining > 0:
                 result["note"] = (
-                    "STRICT ABSENCE VIOLATION: zz-studio-evidence-* GPOs remain after cleanup"
+                    f"STRICT ABSENCE VIOLATION: evidence GPO {gpo_guid} remains after cleanup"
                 )
         except Exception as exc:
             result["requery_error"] = str(exc)[:512]

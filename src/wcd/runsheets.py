@@ -87,6 +87,17 @@ class RunSheetError(RuntimeError):
         self.journal = journal if journal is not None else []
 
 
+def _default_evidence_dir() -> Path:
+    """The repository's own ``runs/`` directory, anchored to this source file.
+
+    Fallback for direct :class:`GestureExecutor` use; the transaction
+    executor always passes the estate-anchored directory explicitly. The
+    anchor is deliberately NOT the process working directory: evidence
+    location is a deployment fact, not an accident of the invocation.
+    """
+    return Path(__file__).resolve().parents[2] / "runs"
+
+
 @dataclass(frozen=True, slots=True)
 class Step:
     """One declared run-sheet step."""
@@ -212,6 +223,7 @@ class GestureExecutor:
         *,
         guest_scripts_dir: Path,
         host_scripts_dir: Path,
+        evidence_dir: Path | None = None,
         helper_timeout_s: float = 200.0,
         guest_timeout_s: float = 300.0,
     ) -> None:
@@ -220,6 +232,11 @@ class GestureExecutor:
         self._host_scripts = host_scripts_dir
         self._helper_timeout = helper_timeout_s
         self._guest_timeout = guest_timeout_s
+        # Evidence anchor (screenshots): the transaction executor passes the
+        # estate-anchored directory (or the repository's own runs/ directory).
+        # The location is a deployment fact, NEVER the process working
+        # directory -- evidence must not depend on where wcd was invoked from.
+        self._evidence_dir = evidence_dir if evidence_dir is not None else _default_evidence_dir()
         self._last_cached_focus: int | None = None
 
     # -- step dispatch ---------------------------------------------------------
@@ -240,9 +257,13 @@ class GestureExecutor:
         or ``commit_point`` (contract section 2: crossing the first declared
         commit point -- or any potentially mutating action -- is terminal for
         replay; later crossings are part of the same attempt and are not
-        re-reported). ``classify`` resolves profile action names to their
-        declared classes. A primitive failure raises RunSheetError with the
-        failing step named -- the caller owns cleanup.
+        re-reported). The classification applies to ANY step carrying a
+        ``profile_action``, regardless of its primitive action name.
+        ``classify`` resolves profile action names to their declared classes;
+        a step naming an action the profile does not declare is refused, on
+        every step, before and after the first crossing. A primitive failure
+        raises RunSheetError with the failing step named -- the caller owns
+        cleanup.
         """
         journal: list[dict[str, object]] = []
         crossed = False
@@ -251,12 +272,14 @@ class GestureExecutor:
                 before_step(step)
             entry: dict[str, object] = {"index": index, "step": step.label}
             try:
-                if (
-                    not crossed
-                    and on_commit is not None
-                    and step.profile_action
-                    and step.action in ("click_element", "type_text", "key", "commit")
-                ):
+                # Profile classification applies to ANY step carrying a
+                # profile_action, whatever its primitive action name: a
+                # ``keys`` composite or a ``shot`` step instantiates a driver
+                # action exactly as much as a click does (contract s6). And
+                # the undeclared-action refusal runs on every such step,
+                # before AND after the first crossing -- a crossing never
+                # licenses later undeclared actions.
+                if on_commit is not None and step.profile_action:
                     declared = (
                         classify(step.profile_action)
                         if classify
@@ -269,7 +292,10 @@ class GestureExecutor:
                             f"profile action {step.profile_action!r} is not declared by the "
                             "loaded profile; refusing the step"
                         )
-                    if declared in ("potentially_mutating", "commit_point"):
+                    if (
+                        not crossed
+                        and declared in ("potentially_mutating", "commit_point")
+                    ):
                         on_commit(step.profile_action)
                         crossed = True
                 detail = self._execute_step(step, ctx, on_commit)
@@ -529,7 +555,7 @@ class GestureExecutor:
         return {"injected_events": result.payload.get("injected_events")}
 
     def _shot(self, params: dict[str, object]) -> dict[str, object]:
-        """Full-screen capture saved beside the run journal (diagnostics)."""
+        """Full-screen capture saved into the anchored evidence directory."""
         import base64
 
         name = params.get("name")
@@ -539,10 +565,11 @@ class GestureExecutor:
         result = self._t.helper(request, timeout=self._helper_timeout)
         if result.outcome != "ok":
             raise RunSheetError(f"shot failed: {result.error}")
-        path = Path("runs") / f"{name}.png"
         png = result.payload.get("png_base64")
         if not isinstance(png, str):
             raise RunSheetError("shot returned no png payload")
+        path = self._evidence_dir / f"{name}.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(base64.b64decode(png))
         return {"saved": str(path)}
 

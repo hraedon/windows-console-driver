@@ -33,6 +33,12 @@ class EstateConfig:
     helper_task: str = "WCDHelper"
     helper_dir: str = "C:\\lab\\wcd"
     guest_scripts_dir: str = "C:\\lab\\wcd\\scripts"
+    # Controller-side anchor directory for evidence artifacts (screenshots).
+    # Explicit default: when unset (empty), the driver anchors evidence to its
+    # OWN repository's ``runs/`` directory -- a location derived from the
+    # deployment, never from the process working directory, so the evidence
+    # path cannot depend on where wcd was invoked from.
+    evidence_dir: str = ""
 
     def resolved_password(self) -> str:
         """The secret behind ``password_env``; never logged, never recorded."""
@@ -50,8 +56,8 @@ def load_estate(path: str | Path) -> EstateConfig:
 
     Required keys: ``host``, ``vm_name``, ``domain``, ``username``,
     ``password_env``. Optional: ``helper_task``, ``helper_dir``,
-    ``guest_scripts_dir``. Unknown keys are refused (a misspelled secret
-    name must fail loudly, not silently unlock nothing).
+    ``guest_scripts_dir``, ``evidence_dir``. Unknown keys are refused (a
+    misspelled secret name must fail loudly, not silently unlock nothing).
     """
     path = Path(path)
     if not path.is_file():
@@ -73,6 +79,7 @@ def load_estate(path: str | Path) -> EstateConfig:
         "helper_task",
         "helper_dir",
         "guest_scripts_dir",
+        "evidence_dir",
     }
     unknown = set(table) - known
     if unknown:
@@ -97,4 +104,5 @@ def load_estate(path: str | Path) -> EstateConfig:
         helper_task=values.get("helper_task", "WCDHelper"),
         helper_dir=values.get("helper_dir", "C:\\lab\\wcd"),
         guest_scripts_dir=values.get("guest_scripts_dir", "C:\\lab\\wcd\\scripts"),
+        evidence_dir=values.get("evidence_dir", ""),
     )
