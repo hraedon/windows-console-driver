@@ -32,10 +32,14 @@ TRANSPORT
     ``invoke`` takes the transport as a callable from request string to
     ``(stdout, exit_code)`` so the real transport -- PowerShell Direct exec
     in the target session -- is injectable and tests can substitute a fake.
-    The protocol-level transport type carries no timeout channel; a real
-    transport binds its own deadline in the closure it installs. ``invoke``
-    still accepts ``timeout`` so deadlines stay visible at the call site
-    where the transaction is written, and refuses a non-positive one.
+    The callable itself carries no timeout channel; a real transport binds
+    its own deadline in the closure it installs. ``invoke`` still accepts
+    ``timeout`` (the controller-side wait) and ``timeout_s`` (the guest-side
+    poll budget the session REPL honors from the request line) so both
+    deadlines stay visible and validated at the call site where the
+    transaction is written; a caller going through :class:`wcd.transport.
+    SessionTransport` passes ``timeout_s`` to ``SessionTransport.helper``.
+    Either is refused when non-positive.
 
 Omitted optional request fields take the helper's defaults: mouse
 ``button='left'`` and ``mouse_action='click'``; ``uia_dump`` ``depth=4``;
@@ -345,17 +349,27 @@ def parse_response(stdout: str, exit_code: int) -> HelperResult:
     )
 
 
-def invoke(transport: HelperTransport, request: str, timeout: float | None = None) -> HelperResult:
+def invoke(
+    transport: HelperTransport,
+    request: str,
+    timeout: float | None = None,
+    timeout_s: float | None = None,
+) -> HelperResult:
     """Send ``request`` through ``transport`` and parse the outcome.
 
     ``transport`` maps the request string to ``(stdout, exit_code)``. A
     transport that raises yields an error result (exit code -1), never an
-    exception in the caller. ``timeout`` is refused when non-positive and
-    otherwise kept visible at the call site; see the module docstring for
-    why the protocol transport itself carries no deadline.
+    exception in the caller. ``timeout`` is the controller-side wait and
+    ``timeout_s`` the guest-side poll budget (the session REPL's
+    ``timeout_s`` request-line field, honored when the transport is a
+    ``SessionTransport.helper`` binding); both are kept visible at the call
+    site and refused when non-positive. See the module docstring for why the
+    transport callable itself carries no deadline channel.
     """
     if timeout is not None and timeout <= 0:
         raise ValueError("timeout must be positive when given")
+    if timeout_s is not None and timeout_s <= 0:
+        raise ValueError("timeout_s must be positive when given")
     try:
         stdout, exit_code = transport(request)
     except Exception as exc:

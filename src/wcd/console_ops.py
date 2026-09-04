@@ -18,7 +18,9 @@ classifications, and the caller decides.
   through the VK map (this build's ``Msvm_Keyboard`` has no TypeText), then
   Enter. The secret travels only through process memory on the controller
   and the host; it never appears in a helper request, an evidence artifact,
-  or a log.
+  or a log -- an unmappable character aborts with its INDEX, never the
+  character, because a throw message becomes a response line and can reach
+  provenance.
 - :func:`wait_console_unlocked` -- poll :func:`lock_state` until unlocked;
   timeout is reported as data (``unknown``), never a retry loop past it.
 - :func:`read_lock_audit` -- the 4800/4801 (workstation lock/unlock) trail,
@@ -100,11 +102,15 @@ $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
 """
 
 _WAKE_DISPLAY_SCRIPT = r"""
+# NumLock tap through the host-side Msvm_Keyboard. The VM name arrives as a
+# param() binding -- the automatic argument array is never interpolated into
+# a WQL filter -- consistent with _UNLOCK_SCRIPT below.
+param([string] $Vm)
 $ErrorActionPreference = 'Stop'
 $ns = 'root\virtualization\v2'
-$vm = Get-CimInstance -Namespace $ns -ClassName Msvm_ComputerSystem -Filter "ElementName='$args'"
+$vm = Get-CimInstance -Namespace $ns -ClassName Msvm_ComputerSystem -Filter "ElementName='$Vm'"
 $kb = Get-CimAssociatedInstance -InputObject $vm -ResultClassName Msvm_Keyboard | Select-Object -First 1
-if (-not $kb) { throw "no Msvm_Keyboard for $args" }
+if (-not $kb) { throw "no Msvm_Keyboard for $Vm" }
 $r = Invoke-CimMethod -InputObject $kb -MethodName PressKey -Arguments @{ keyCode = [uint16]0x90 }
 "PressKey NumLock: $($r.ReturnValue)"
 $r2 = Invoke-CimMethod -InputObject $kb -MethodName ReleaseKey -Arguments @{ keyCode = [uint16]0x90 }
@@ -114,7 +120,8 @@ $r2 = Invoke-CimMethod -InputObject $kb -MethodName ReleaseKey -Arguments @{ key
 _UNLOCK_SCRIPT = r"""
 # Ctrl+Alt+Del, then the password per character, then Enter -- all through
 # the host-side Msvm_Keyboard. The plain secret arrives as an in-memory
-# argument and is never written anywhere by this script.
+# argument and is never written anywhere by this script; no thrown message
+# may ever carry it (an unmappable character is reported by INDEX only).
 param([string] $Vm, [string] $Plain)
 $ErrorActionPreference = 'Stop'
 $ns = 'root\virtualization\v2'
@@ -147,7 +154,12 @@ $r = Invoke-CimMethod -InputObject $kb -MethodName TypeCtrlAltDel
 "TypeCtrlAltDel: $($r.ReturnValue)"
 Start-Sleep -Seconds 5
 
-foreach ($ch in $Plain.ToCharArray()) {
+# Failure discipline: an unmappable character aborts with its INDEX, never
+# the character itself. The exception message is put into the response line
+# by the REPL and wrapped into provenance by the controller, so no message
+# here may ever interpolate $Plain or $ch.
+for ($i = 0; $i -lt $Plain.Length; $i++) {
+    $ch = $Plain[$i]
     $vk = $null; $shift = $false
     if ($ch -ge 'a' -and $ch -le 'z') { $vk = [uint32](0x41 + [int]([char]$ch - [char]'a')) }
     elseif ($ch -ge 'A' -and $ch -le 'Z') { $vk = [uint32](0x41 + [int]([char]$ch - [char]'A')); $shift = $true }
@@ -156,7 +168,7 @@ foreach ($ch in $Plain.ToCharArray()) {
         $entry = $vkMap[[string]$ch]
         if ($entry -is [array]) { $vk = [uint32]$entry[0]; $shift = [bool]$entry[1] }
         else { $vk = [uint32]$entry }
-    } else { throw "no VK mapping for '$ch'" }
+    } else { throw "no VK mapping for character index $i" }
     if ($shift) { Press $VK_SHIFT }
     Press $vk; Release $vk
     if ($shift) { Release $VK_SHIFT }
@@ -191,7 +203,10 @@ def lock_state(t: SessionTransport, *, probe_helper: bool = True) -> ConsoleStat
     helper_responds = False
     if probe_helper and console_active and not logonui:
         try:
-            result = t.helper({"action": "context"}, timeout=60)
+            # timeout_s threads the caller's budget into the REPL's in-guest
+            # helper poll, so a wedged helper surfaces as the helper's own
+            # honest timeout envelope instead of a transport timeout here.
+            result = t.helper({"action": "context"}, timeout=60, timeout_s=60)
             helper_responds = result.outcome == "ok"
             if not helper_responds and result.error:
                 notes.append(f"helper context error: {result.error}")
