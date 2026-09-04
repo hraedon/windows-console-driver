@@ -11,6 +11,10 @@ Sections, in order:
   unclassified-change rule** -- any observed change neither covered by an
   allow category nor predicted by a require/derive clause is a violation,
   which is how a canonicalizer silently dropping a field is caught;
+- unresolved clauses: a predicate that cannot be evaluated (absent reference,
+  type error) is classified *unresolved*, never violated, and caps the
+  aggregate at indeterminate -- a disproof verdict is always grounded in
+  observed state; containment over a ``None`` attribute is None-safe;
 - convergence: stability across one poll, freeze, reproduce; **timeout and
   reproduce-mismatch are indeterminate, never a bare failure**.
 
@@ -206,6 +210,19 @@ def test_type_mistakes_are_evaluation_errors() -> None:
         evaluate(compile_predicate('facts["n"]["k"] == 1'), {"facts": {"n": 5}})
 
 
+def test_membership_over_a_none_attribute_is_none_safe() -> None:
+    """An attribute that is present but ``None`` (legitimately absent in the
+    observed system, e.g. a fresh GPO's ``gPCMachineExtensionNames``) contains
+    nothing: ``not in`` is True, ``in`` is False. Any other non-iterable right
+    operand stays a type error -- a genuine mistake, not an absent attribute."""
+    assert evaluate(compile_predicate("'x' not in scope"), {"scope": None}) is True
+    assert evaluate(compile_predicate("'x' in scope"), {"scope": None}) is False
+    assert evaluate(compile_predicate("scope not in scope"), {"scope": None}) is True
+    assert evaluate(compile_predicate("'x' not in scope"), {"scope": ["y"]}) is True
+    with pytest.raises(PredicateEvaluationError):
+        evaluate(compile_predicate("'x' in scope"), {"scope": 5})
+
+
 def test_no_python_attribute_machinery_is_reachable() -> None:
     """``obj.secret`` is a dotted *key* lookup, never a getattr."""
 
@@ -334,17 +351,25 @@ def test_unclassified_change_catches_a_canonicalizer_dropping_a_field() -> None:
     assert "structural" in result.characterization
 
 
-def test_require_referencing_the_dropped_field_is_violated() -> None:
-    """The other way a dropped field surfaces: a clause names it, the
-    reference does not resolve, the clause does not hold."""
+def test_require_referencing_a_dropped_field_is_unresolved_never_disproven() -> None:
+    """The other way a dropped field surfaces: a clause names it and the
+    reference does not resolve. The clause is *unresolved*, not violated: a
+    disproof verdict must be grounded in observed state, so on its own an
+    unresolved reference caps the result at indeterminate. (A canonicalizer
+    dropping a field is disproven by the unclassified-change rule over the
+    delta -- a grounded observation -- not by this clause.)"""
     raw = _envelope_dict()
     raw["require"] = [
         {"fact": "gpc.display_name", "predicate": 'facts["gpc.display_name"] != ""'}
     ]
     post = {key: value for key, value in POST_OK.items() if key != "gpc.display_name"}
     result = assert_envelope(parse_envelope(raw), PRE, post, CATEGORIES)
-    assert result.status == "disproven"
-    assert any("require[0]" in line and "absent" in line for line in result.violated)
+    assert result.status == "indeterminate"
+    assert result.violated == ()
+    assert len(result.unresolved) == 1
+    assert "require[0]" in result.unresolved[0]
+    assert "absent" in result.characterization or "unresolved reference" in result.characterization
+    assert "UNRESOLVED" in result.characterization
 
 
 def test_violated_require_and_derive_are_characterized() -> None:
@@ -372,6 +397,117 @@ def test_forbid_with_absent_scope_fact_is_violated_not_passed() -> None:
     result = assert_envelope(parse_envelope(_envelope_dict()), PRE, post, CATEGORIES)
     assert result.status == "disproven"
     assert any("forbid[0]" in line for line in result.violated)
+
+
+def test_forbid_not_in_over_a_none_attribute_is_satisfied() -> None:
+    """A fresh GPO's ``ad.gPCMachineExtensionNames`` is legitimately ``None``
+    (the AD attribute does not exist on the object yet). The absence-style
+    forbid predicate over it is trivially *satisfied* -- absent means
+    certainly not-in -- never "failed to evaluate ... VIOLATED" (the R3
+    record's defect)."""
+    raw = {
+        "forbid": [
+            {
+                "scope": "ad.gPCMachineExtensionNames",
+                "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and "
+                "'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope",
+            }
+        ]
+    }
+    facts: dict[str, object] = {"ad.gPCMachineExtensionNames": None}
+    result = assert_envelope(parse_envelope(raw), dict(facts), dict(facts), {})
+    assert result.status == "satisfied"
+    assert result.satisfied == ("forbid[0] scope='ad.gPCMachineExtensionNames'",)
+    assert result.violated == ()
+    assert result.unresolved == ()
+    assert "failed to evaluate" not in result.characterization
+
+
+def test_r3_shape_forbid_over_none_with_absent_subtree_is_indeterminate() -> None:
+    """The R3 record's envelope shape, minimized: forbid[0] over a fresh GPO's
+    ``None`` ``gPCMachineExtensionNames`` (now satisfied), require clauses
+    into the observed-absent ``fdeploy`` subtree (unresolved), one grounded
+    require failure (``post.fdeploy.present == True`` observed False) and one
+    grounded derive failure. Aggregate: indeterminate -- the grounded failures
+    are characterized, but require[1]/require[2] could not be evaluated, so a
+    disproof verdict would not be fully grounded."""
+    raw = {
+        "require": [
+            {"fact": "fdeploy", "predicate": "post.fdeploy.present == True"},
+            {"fact": "fdeploy.encoding", "predicate": "post.fdeploy.encoding.crlf_only"},
+            {"fact": "fdeploy.entries_present", "predicate": "post.fdeploy.section_names"},
+        ],
+        "forbid": [
+            {
+                "scope": "ad.gPCMachineExtensionNames",
+                "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and "
+                "'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope",
+            }
+        ],
+        "derive": [{"relation": "post.version.user > pre.version.user"}],
+    }
+    facts: dict[str, object] = {
+        "version.user": 0,
+        "ad.gPCMachineExtensionNames": None,
+        "fdeploy.present": False,
+    }
+    result = assert_envelope(parse_envelope(raw), dict(facts), dict(facts), {})
+    assert result.status == "indeterminate"
+    # The R3 defect clause: absent attribute => certainly not-in => satisfied.
+    assert result.satisfied == ("forbid[0] scope='ad.gPCMachineExtensionNames'",)
+    assert "failed to evaluate" not in result.characterization
+    # Grounded failures keep their grounded classification ...
+    assert len(result.violated) == 2
+    assert result.violated[0].startswith("require[0]")
+    assert result.violated[1].startswith("derive[0]")
+    # ... and the unevaluable clauses are classified, never folded in.
+    assert [label.split()[0] for label in result.unresolved] == [
+        "require[1]",
+        "require[2]",
+    ]
+    assert "UNRESOLVED require[1]" in result.characterization
+    assert "VIOLATED require[0]" in result.characterization
+
+
+def test_a_genuinely_malformed_predicate_is_unresolved_and_never_disproven() -> None:
+    """A type error that is not the absent-attribute case (int compared with
+    str) cannot be evaluated: the clause is *unresolved* and the aggregate is
+    indeterminate, even though the rest of the envelope held. Only an
+    observed-state violation may ground a disproof."""
+    raw = {
+        "require": [
+            {"fact": "version.machine", "predicate": "post.version.machine == 5"},
+            {"fact": "version.user", "predicate": 'post.version.user > "abc"'},
+        ],
+    }
+    pre: dict[str, object] = {"version.machine": 4, "version.user": 0}
+    post: dict[str, object] = {"version.machine": 5, "version.user": 0}
+    result = assert_envelope(parse_envelope(raw), pre, post, {})
+    assert result.status == "indeterminate"
+    assert result.satisfied[0].startswith("require[0]")
+    assert result.violated == ()
+    assert len(result.unresolved) == 1
+    assert "failed to evaluate" in result.unresolved[0]
+
+
+def test_unresolved_clause_caps_a_grounded_violation_at_indeterminate() -> None:
+    """Aggregation rule: one genuinely violated clause plus one unresolved
+    clause is indeterminate, not disproven -- the disproof would rest in part
+    on an evaluation error, which is exactly what must never happen."""
+    raw = {
+        "require": [
+            {"fact": "version.machine", "predicate": "post.version.machine == 99"},
+            {"fact": "version.user", "predicate": 'post.version.user > "abc"'},
+        ],
+    }
+    pre: dict[str, object] = {"version.machine": 4, "version.user": 0}
+    post: dict[str, object] = {"version.machine": 5, "version.user": 0}
+    result = assert_envelope(parse_envelope(raw), pre, post, {})
+    assert result.status == "indeterminate"
+    assert len(result.violated) == 1
+    assert len(result.unresolved) == 1
+    assert "VIOLATED require[0]" in result.characterization
+    assert "UNRESOLVED require[1]" in result.characterization
 
 
 def test_allow_covers_only_declared_categories() -> None:
@@ -429,12 +565,17 @@ def test_categories_are_just_names_so_unclassified_can_be_allowed() -> None:
     assert result.status == "satisfied"
 
 
-def test_assert_envelope_never_raises_and_reports_indeterminate_only_via_convergence() -> None:
-    """assert_envelope is total: satisfied or disproven, never an exception,
-    even for a wildly wrong post state."""
+def test_assert_envelope_never_raises_and_reports_indeterminate_on_unresolved() -> None:
+    """assert_envelope is total: never an exception, even for a wildly wrong
+    post state. Every require/derive clause here fails to *resolve* against
+    the empty post state (the forbid clause stays a grounded violated clause:
+    its scope fact is absent), so the aggregate is indeterminate -- a
+    disproof is never built from evaluation errors."""
     result = assert_envelope(parse_envelope(_envelope_dict()), {}, {}, {})
-    assert result.status == "disproven"
-    assert len(result.violated) == 4
+    assert result.status == "indeterminate"
+    assert len(result.violated) == 1  # forbid: absent scope fact
+    assert len(result.unresolved) == 3  # require + 2 derive
+    assert "UNRESOLVED" in result.characterization
 
 
 # --- Convergence ---------------------------------------------------------------
@@ -535,6 +676,34 @@ def test_stable_but_violated_state_is_disproven() -> None:
     assert result.reason == "frozen state failed the envelope assertion"
     assert result.assertion.status == "disproven"
     assert result.reproduce_observed == 0
+
+
+def test_convergence_with_unresolved_clauses_is_indeterminate_never_verified() -> None:
+    """A frozen state that could not be fully checked (a require clause
+    referencing an absent fact) is neither verified nor disproven: converge
+    stops before the reproduce pass, so an evaluation gap cannot be upgraded
+    to a verdict."""
+    raw = {
+        "require": [
+            {"fact": "fdeploy.encoding", "predicate": "post.fdeploy.encoding.crlf_only"}
+        ]
+    }
+    post: dict[str, object] = {"version.machine": 5}
+    clock = FakeClock()
+    result = converge(
+        parse_envelope(raw),
+        {"version.machine": 4},
+        {"version.machine": "structural"},
+        lambda: dict(post),
+        clock=clock,
+        sleep=clock.sleep,
+    )
+    assert result.status == "indeterminate"
+    assert result.frozen is not None
+    assert result.reproduce_observed == 0
+    assert result.assertion.status == "indeterminate"
+    assert len(result.assertion.unresolved) == 1
+    assert result.reason is not None and "unresolved" in result.reason
 
 
 def test_poll_bound_degrades_a_stuck_clock_to_indeterminate() -> None:

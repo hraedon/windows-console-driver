@@ -754,6 +754,7 @@ def _emit(
             "status": envelope_result.status,
             "satisfied": [_truncate(s) for s in envelope_result.satisfied],
             "violated": [_truncate(s) for s in envelope_result.violated],
+            "unresolved": [_truncate(s) for s in envelope_result.unresolved],
             "unclassified": list(envelope_result.unclassified),
             "characterization": envelope_result.characterization[:512],
             "delta": delta_entries,

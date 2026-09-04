@@ -50,12 +50,26 @@ PREDICATES: A BOUNDED EXPRESSION EVALUATOR, NO eval/exec
     length, and nesting depth are all capped, so parsing and evaluation
     terminate by construction -- the subset has no loops and no recursion.
 
+UNRESOLVED IS NOT VIOLATED (a disproof must be grounded in observed state)
     A reference that does not resolve (the fact is absent) raises
-    :class:`PredicateResolutionError` from :func:`evaluate`. Inside
-    :func:`assert_envelope` that becomes a violated clause, not an exception:
-    "the fact this clause is about is not even present" is precisely the
-    canonicalizer failure the envelope exists to catch, and it is disproven --
-    a *result* -- rather than an error.
+    :class:`PredicateResolutionError` from :func:`evaluate`; any other type
+    error raises :class:`PredicateEvaluationError`. Inside
+    :func:`assert_envelope` neither becomes a violated clause: a clause that
+    could not be evaluated has no observed state to ground a verdict on, so it
+    is classified **unresolved** -- a third clause outcome beside
+    satisfied/violated, carried in :attr:`AssertionResult.unresolved` -- and
+    the aggregate result is capped at **indeterminate**, never disproven. Only
+    a predicate that *evaluated false* over the observed state is a violation.
+    (A canonicalizer silently dropping a field is still caught, by the
+    unclassified-change rule over the delta -- a grounded observation -- not
+    by reclassifying an evaluation error as a clause failure.)
+
+    Containment is None-safe: an attribute that is present but ``None`` (e.g.
+    an AD string attribute that legitimately does not exist on the object)
+    contains nothing, so ``'X' not in attr`` over a ``None`` attribute is
+    trivially *satisfied* -- absent means certainly not-in -- and ``'X' in
+    attr`` is False. A membership test over any other non-iterable operand
+    remains a type error (hence unresolved), not a verdict.
 
 FACTS AND CATEGORIES
     Facts are flat dicts mapping dotted keys (``"version.machine"``) to
@@ -106,6 +120,10 @@ from dataclasses import dataclass
 from typing import Final, Literal
 
 AssertionStatus = Literal["satisfied", "disproven", "indeterminate"]
+# Per-clause outcome: a clause is satisfied or violated over the observed
+# state, or unresolved when it could not be evaluated at all (never a
+# violation -- see the aggregation rule in :func:`assert_envelope`).
+ClauseOutcome = Literal["satisfied", "violated", "unresolved"]
 
 # --- Evaluator bounds ---------------------------------------------------------
 
@@ -337,6 +355,9 @@ def evaluate(predicate: Predicate, bindings: Mapping[str, object]) -> object:
 
     Raises :class:`PredicateResolutionError` when a reference does not resolve
     (a fact is absent) and :class:`PredicateEvaluationError` on type errors.
+    Containment is None-safe: a ``None`` right operand (an attribute that is
+    present but absent-valued) contains nothing, so ``x in None`` is False and
+    ``x not in None`` is True. Any other non-iterable operand is a type error.
     Callers truth-test the result; clause evaluation inside this module does.
     """
     try:
@@ -347,6 +368,21 @@ def evaluate(predicate: Predicate, bindings: Mapping[str, object]) -> object:
         raise PredicateEvaluationError(
             f"predicate {predicate.source!r} failed to evaluate: {exc}"
         ) from exc
+
+
+def _contains(left: object, right: object) -> bool:
+    """None-safe membership: an absent attribute (``None``) contains nothing.
+
+    ``left in None`` is False and ``left not in None`` is True: when the
+    attribute is not there, the values it would carry are certainly not in it,
+    so an absence-style (``not in``) predicate over it is *satisfied* rather
+    than an evaluation error. Any other non-iterable right operand stays a
+    TypeError (wrapped into :class:`PredicateEvaluationError` by
+    :func:`evaluate`) -- a genuine type mistake, not an absent attribute.
+    """
+    if right is None:
+        return False
+    return left in right  # type: ignore[operator]
 
 
 def _eval(node: ast.expr, bindings: Mapping[str, object]) -> object:
@@ -392,9 +428,9 @@ def _eval(node: ast.expr, bindings: Mapping[str, object]) -> object:
             elif isinstance(op, ast.GtE):
                 ok = left >= right  # type: ignore[operator]
             elif isinstance(op, ast.In):
-                ok = left in right  # type: ignore[operator]
+                ok = _contains(left, right)
             elif isinstance(op, ast.NotIn):
-                ok = left not in right  # type: ignore[operator]
+                ok = not _contains(left, right)
             elif isinstance(op, ast.Is):
                 ok = left is right
             else:
@@ -727,16 +763,22 @@ def compute_delta(
 class AssertionResult:
     """The outcome of asserting a transition against an envelope.
 
-    ``satisfied``/``violated`` carry human-readable clause labels (violated
-    labels include the reason); ``unclassified`` carries the delta keys whose
-    changes no clause predicted and no allow category covered.
-    ``characterization`` is the full delta narrative required for a disproven
-    result -- which clauses failed and the offending delta entries.
+    ``satisfied``/``violated``/``unresolved`` carry human-readable clause
+    labels (violated and unresolved labels include the reason). A violated
+    clause *evaluated false* over the observed state -- a grounded failure
+    whose evidence is the observation itself. An unresolved clause could not
+    be evaluated at all (unresolved reference, type error) and never counts as
+    a violation. ``unclassified`` carries the delta keys whose changes no
+    clause predicted and no allow category covered. ``characterization`` is
+    the full delta narrative required for a disproven result -- which clauses
+    failed and the offending delta entries; for an indeterminate result it
+    names the unresolved clauses alongside any grounded failures.
     """
 
     status: AssertionStatus
     satisfied: tuple[str, ...]
     violated: tuple[str, ...]
+    unresolved: tuple[str, ...]
     unclassified: tuple[str, ...]
     characterization: str
     delta: FactDelta
@@ -756,48 +798,63 @@ def assert_envelope(
     - every **derive** relation must hold over the pre+post bindings;
     - every **forbid** predicate must hold, evaluated against the scope fact
       named by its scope key (a missing scope fact is a violated clause: an
-      unobserved blast radius is not a passing one);
+      unobserved blast radius is not a passing one -- an observation-layer
+      gap, deliberately kept distinct from the unresolved classification);
     - any delta entry whose declared category is not allowed and whose key was
       not predicted by a require/derive clause is an unclassified-change
       violation.
 
-    The function is total: it returns satisfied or disproven and never raises.
-    (``indeterminate`` is reserved for convergence outcomes.)
+    Clause outcomes are three, not two. A predicate that *evaluated false*
+    over the observed state is **violated** -- grounded, the observation is
+    the evidence. A predicate that could not be evaluated at all (unresolved
+    reference, or a type error that is not the absent-attribute case) is
+    **unresolved** and is never counted as a violation: a disproof verdict
+    must rest entirely on grounded observed-state violations.
+
+    Aggregation rule: any unresolved clause caps the result at
+    ``indeterminate`` -- ``disproven`` requires at least one violated clause
+    or unclassified change *and* no unresolved clause. Absent-attribute
+    predicates never reach that path anyway: containment over a ``None``
+    attribute is None-safe (``not in`` over an absent attribute is satisfied).
+
+    The function is total: it returns a result and never raises.
     """
     bindings = _build_bindings(pre, post)
     delta = compute_delta(pre, post, categories)
 
     satisfied: list[str] = []
     violated: list[str] = []
+    unresolved: list[str] = []
 
     for index, require_clause in enumerate(envelope.require):
         label = f"require[{index}] fact={require_clause.fact_key!r}"
-        held, reason = _holds(require_clause.predicate, bindings)
-        (satisfied if held else violated).append(
-            label if reason is None else f"{label}: {reason}"
-        )
+        outcome, reason = _holds(require_clause.predicate, bindings)
+        _record(outcome, reason, label, satisfied, violated, unresolved)
     for index, derive_clause in enumerate(envelope.derive):
         label = f"derive[{index}]"
-        held, reason = _holds(derive_clause.relation, bindings)
-        (satisfied if held else violated).append(
-            label if reason is None else f"{label}: {reason}"
-        )
+        outcome, reason = _holds(derive_clause.relation, bindings)
+        _record(outcome, reason, label, satisfied, violated, unresolved)
     for index, forbid_clause in enumerate(envelope.forbid):
         label = f"forbid[{index}] scope={forbid_clause.scope_key!r}"
         scope_value = post.get(forbid_clause.scope_key, MISSING)
-        scope_bindings = bindings
-        if scope_value is not MISSING:
-            scope_bindings = {
-                **bindings,
-                "scope": scope_value,
-                "scope_key": forbid_clause.scope_key,
-            }
-        held, reason = _holds(forbid_clause.predicate, scope_bindings)
-        if reason is None and scope_value is MISSING:
-            reason = f"scope fact {forbid_clause.scope_key!r} is absent from the post state"
-        (satisfied if held else violated).append(
-            label if reason is None else f"{label}: {reason}"
-        )
+        if scope_value is MISSING:
+            # The scope fact is the pre-computed blast-radius check; if the
+            # observation layer never produced it, the blast radius is
+            # unobserved, and an unobserved blast radius is not a passing one.
+            # This is a grounded clause failure (the observation gap itself is
+            # recorded), not an unresolved predicate.
+            violated.append(
+                f"{label}: scope fact {forbid_clause.scope_key!r} is absent "
+                "from the post state"
+            )
+            continue
+        scope_bindings = {
+            **bindings,
+            "scope": scope_value,
+            "scope_key": forbid_clause.scope_key,
+        }
+        outcome, reason = _holds(forbid_clause.predicate, scope_bindings)
+        _record(outcome, reason, label, satisfied, violated, unresolved)
 
     predicted = _predicted_keys(envelope)
     allowed_categories = {clause.category for clause in envelope.allow}
@@ -807,29 +864,63 @@ def assert_envelope(
             continue
         unclassified.append(entry.key)
 
-    if violated or unclassified:
-        status: AssertionStatus = "disproven"
+    if unresolved:
+        # Never disproven on an evaluation gap: part of the envelope was not
+        # checked against the observed state, so the verdict cannot claim a
+        # fully grounded disproof.
+        status: AssertionStatus = "indeterminate"
+    elif violated or unclassified:
+        status = "disproven"
     else:
         status = "satisfied"
     return AssertionResult(
         status=status,
         satisfied=tuple(satisfied),
         violated=tuple(violated),
+        unresolved=tuple(unresolved),
         unclassified=tuple(unclassified),
-        characterization=_characterize(status, satisfied, violated, delta, unclassified),
+        characterization=_characterize(
+            status, satisfied, violated, unresolved, delta, unclassified
+        ),
         delta=delta,
     )
 
 
-def _holds(predicate: Predicate, bindings: Mapping[str, object]) -> tuple[bool, str | None]:
-    """Evaluate ``predicate`` as a clause; unresolved/failed = does not hold."""
+def _record(
+    outcome: ClauseOutcome,
+    reason: str | None,
+    label: str,
+    satisfied: list[str],
+    violated: list[str],
+    unresolved: list[str],
+) -> None:
+    """Append a labelled clause outcome to the matching classification list."""
+    text = label if reason is None else f"{label}: {reason}"
+    if outcome == "satisfied":
+        satisfied.append(text)
+    elif outcome == "violated":
+        violated.append(text)
+    else:
+        unresolved.append(text)
+
+
+def _holds(
+    predicate: Predicate, bindings: Mapping[str, object]
+) -> tuple[ClauseOutcome, str | None]:
+    """Evaluate ``predicate`` as a clause; three outcomes, never an exception.
+
+    ``satisfied``: the predicate evaluated truthy over the observed state.
+    ``violated``: it evaluated falsy -- a grounded verdict. ``unresolved``: it
+    could not be evaluated (unresolved reference, type error); there is no
+    observation to ground a verdict on, so this is never a violation.
+    """
     try:
         value = evaluate(predicate, bindings)
     except PredicateEvaluationError as exc:
-        return False, str(exc)
+        return "unresolved", str(exc)
     if value:
-        return True, None
-    return False, f"predicate {predicate.source!r} is not true"
+        return "satisfied", None
+    return "violated", f"predicate {predicate.source!r} is not true"
 
 
 def _build_bindings(
@@ -879,6 +970,7 @@ def _characterize(
     status: AssertionStatus,
     satisfied: list[str],
     violated: list[str],
+    unresolved: list[str],
     delta: FactDelta,
     unclassified: list[str],
 ) -> str:
@@ -891,10 +983,21 @@ def _characterize(
         for entry in delta.entries:
             lines.append(f"  covered {entry.kind}: {entry.key} (category {entry.category!r})")
         return "\n".join(lines)
-    lines.append(
-        f"disproven: {len(violated)} clause(s) failed, "
-        f"{len(unclassified)} unclassified change(s)"
-    )
+    if unresolved:
+        # assert_envelope returns indeterminate only via unresolved clauses.
+        lines.append(
+            f"indeterminate: {len(unresolved)} clause(s) could not be evaluated, "
+            f"{len(violated)} grounded clause failure(s), "
+            f"{len(unclassified)} unclassified change(s) -- a disproof must be "
+            "grounded in observed state, so unresolved clauses cap the verdict"
+        )
+    else:
+        lines.append(
+            f"disproven: {len(violated)} clause(s) failed, "
+            f"{len(unclassified)} unclassified change(s)"
+        )
+    for label in unresolved:
+        lines.append(f"  UNRESOLVED {label}")
     for label in violated:
         lines.append(f"  VIOLATED {label}")
     for key in unclassified:
@@ -922,10 +1025,11 @@ def _show(value: object) -> str:
 class ConvergenceResult:
     """The outcome of polling an envelope to convergence.
 
-    ``status`` is ``indeterminate`` on window timeout or reproduce
-    non-reproduction (never a bare failure), ``disproven`` when the frozen
-    state failed the full envelope assertion, and ``satisfied`` otherwise.
-    ``frozen`` is the normalized require+derive state that was frozen.
+    ``status`` is ``indeterminate`` on window timeout, reproduce
+    non-reproduction, or a frozen assertion left with unresolved clauses
+    (never a bare failure), ``disproven`` when the frozen state failed the
+    full envelope assertion, and ``satisfied`` otherwise. ``frozen`` is the
+    normalized require+derive state that was frozen.
     """
 
     status: AssertionStatus
@@ -990,6 +1094,7 @@ def converge(
                     status="indeterminate",
                     satisfied=(),
                     violated=(),
+                    unresolved=(),
                     unclassified=(),
                     characterization="convergence never stabilized; no frozen state to assert",
                     delta=FactDelta(),
@@ -1007,6 +1112,23 @@ def converge(
         return ConvergenceResult(
             status="disproven",
             reason="frozen state failed the envelope assertion",
+            assertion=assertion,
+            polls=polls,
+            elapsed_seconds=clock() - start,
+            reproduce_observed=0,
+            frozen=frozen,
+        )
+    if assertion.status == "indeterminate":
+        # Unresolved clauses: the frozen state could not be fully checked
+        # against the envelope, so this is neither verified nor disproven --
+        # and a reproduce pass must not upgrade it to satisfied.
+        return ConvergenceResult(
+            status="indeterminate",
+            reason=(
+                f"frozen state left {len(assertion.unresolved)} envelope clause(s) "
+                "unresolved; the envelope was not fully evaluable over the "
+                "frozen state"
+            ),
             assertion=assertion,
             polls=polls,
             elapsed_seconds=clock() - start,
