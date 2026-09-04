@@ -26,9 +26,20 @@ import sys
 from pathlib import Path
 
 from . import console_ops
-from .estate import EstateError, load_estate
+from .estate import EstateConfig, EstateError, load_estate
 from .exec_transaction import TransactionPaths, execute_transaction
 from .transport import SessionTransport, default_repl_path
+
+
+def _default_transport(estate: EstateConfig) -> SessionTransport:
+    """Build the real session transport: the CLI's one construction seam.
+
+    Every verb obtains its transport here, so tests (and exotic deployments)
+    replace this single factory instead of the transport constructor at each
+    verb; the default builds the REPL-backed :class:`SessionTransport` exactly
+    as before, with the secret reaching the REPL through its environment.
+    """
+    return SessionTransport(estate, repl_path=default_repl_path())
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -80,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.verb == "console-state":
-        transport = SessionTransport(estate, repl_path=default_repl_path())
+        transport = _default_transport(estate)
         try:
             state = console_ops.lock_state(transport)
             _emit_json(
@@ -97,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.verb == "ensure-console":
-        transport = SessionTransport(estate, repl_path=default_repl_path())
+        transport = _default_transport(estate)
         try:
             if args.no_unlock:
                 state = console_ops.lock_state(transport)
@@ -141,12 +152,23 @@ def main(argv: list[str] | None = None) -> int:
                     arguments[key] = value
             plan_provenance: dict[str, object] = {"mode": "controller_direct"}
         else:
-            plan = json.loads(sys.stdin.read())
+            try:
+                plan = json.loads(sys.stdin.read())
+            except ValueError as exc:
+                print(f"plan error: stdin plan is not valid JSON: {exc}", file=sys.stderr)
+                return 2
+            if not isinstance(plan, dict):
+                print("plan error: stdin plan must be a JSON object", file=sys.stderr)
+                return 2
             capability_text = plan.get("capability")
             if not isinstance(capability_text, str):
                 print("plan error: stdin plan carries no capability text", file=sys.stderr)
                 return 2
-            capability = json.loads(capability_text)
+            try:
+                capability = json.loads(capability_text)
+            except ValueError as exc:
+                print(f"plan error: capability text is not valid JSON: {exc}", file=sys.stderr)
+                return 2
             raw_arguments = plan.get("arguments")
             arguments = dict(raw_arguments) if isinstance(raw_arguments, dict) else {}
             plan_provenance = {
@@ -156,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
                 "identity": plan.get("identity"),
             }
 
-        transport = SessionTransport(estate, repl_path=default_repl_path())
+        transport = _default_transport(estate)
         try:
             record = execute_transaction(
                 capability=capability,

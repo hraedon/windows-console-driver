@@ -1,0 +1,270 @@
+{
+  "name": "gpmc.author_scripts_ps_order",
+  "surface": "gpmc-server2025",
+  "steps": [
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpo_create",
+      "args": [
+        "{args.gpo_name}",
+        "R2 ps_order variant: StartExecutePSFirst claim end-to-end via wcd"
+      ],
+      "output_as": "setup.gpo"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpme_launch",
+      "args": [
+        "{out.setup.gpo.guid}",
+        "{args.domain_dns}"
+      ]
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_gpo_editor",
+      "title_regex": "Group Policy",
+      "timeout_ms": 90000
+    },
+    {
+      "action": "context",
+      "profile_action": "navigate_tree",
+      "assert_window_regex": "Group Policy"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Computer Configuration$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Policies$",
+      "control_type": "ListItem",
+      "double": true,
+      "soft": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Windows Settings$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "Scripts \\(Startup/Shutdown\\)",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "open_startup_scripts_dialog",
+      "name_regex": "^Startup$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_startup_scripts_dialog",
+      "title_regex": "Startup Properties",
+      "timeout_ms": 30000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "open_startup_scripts_dialog",
+      "name_regex": "^Scripts$",
+      "index": 0,
+      "soft": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "add_script_entry",
+      "name_regex": "^Add",
+      "index": 0
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "add_script_entry",
+      "title_regex": "Add a Script",
+      "timeout_ms": 20000
+    },
+    {
+      "action": "type_text",
+      "profile_action": "add_script_entry",
+      "text": "{args.script1_name}"
+    },
+    {
+      "action": "key",
+      "profile_action": "add_script_entry",
+      "vks": [
+        {
+          "vk": 9,
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "action": "type_text",
+      "profile_action": "add_script_entry",
+      "text": "{args.script1_params}"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "add_script_entry",
+      "name_regex": "^OK$"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "add_script_entry",
+      "name_regex": "^Add",
+      "index": 0
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "add_script_entry",
+      "title_regex": "Add a Script",
+      "timeout_ms": 20000
+    },
+    {
+      "action": "type_text",
+      "profile_action": "add_script_entry",
+      "text": "{args.script2_name}"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "add_script_entry",
+      "name_regex": "^OK$"
+    },
+    {
+      "action": "key",
+      "profile_action": "interact_dialog_control",
+      "vks": [
+        {
+          "vk": 9,
+          "modifiers": [
+            "ctrl"
+          ]
+        }
+      ],
+      "delay_ms": 400,
+      "label": "Ctrl+Tab -> PowerShell Scripts tab"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "add_script_entry",
+      "name_regex": "^Add",
+      "index": 0
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "add_script_entry",
+      "title_regex": "Add a Script",
+      "timeout_ms": 20000
+    },
+    {
+      "action": "type_text",
+      "profile_action": "add_script_entry",
+      "text": "{args.ps1_name}"
+    },
+    {
+      "action": "key",
+      "profile_action": "add_script_entry",
+      "vks": [
+        {
+          "vk": 9,
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "action": "type_text",
+      "profile_action": "add_script_entry",
+      "text": "{args.ps1_params}"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "add_script_entry",
+      "name_regex": "^OK$"
+    },
+    {
+      "action": "dump",
+      "label": "PowerShell Scripts tab before ps-order select (journal names identify the order dropdown for the qualification pass)"
+    },
+    {
+      "action": "keys",
+      "profile_action": "set_ps_order",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Run Windows PowerShell scripts (first|last)$"
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 82,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 400,
+      "label": "PS-order dropdown: click-focus + 'r' type-ahead (closed-combo first-letter select; one invocation -- dialog focus resets across invocations; 'r' picks the first R-item, a second 'r' cycles if the list orders 'last' first)"
+    },
+    {
+      "action": "dump",
+      "label": "PowerShell Scripts tab after ps-order select (qualification checkpoint: dropdown must read 'Run Windows PowerShell scripts first')"
+    },
+    {
+      "action": "shot",
+      "name": "r2-ps-order-selected"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "ok_startup_scripts_dialog",
+      "name_regex": "^OK$"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "gpo_remove",
+      "args": [
+        "{args.gpo_name}"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "task_unregister",
+      "args": [
+        "WCDLaunchGPME"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "zz_requery"
+    }
+  ]
+}

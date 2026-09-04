@@ -126,18 +126,22 @@
         {
           "vks": [
             {
-              "vk": 40,
+              "vk": 66,
               "modifiers": []
             }
           ]
         }
       ],
       "delay_ms": 400,
-      "label": "Setting combo: click, DOWN (closed-combo select)"
+      "label": "Setting combo: click-focus + 'b' type-ahead (closed-combo first-letter select; one invocation so the keystroke lands while the combo holds focus -- the R3 DOWN variant never changed the selection)"
     },
     {
       "action": "dump",
-      "label": "properties dialog after Basic"
+      "label": "properties dialog after Basic (qualification checkpoint: Setting must read Basic)"
+    },
+    {
+      "action": "shot",
+      "name": "r3-setting-basic"
     },
     {
       "action": "click_element",
@@ -153,6 +157,10 @@
       "action": "type_text",
       "profile_action": "interact_dialog_control",
       "text": "{args.root_path}"
+    },
+    {
+      "action": "shot",
+      "name": "r3-root-path-typed"
     },
     {
       "action": "keys",

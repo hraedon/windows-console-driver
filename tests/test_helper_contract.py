@@ -409,6 +409,10 @@ def test_request_level_dry_run_flag_matches_the_switch() -> None:
 
 
 def test_mouse_dry_run_resolves_window_relative_to_screen() -> None:
+    context_proc = run_helper({"action": "context"})
+    context = assert_single_line_json(context_proc)
+    if not isinstance(context["foreground"], dict):
+        pytest.skip("no foreground window; the mouse dry-run resolves against one")
     proc = run_helper(
         {"action": "mouse", "x": 10, "y": 20, "button": "right", "mouse_action": "double"},
         "-DryRun",

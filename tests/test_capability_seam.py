@@ -1,10 +1,12 @@
-"""Capability-spec seam: the shipped capability must speak the real vocabularies.
+"""Capability-spec seam: every shipped capability must speak the vocabularies.
 
-Pins the three-way agreement between ``capabilities/gpmc.author_scripts_entry.json``,
-the :mod:`wcd.envelope` bounded expression engine, and the fact keys
-:mod:`gpo_observers` actually emits. If an observer fact key changes name, or
-a predicate drifts out of the bounded expression subset, this test fails
-before a transaction ever runs.
+Pins the three-way agreement between the shipped ``capabilities/*.json``
+scripts specs, the :mod:`wcd.envelope` bounded expression engine, and the fact
+keys :mod:`gpo_observers` actually emits. If an observer fact key changes
+name, or a predicate drifts out of the bounded expression subset, this test
+fails before a transaction ever runs. (The executor parses the envelope only
+after the gesture phase, so an unpinned predicate error would abort an estate
+run post-commit with no record -- the seam exists to make that unreachable.)
 """
 
 from __future__ import annotations
@@ -15,17 +17,25 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from gpo_observers.collection import FileTransport
 from gpo_observers.facts import Fact
 from gpo_observers.snapshots import GpoRef, capture_snapshot
 from wcd.envelope import compile_predicate, parse_envelope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CAPABILITY = REPO_ROOT / "capabilities" / "gpmc.author_scripts_entry.json"
+
+# Every shipped scripts-family capability spec. New specs join this tuple:
+# the parametrization is the whole extension -- no per-spec test bodies.
+CAPABILITIES: tuple[Path, ...] = (
+    REPO_ROOT / "capabilities" / "gpmc.author_scripts_entry.json",
+    REPO_ROOT / "capabilities" / "gpmc.author_scripts_ps_order.json",
+)
 
 
-def _capability() -> dict[str, Any]:
-    return json.loads(CAPABILITY.read_text(encoding="utf-8"))
+def _capability(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _predicate_sources(envelope: Mapping[str, Any]) -> list[str]:
@@ -35,19 +45,18 @@ def _predicate_sources(envelope: Mapping[str, Any]) -> list[str]:
     return sources
 
 
-def test_capability_envelope_parses_with_the_bounded_evaluator() -> None:
-    """Every predicate/relation string in the shipped capability compiles
+@pytest.mark.parametrize("capability_path", CAPABILITIES, ids=lambda p: p.stem)
+def test_capability_envelope_parses_with_the_bounded_evaluator(capability_path: Path) -> None:
+    """Every predicate/relation string in each shipped capability compiles
     under the AST-whitelisted evaluator (contract section 3: no eval/exec)."""
-    envelope = parse_envelope(_capability()["envelope"])
+    envelope = parse_envelope(_capability(capability_path)["envelope"])
     assert envelope.convergence.window_seconds == 90
-    for source in _predicate_sources(_capability()["envelope"]):
+    for source in _predicate_sources(_capability(capability_path)["envelope"]):
         compile_predicate(source)
 
 
-def test_capability_fact_keys_exist_in_a_real_snapshot() -> None:
-    """Every fact key a predicate references (args.* excepted) is emitted by
-    capture_snapshot against the fixture estate -- the observers and the
-    capability cannot drift apart silently."""
+def _fixture_snapshot() -> dict[str, Fact]:
+    """One capture_snapshot over the fixture estate, AD snippets scripted."""
     fixture_root = REPO_ROOT / "tests" / "fixtures" / "gpo-tree"
     gpo = GpoRef(
         gpo_guid="11111111-2222-3333-4444-555555555555",
@@ -95,10 +104,18 @@ def test_capability_fact_keys_exist_in_a_real_snapshot() -> None:
         raise AssertionError(f"unexpected snippet {snippet!r}")
 
     transport = FileTransport(gpo.sysvol_path, fallback=fallback)
-    snapshot: dict[str, Fact] = capture_snapshot(transport, gpo)
+    return capture_snapshot(transport, gpo)
+
+
+@pytest.mark.parametrize("capability_path", CAPABILITIES, ids=lambda p: p.stem)
+def test_capability_fact_keys_exist_in_a_real_snapshot(capability_path: Path) -> None:
+    """Every fact key a predicate references (args.* excepted) is emitted by
+    capture_snapshot against the fixture estate -- the observers and the
+    capability cannot drift apart silently."""
+    snapshot = _fixture_snapshot()
 
     referenced: set[str] = set()
-    for source in _predicate_sources(_capability()["envelope"]):
+    for source in _predicate_sources(_capability(capability_path)["envelope"]):
         referenced |= set(compile_predicate(source).referenced_paths())
     for path in sorted(referenced):
         namespace, _, fact_key = path.partition(".")
@@ -113,10 +130,13 @@ def test_capability_fact_keys_exist_in_a_real_snapshot() -> None:
             raise AssertionError(f"unexpected predicate namespace {namespace!r}")
 
 
-def test_require_and_forbid_reference_declared_structural_or_content_facts() -> None:
+@pytest.mark.parametrize("capability_path", CAPABILITIES, ids=lambda p: p.stem)
+def test_require_and_forbid_reference_declared_structural_or_content_facts(
+    capability_path: Path,
+) -> None:
     """No predicate may reference an unclassified fact key: the envelope's
     force comes from the observers' declared category table."""
-    capability = _capability()
+    capability = _capability(capability_path)
     referenced: set[str] = set()
     for source in _predicate_sources(capability["envelope"]):
         referenced |= set(compile_predicate(source).referenced_paths())

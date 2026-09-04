@@ -726,3 +726,84 @@ def test_cleanup_runs_every_step_and_flags_absence_violation(tmp_path: Path) -> 
     assert cleanup["evidence_gpo_guid"] == GPO_GUID
     assert cleanup["evidence_gpo_remaining"] == 2
     assert "STRICT ABSENCE VIOLATION" in str(cleanup["note"])
+
+
+# --- 8. undeclared mutation at a commit boundary (contract s6 rule 2) ----------------
+
+
+def test_undeclared_mutation_boundary_hard_stops_with_record_and_cleanup(
+    tmp_path: Path,
+) -> None:
+    """Contract s6 rule 2: a ``commit`` step naming a boundary the profile does
+    not declare is a hard stop AND a profile-invalid finding. The executor's
+    every-terminal-path invariant holds: the record is still emitted --
+    indeterminate, the verdict characterizing the undeclared boundary --
+    cleanup ran, and the lease was released. Before the containment, this
+    exception escaped ``execute_transaction`` and no record existed at all."""
+    transport = FakeTransport()
+    registry = LeaseRegistry()
+    gesture = [
+        {"action": "dump", "profile_action": "zz_navigate", "depth": 12},
+        {"action": "commit", "boundary": "zz_undeclared_action"},
+    ]
+    record = _run(
+        tmp_path,
+        _sheet("zz_undeclared_mutation", gesture),
+        _SATISFIED_ENVELOPE,
+        transport,
+        lease_registry=registry,
+    )
+
+    assert record["state"] == "indeterminate"
+    verdict = str(record["verdict"])
+    assert "zz_undeclared_action" in verdict
+    assert "not declared by the profile" in verdict
+    assert "profile-invalid" in verdict  # the finding is prominent, in the verdict
+    # The hard stop is itself a recorded transition; no crossing was accepted.
+    assert _states(record) == ["prepared", "armed", "indeterminate"]
+    assert record["envelope_result"] == {}  # the oracle never ran to a resolution
+    assert any(
+        "UNDECLARED MUTATION" in str(event["reason"])
+        and "zz_undeclared_action" in str(event["reason"])
+        for event in record["events"]  # type: ignore[index]
+    )
+    assert any(
+        "PROFILE-INVALID" in str(note) and "zz_undeclared_action" in str(note)
+        for note in record["provenance"]["notes"]  # type: ignore[index]
+    )
+    # Cleanup ran (journal present) and the strict-absence re-query names the GPO.
+    cleanup = _cleanup_of(record)
+    assert cleanup["ran"] is True
+    assert isinstance(cleanup["journal"], list) and cleanup["journal"]
+    assert cleanup["evidence_gpo_guid"] == GPO_GUID
+    assert cleanup["evidence_gpo_remaining"] == 0
+    assert registry.holder_of(LEASE_TARGET) is None
+
+
+def test_declared_non_mutating_action_crossed_as_mutation_is_undeclared(
+    tmp_path: Path,
+) -> None:
+    """Contract s6 rule 2: a boundary the profile declares but classifies
+    ``orientation_only`` is not a mutation the profile declared; crossing it
+    as one is the same undeclared-mutation hard stop, with the record emitted
+    and cleanup run."""
+    transport = FakeTransport()
+    registry = LeaseRegistry()
+    gesture = [{"action": "commit", "profile_action": "zz_navigate", "boundary": "zz_navigate"}]
+    record = _run(
+        tmp_path,
+        _sheet("zz_orientation_crossed", gesture),
+        _SATISFIED_ENVELOPE,
+        transport,
+        lease_registry=registry,
+    )
+
+    assert record["state"] == "indeterminate"
+    assert "zz_navigate" in str(record["verdict"])
+    assert "commit_attempted" not in _states(record)
+    assert _states(record)[-1] == "indeterminate"
+    assert any(
+        "UNDECLARED MUTATION" in str(event["reason"]) for event in record["events"]  # type: ignore[index]
+    )
+    assert _cleanup_of(record)["ran"] is True
+    assert registry.holder_of(LEASE_TARGET) is None

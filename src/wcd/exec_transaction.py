@@ -56,7 +56,7 @@ from .leases import (
 )
 from .profiles import load_profile
 from .runsheets import GestureExecutor, RunSheet, RunSheetError, SheetContext, load_run_sheet
-from .transaction import GuardRefused, Transaction, TransitionEvent
+from .transaction import GuardRefused, Transaction, TransitionEvent, UndeclaredMutation
 from .transport import SessionTransport
 
 _RECORD_STATES = ("verified", "disproven", "indeterminate")
@@ -468,10 +468,20 @@ def execute_transaction(
         if txn.state == "commit_attempted":
             # Later crossings are part of the same attempt (contract s2).
             return
+        declared = declared_class in ("commit_point", "potentially_mutating")
         txn.commit(
             boundary,
-            declared=declared_class in ("commit_point", "potentially_mutating"),
-            reason=f"run-sheet crosses {boundary!r} (profile class {declared_class!r})",
+            declared=declared,
+            # A declared crossing records the run-sheet's crossing reason; an
+            # undeclared crossing passes no reason, so the state machine
+            # records its canonical hard-stop characterization -- the
+            # profile-invalid finding naming the undeclared boundary -- which
+            # becomes the record's verdict (contract s6 rule 2).
+            reason=(
+                f"run-sheet crosses {boundary!r} (profile class {declared_class!r})"
+                if declared
+                else ""
+            ),
         )
         record_event(txn.events[-1])
 
@@ -587,6 +597,25 @@ def execute_transaction(
             classify=profile.classification,
         )
         provenance.steps.append(_truncate(journal))
+    except UndeclaredMutation as exc:
+        # Contract s6 rule 2: crossing an undeclared mutating boundary during
+        # qualified execution is a hard stop and a profile-invalid finding.
+        # Transaction.commit has already forced the machine into its
+        # indeterminate terminal state (the raise is the guard outcome; the
+        # state change is the hard stop), and the state machine's
+        # characterization names the undeclared boundary -- it is the record's
+        # verdict. The executor's every-terminal-path invariant still holds:
+        # record the hard-stop transition, name the finding in provenance,
+        # clean up, emit the record. Never an exception to the caller.
+        record_event(txn.events[-1])
+        provenance.notes.append(
+            f"PROFILE-INVALID FINDING: undeclared mutating boundary {exc.boundary!r} "
+            "crossed during qualified execution; the profile gets corrected and the "
+            f"transaction is indeterminate (reconcile required): {exc.reason}"
+        )
+        cleanup = _cleanup(transport, executor, sheet, ctx, gpo_guid)
+        provenance.cleanup.update(cleanup)
+        return finish(None)
     except RunSheetError as exc:
         abort_indeterminate(f"run-sheet aborted: {str(exc)[:300]}")
         provenance.steps.append(_truncate(exc.journal))

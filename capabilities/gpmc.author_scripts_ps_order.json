@@ -1,0 +1,168 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_scripts_ps_order",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "intent": "Certifies the R2 pilot's ps_order claim END-TO-END through the transactional engine: the R2 re-run (gpmc.author_scripts_entry) verified scripts.ini/psscripts.ini authoring but never executed the PowerShell-order dropdown gesture end-to-end, so the claim that selecting 'Run Windows PowerShell scripts first' yields psscripts.ini [ScriptsConfig] StartExecutePSFirst=true stood on the pilot capture alone. This variant re-runs the scripts-entry authoring (one cmd startup entry with parameters, one parameterless cmd startup entry, one PowerShell startup entry with parameters) and adds the dropdown selection on the PowerShell Scripts tab, so the envelope REQUIRES the wire encoding (-- [ScriptsConfig] with StartExecutePSFirst=true, no [Policy] section) over independently observed pre/post state instead of carrying it as pilot folklore.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "gpo_name",
+      "domain_dns",
+      "script1_name",
+      "script1_params",
+      "script2_name",
+      "ps1_name",
+      "ps1_params"
+    ],
+    "properties": {
+      "gpo_name": { "type": "string" },
+      "domain_dns": { "type": "string" },
+      "script1_name": { "type": "string" },
+      "script1_params": { "type": "string" },
+      "script2_name": { "type": "string" },
+      "ps1_name": { "type": "string" },
+      "ps1_params": { "type": "string" }
+    }
+  },
+  "channel_contract": {
+    "setup": ["powershell"],
+    "operation_under_test": ["gpmc_ui"],
+    "orientation": ["uia", "hwnd", "screenshot"],
+    "input_delivery": ["helper_input", "hyperv_input"],
+    "oracle": ["gpo_observers"],
+    "cleanup": ["powershell"]
+  },
+  "first_commit_point": "startup-scripts-dialog-ok",
+  "run_sheet": "gpmc.author_scripts_ps_order",
+  "gpo_transaction": true,
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "r2_core",
+        "params": {}
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "scripts_ini.machine",
+        "predicate": "post.scripts_ini.machine.present == True"
+      },
+      {
+        "fact": "scripts_ini.machine.config_shape",
+        "predicate": "post.scripts_ini.machine.config_shape == 'none'"
+      },
+      {
+        "fact": "scripts_ini.machine.Startup.0.script",
+        "predicate": "post['scripts_ini.machine.Startup.0.script'] == args['script1_name']"
+      },
+      {
+        "fact": "scripts_ini.ps.machine",
+        "predicate": "post.scripts_ini.ps.machine.present == True"
+      },
+      {
+        "fact": "scripts_ini.ps.machine.Startup.0.script",
+        "predicate": "post['scripts_ini.ps.machine.Startup.0.script'] == args['ps1_name']"
+      },
+      {
+        "fact": "scripts_ini.ps.machine.config_shape",
+        "predicate": "post.scripts_ini.ps.machine.config_shape == 'scripts_config'"
+      },
+      {
+        "fact": "scripts_ini.ps.machine.scripts_config",
+        "predicate": "post.scripts_ini.ps.machine.scripts_config.StartExecutePSFirst == 'true'"
+      },
+      {
+        "fact": "ad.gPCMachineExtensionNames",
+        "predicate": "'{42B5FAAE-6536-11D2-AE5A-0000F87571E3}' in post.ad.gPCMachineExtensionNames and '{40B6664F-4972-11D1-A7CA-0000F87571E3}' in post.ad.gPCMachineExtensionNames"
+      }
+    ],
+    "allow": [
+      {
+        "category": "timestamps"
+      },
+      {
+        "category": "replication_metadata"
+      },
+      {
+        "category": "file_mtime"
+      }
+    ],
+    "forbid": [
+      {
+        "scope": "ad.gPCMachineExtensionNames",
+        "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and 'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope"
+      },
+      {
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
+      },
+      {
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.version.machine == pre.version.machine + 1"
+      },
+      {
+        "relation": "post.version.user == pre.version.user"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == pre.version.ad_versionNumber + 1"
+      },
+      {
+        "relation": "post.version.raw != pre.version.raw"
+      },
+      {
+        "relation": "post.scope.extension_lists.machine != pre.scope.extension_lists.machine"
+      },
+      {
+        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
+      },
+      {
+        "relation": "post.ad.versionNumber == pre.ad.versionNumber + 1"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 90,
+      "poll_seconds": 5,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "ps_order_end_to_end_recorded",
+      "checks": "THE ps_order CLAIM, now engine-mediated: the gesture journal must show the dropdown composite (click-focus + 'r' type-ahead under set_ps_order) in the SAME transaction whose post-state carries [ScriptsConfig] StartExecutePSFirst=true -- the pairing of actuated dropdown and observed key that the R2 pilot could only assert from its capture. If the dropdown's post-selection dump does not read 'Run Windows PowerShell scripts first', the record characterizes what the closed-combo type-ahead actually did (a second 'r' cycles same-letter items; that behaviour is itself an estate finding, not a spec guess)."
+    },
+    {
+      "id": "no_policy_section_on_wire",
+      "checks": "config_shape == 'scripts_config' (not 'both'/'policy') pins that RunLogonScriptsSync / RunLogoffScriptsSync / LegacyScriptsFirst / PowerShellOrder appear nowhere; the modeled policy-key facts stay null. EndExecutePSFirst is not pinned: which of the pair Windows writes, and when, remains observable from the record."
+    },
+    {
+      "id": "startup_entries_match_parameters",
+      "checks": "The post-state scripts.ini machine Startup section carries exactly the parameterized entries from the authored args (script1 with parameters, script2 parameterless, authored order, no extras); psscripts.ini machine Startup carries exactly ps1_name with ps1_params. Beyond the bounded evaluator: list-valued comparison implemented in the assertion layer, read off the record."
+    },
+    {
+      "id": "sysvol_paths_contained",
+      "checks": "Every relative path in post.scope.sysvol_relpaths stays under this GPO's GUID directory. Backs the sysvol_contained fact the declarative forbid consumes; computed by the observer, asserted here."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are bound into predicates under the `args` namespace; the executor flattens the parameter tree into dotted keys and substitutes args['...'] references as JSON literals at load time (wcd.exec_transaction._bind_args_into_envelope). The run-sheet consumes the same flat args ({args.script1_name} et al.), so one arguments dict drives both the gestures and the envelope.",
+    "fact_vocabulary": "Fact keys reference gpo_observers' declared scheme (gpo_identity.*, ad.*, version.*, scripts_ini.* -- psscripts facts under scripts_ini.ps.*, config-section facts under scripts_ini.ps.machine.config_shape and .scripts_config.*, per-entry facts under scripts_ini[.ps].machine.<Section>.<index>.*). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
+  },
+  "cleanup": {
+    "strategy": "remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}
