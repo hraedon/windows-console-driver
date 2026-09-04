@@ -57,6 +57,33 @@ written and the envelope rightly disproved. Next step is screenshot-per-step
 iteration on exactly that combo, then the Settings-tab flags. Everything else
 in the flow (navigation, Action-menu open, OK, cleanup) already works.
 
+### Correction (2026-09-03, after commit 0c28257)
+
+A reviewer flagged the run table above as inconsistent with this section and
+with the committed record `records/r3-record.json` (`"state": "disproven"`),
+and recommended re-labelling the table row **disproven**. The recommendation
+predates a same-day evaluator change (commit 0c28257) and is now moot: the
+table row is the classification that survives current semantics.
+
+- The record was labelled under the pre-tri-state evaluator, where a clause
+  that could not be evaluated counted toward violation. Under the current
+  evaluator every clause resolves to satisfied / violated / unresolved, and
+  any unresolved clause caps the assertion at **indeterminate**. Replaying
+  R3's envelope under current semantics yields exactly that: `require[1]` /
+  `require[2]` reference the absent `post.fdeploy` subtree (unresolved).
+- The grounded violations stand as characterized observations and are
+  unaffected: the redirect directory (`User/Documents & Settings`) was
+  created, `fdeploy.ini` was not written, and the user-half version never
+  bumped.
+
+So the record's `disproven` label is an artifact of the pre-tri-state
+evaluator; the correct current classification of that envelope is
+indeterminate. This note is the correction — the original prose, the run
+table, and the committed record are left as written. The run-sheet defect the
+run exposed (the Setting combo never actually changed) is unaffected: it is a
+driver-development finding, independent of how the envelope outcome is
+labelled.
+
 ## Decisions
 
 - **Baseline re-mint: yes, recommended at the end of the next window, after

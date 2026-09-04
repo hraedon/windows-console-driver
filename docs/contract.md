@@ -348,8 +348,14 @@ residue, e.g. USN movement, audit events). Three terms, used precisely:
 ## 14. What this contract deliberately does not do
 
 - No MCP/agent-facing tool surface yet. The boundary is
-  runtime -> typed transaction contract -> driver RPC/CLI; agent adapters come
-  after the primitive has proven itself.
+  runtime -> typed transaction contract -> driver RPC/CLI. The deferral is no
+  longer about the primitive — six transactions have been verified through the
+  engine. The record schema is the actual interface an agent surface would
+  program against, and it is still absorbing changes each window
+  (`unresolved` was added to `envelope_result` on 2026-09-03, commit 0c28257).
+  The plan is to freeze the record schema across one more window's worth of
+  capabilities, then design the agent surface against a schema that has
+  stopped moving.
 - No general GUI-understanding/vision agent. Profiles and capabilities encode
   domain knowledge; the driver aims and verifies.
 - No full Group Policy semantic model. The observer grammar grows from
