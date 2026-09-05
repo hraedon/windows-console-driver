@@ -90,6 +90,8 @@ class TestFdeploy:
 
     def test_entries_carry_section_key_value(self, fdeploy_bytes: bytes) -> None:
         tree = fdeploy_ini.fdeploy_fact_tree(fdeploy_bytes)
+        assert tree["section_count"] == 2
+        assert tree["entry_count"] == 2
         entries = tree["entries"]
         assert entries[0]["section"] == "Initialize"
         assert entries[0]["key"] == "SidsAddedByGPMC"
@@ -104,7 +106,10 @@ class TestFactCategories:
             "gpttmpl.encoding.bom",
             "gpttmpl.registry_keys.0.propagation_code",
             "fdeploy.present",
+            "fdeploy.entry_count",
             "fdeploy.entries.0.value",
+            "fdeploy_marker.present",
+            "fdeploy_marker.entry_count",
             "migtable.mapping.0.source.name",
         ):
             category, _ = declared_category(key)

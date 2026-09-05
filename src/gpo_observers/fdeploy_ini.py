@@ -64,6 +64,8 @@ def fdeploy_fact_tree(raw: bytes) -> dict[str, object]:
             "lf_count": lf_count,
             "crlf_only": cr_count == lf_count and lf_count > 0,
         },
+        "section_count": len(sections),
+        "entry_count": len(entries),
         "section_names": [str(section["name"]) for section in sections],
         "sections": [
             {"name": section["name"], "line_count": len(section["lines"])}  # type: ignore[arg-type]

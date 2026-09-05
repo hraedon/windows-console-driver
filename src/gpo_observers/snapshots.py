@@ -65,6 +65,7 @@ SYSTEM_FILE_RELPATHS: frozenset[str] = frozenset(
         # GPT.INI above.
         "machine/microsoft/windows nt/secedit/gpttmpl.inf",
         "user/documents & settings/fdeploy.ini",
+        "user/documents & settings/fdeploy1.ini",
     }
 )
 

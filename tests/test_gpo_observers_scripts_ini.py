@@ -291,6 +291,7 @@ class TestFactKeys:
         assert facts["scripts_ini.machine.encoding.bom_width"] == 2
         assert facts["scripts_ini.machine.encoding.total_bytes"] > 0
         assert facts["scripts_ini.machine.Startup.0.script"] == "agent-startup.cmd"
+        assert facts["scripts_ini.machine.Startup.entry_count"] == 2
         assert facts["scripts_ini.machine.Startup.0.raw"] == "0CmdLine=agent-startup.cmd"
         assert facts["scripts_ini.machine.config_shape"] == "none"
         for key in facts:
@@ -304,6 +305,7 @@ class TestFactKeys:
         facts = scripts_ini.psscripts_ini_facts(document, side="machine")
         assert facts["scripts_ini.ps.machine.present"] is True
         assert facts["scripts_ini.ps.machine.Startup.0.script"] == "bootstrap-evidence.ps1"
+        assert facts["scripts_ini.ps.machine.Startup.entry_count"] == 1
         assert facts["scripts_ini.ps.machine.Startup.0.prop.ExecutionMode"] == "1"
         assert facts["scripts_ini.ps.machine.Startup.0.prop.NoProfile"] == "1"
         assert facts["scripts_ini.ps.machine.config_shape"] == "policy"

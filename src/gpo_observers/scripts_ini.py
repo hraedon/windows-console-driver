@@ -407,6 +407,7 @@ def ini_facts(document: ScriptsIniDocument, *, prefix: str, side: str) -> dict[s
         # Sections must not be dropped; keys before any header are kept under
         # an explicit "orphan" label rather than silently ignored.
         section_label = section.name if section.name else "orphan"
+        facts[f"{base}.{section_label}.entry_count"] = len(section.entries)
         for entry in section.entries:
             entry_base = f"{base}.{section_label}.{entry.index}"
             facts[f"{entry_base}.script"] = entry.script

@@ -46,6 +46,8 @@ def test_known_categories_are_complete() -> None:
         ("scripts_ini.ps.machine.present", "content", None),
         ("scripts_ini.machine.encoding.bom", "content", None),
         ("scripts_ini.ps.machine.encoding.total_bytes", "content", None),
+        ("scripts_ini.machine.Startup.entry_count", "content", None),
+        ("scripts_ini.ps.machine.Startup.entry_count", "content", None),
         ("scripts_ini.machine.Startup.0.script", "content", None),
         ("scripts_ini.ps.machine.Startup.0.parameters", "content", None),
         ("scripts_ini.machine.Startup.0.raw", "content", None),
