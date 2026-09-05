@@ -1,0 +1,454 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/capability-schema-v0.json",
+  "title": "Windows Console Driver capability specification",
+  "description": "Version 0 schema for every capability document shipped in capabilities/.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "id",
+    "surface",
+    "revision",
+    "gpo_transaction",
+    "run_sheet",
+    "intent",
+    "parameters",
+    "channel_contract",
+    "first_commit_point",
+    "fact_plan",
+    "envelope",
+    "structured_checks",
+    "bindings",
+    "cleanup",
+    "recovery"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "docs/capability-schema-v0.json"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]+$"
+    },
+    "surface": {
+      "type": "string",
+      "enum": ["gpmc-server2025"]
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "gpo_transaction": {
+      "type": "boolean"
+    },
+    "run_sheet": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]+$"
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parameters": {
+      "$ref": "#/$defs/parameter-schema"
+    },
+    "channel_contract": {
+      "$ref": "#/$defs/channel-contract"
+    },
+    "first_commit_point": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fact_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observers"],
+      "properties": {
+        "observers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/observer"
+          }
+        }
+      }
+    },
+    "envelope": {
+      "$ref": "#/$defs/envelope"
+    },
+    "structured_checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "checks"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]+$"
+          },
+          "checks": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["args", "fact_vocabulary"],
+      "properties": {
+        "args": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fact_vocabulary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "requery", "residual_accounting"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "remove_gpo",
+            "backup_then_remove_gpo",
+            "remove_staging_dir"
+          ]
+        },
+        "requery": {
+          "const": "strict_absence"
+        },
+        "residual_accounting": {
+          "const": true
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "demonstration"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["checkpoint_revert", "logical_cleanup"]
+        },
+        "demonstration": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "$defs": {
+    "non-empty-string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "channel-contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "setup",
+        "operation_under_test",
+        "orientation",
+        "input_delivery",
+        "oracle",
+        "cleanup"
+      ],
+      "properties": {
+        "setup": {
+          "$ref": "#/$defs/setup-channels"
+        },
+        "operation_under_test": {
+          "$ref": "#/$defs/operation-channels"
+        },
+        "orientation": {
+          "$ref": "#/$defs/orientation-channels"
+        },
+        "input_delivery": {
+          "$ref": "#/$defs/input-channels"
+        },
+        "oracle": {
+          "$ref": "#/$defs/oracle-channels"
+        },
+        "cleanup": {
+          "$ref": "#/$defs/cleanup-channels"
+        }
+      }
+    },
+    "setup-channels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["powershell", "gpmc_com"]
+      }
+    },
+    "operation-channels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["gpmc_ui", "gpmc_com"]
+      }
+    },
+    "orientation-channels": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["uia", "msaa", "hwnd", "screenshot"]
+      }
+    },
+    "input-channels": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["helper_input", "hyperv_input"]
+      }
+    },
+    "oracle-channels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["gpo_observers"]
+      }
+    },
+    "cleanup-channels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["powershell", "programmatic_requery"]
+      }
+    },
+    "observer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "params"],
+      "properties": {
+        "name": {
+          "enum": [
+            "r2_core",
+            "migration_table",
+            "gpttmpl_inf",
+            "fdeploy_ini",
+            "fdeploy_marker"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {"$ref": "#/$defs/non-empty-string"},
+            "relpath": {"$ref": "#/$defs/non-empty-string"}
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "name": {"const": "r2_core"}
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {"const": {}}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {"const": "migration_table"}
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "required": ["path"],
+                "not": {"required": ["relpath"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {
+                "enum": ["gpttmpl_inf", "fdeploy_ini", "fdeploy_marker"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "required": ["relpath"],
+                "not": {"required": ["path"]}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["require", "allow", "forbid", "derive", "convergence"],
+      "anyOf": [
+        {"properties": {"require": {"minItems": 1}}},
+        {"properties": {"forbid": {"minItems": 1}}},
+        {"properties": {"derive": {"minItems": 1}}}
+      ],
+      "properties": {
+        "require": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["fact", "predicate"],
+            "properties": {
+              "fact": {"$ref": "#/$defs/non-empty-string"},
+              "predicate": {"$ref": "#/$defs/non-empty-string"}
+            }
+          }
+        },
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["category"],
+            "properties": {
+              "category": {"$ref": "#/$defs/non-empty-string"}
+            }
+          }
+        },
+        "forbid": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scope", "predicate"],
+            "properties": {
+              "scope": {"$ref": "#/$defs/non-empty-string"},
+              "predicate": {"$ref": "#/$defs/non-empty-string"}
+            }
+          }
+        },
+        "derive": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["relation"],
+            "properties": {
+              "relation": {"$ref": "#/$defs/non-empty-string"}
+            }
+          }
+        },
+        "convergence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["window_seconds", "poll_seconds", "reproduce"],
+          "properties": {
+            "window_seconds": {"type": "number", "exclusiveMinimum": 0},
+            "poll_seconds": {"type": "number", "exclusiveMinimum": 0},
+            "reproduce": {"type": "integer", "minimum": 2}
+          }
+        }
+      }
+    },
+    "parameter-schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "required", "properties"],
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "required": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/non-empty-string"}
+        },
+        "properties": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/parameter-property-schema"
+          }
+        }
+      }
+    },
+    "parameter-property-schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["string", "number", "integer", "boolean", "array", "object", "null"]
+        },
+        "additionalProperties": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/non-empty-string"}
+        },
+        "properties": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/parameter-property-schema"
+          }
+        },
+        "items": {
+          "$ref": "#/$defs/parameter-property-schema"
+        },
+        "minItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": ["string", "number", "integer", "boolean", "null"]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"type": {"const": "array"}}
+          },
+          "then": {"required": ["items"]}
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "object"}}
+          },
+          "then": {"required": ["properties"]}
+        }
+      ]
+    }
+  }
+}

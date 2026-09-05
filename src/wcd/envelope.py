@@ -579,9 +579,15 @@ def parse_envelope(raw: Mapping[str, object]) -> Envelope:
     )
     convergence_raw = raw.get("convergence")
     convergence = _parse_convergence(convergence_raw)
-    return Envelope(
+    envelope = Envelope(
         require=require, allow=allow, forbid=forbid, derive=derive, convergence=convergence
     )
+    if not _normalized_keys(envelope):
+        raise EnvelopeError(
+            "envelope observes no post-state facts; require, forbid, or derive must "
+            "reference at least one post-state fact"
+        )
+    return envelope
 
 
 def _sequence(value: object) -> Sequence[object]:
@@ -926,17 +932,12 @@ def _holds(
 def _build_bindings(
     pre: Mapping[str, object],
     post: Mapping[str, object],
-    *,
-    scope: tuple[str, object] | None = None,
 ) -> dict[str, object]:
     bindings: dict[str, object] = {"pre": dict(pre), "post": dict(post), "facts": dict(post)}
     for key, value in pre.items():
         bindings[f"pre.{key}"] = value
     for key, value in post.items():
         bindings[f"post.{key}"] = value
-    if scope is not None:
-        bindings["scope"] = scope[1]
-        bindings["scope_key"] = scope[0]
     return bindings
 
 
@@ -1137,6 +1138,10 @@ def converge(
         )
 
     for index in range(reproduce_count):
+        # A reproduction is a fresh observation, not another immediate read of
+        # a potentially cached source.  Space each read by the declared poll
+        # interval just as the convergence observations are spaced.
+        sleep(poll_seconds)
         reproduction = observe()
         normalized = {key: reproduction.get(key, MISSING) for key in normalized_keys}
         if normalized != frozen:
@@ -1171,8 +1176,12 @@ def converge(
 def _normalized_keys(envelope: Envelope) -> tuple[str, ...]:
     """Post-side keys whose values define the normalized (frozen) state.
 
-    Stability is defined over the *values* of every post-side key the require
-    and derive clauses reference -- not merely over the clause booleans, which
-    can stay satisfied while a referenced counter churns.
+    Stability is defined over the *values* of every post-side key the require,
+    derive, and forbid clauses reference -- not merely over the clause
+    booleans, which can stay satisfied while a referenced counter churns.
     """
-    return tuple(dict.fromkeys(_predicted_keys(envelope)))
+    keys = list(_predicted_keys(envelope))
+    for clause in envelope.forbid:
+        keys.append(clause.scope_key)
+        keys.extend(_post_side_keys(clause.predicate))
+    return tuple(dict.fromkeys(keys))

@@ -33,6 +33,9 @@ class EstateConfig:
     helper_task: str = "WCDHelper"
     helper_dir: str = "C:\\lab\\wcd"
     guest_scripts_dir: str = "C:\\lab\\wcd\\scripts"
+    # Exact recovery point qualified for this disposable VM.  An empty value
+    # deliberately makes checkpoint-backed execution fail closed.
+    checkpoint_name: str = ""
     # Controller-side anchor directory for evidence artifacts (screenshots).
     # Explicit default: when unset (empty), the driver anchors evidence to its
     # OWN repository's ``runs/`` directory -- a location derived from the
@@ -56,7 +59,7 @@ def load_estate(path: str | Path) -> EstateConfig:
 
     Required keys: ``host``, ``vm_name``, ``domain``, ``username``,
     ``password_env``. Optional: ``helper_task``, ``helper_dir``,
-    ``guest_scripts_dir``, ``evidence_dir``. Unknown keys are refused (a
+    ``guest_scripts_dir``, ``checkpoint_name``, ``evidence_dir``. Unknown keys are refused (a
     misspelled secret name must fail loudly, not silently unlock nothing).
     """
     path = Path(path)
@@ -79,6 +82,7 @@ def load_estate(path: str | Path) -> EstateConfig:
         "helper_task",
         "helper_dir",
         "guest_scripts_dir",
+        "checkpoint_name",
         "evidence_dir",
     }
     unknown = set(table) - known
@@ -104,5 +108,6 @@ def load_estate(path: str | Path) -> EstateConfig:
         helper_task=values.get("helper_task", "WCDHelper"),
         helper_dir=values.get("helper_dir", "C:\\lab\\wcd"),
         guest_scripts_dir=values.get("guest_scripts_dir", "C:\\lab\\wcd\\scripts"),
+        checkpoint_name=values.get("checkpoint_name", ""),
         evidence_dir=values.get("evidence_dir", ""),
     )

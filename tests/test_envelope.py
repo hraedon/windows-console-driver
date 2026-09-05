@@ -278,8 +278,10 @@ def test_parse_envelope_accepts_capability_shape() -> None:
 
 
 def test_parse_envelope_defaults() -> None:
-    envelope = parse_envelope({})
-    assert envelope.require == ()
+    envelope = parse_envelope(
+        {"require": [{"fact": "present", "predicate": "post.present == True"}]}
+    )
+    assert len(envelope.require) == 1
     assert envelope.allow == ()
     assert envelope.forbid == ()
     assert envelope.derive == ()
@@ -600,8 +602,9 @@ def test_convergence_satisfied_with_static_state() -> None:
         "scripts_ini.machine.entries": ["logon.cmd|-StartupParam"],
         "version.machine": 5,
         "version.user": 0,
+        "forbid.gpc_extension_lists": [],
     }
-    assert clock.sleeps == [5.0]  # one poll interval; tests never actually wait
+    assert clock.sleeps == [5.0, 5.0, 5.0]  # settle + two spaced reproductions
 
 
 def test_convergence_requires_two_consecutive_equal_polls() -> None:
@@ -728,17 +731,32 @@ def test_poll_bound_degrades_a_stuck_clock_to_indeterminate() -> None:
     assert result.reason is not None and "clock" in result.reason
 
 
-def test_convergence_with_empty_envelope_stabilizes_immediately() -> None:
+def test_parse_refuses_an_envelope_that_observes_no_post_state() -> None:
+    with pytest.raises(EnvelopeError, match="observes no post-state facts"):
+        parse_envelope({})
+
+    with pytest.raises(EnvelopeError, match="observes no post-state facts"):
+        parse_envelope({"derive": [{"relation": "pre.version.machine > 0"}]})
+
+
+def test_forbid_scope_participates_in_stability_and_reproduction() -> None:
+    raw = {
+        "forbid": [
+            {"scope": "forbid.gpc_extension_lists", "predicate": "scope == []"}
+        ],
+        "convergence": {"window_seconds": 30, "poll_seconds": 5, "reproduce": 2},
+    }
+    clock = FakeClock()
     result = converge(
-        parse_envelope({}),
-        dict(POST_OK),  # no delta, so the (empty) envelope is satisfied
-        CATEGORIES,
-        lambda: dict(POST_OK),
-        clock=FakeClock(),
-        sleep=lambda _s: None,
+        parse_envelope(raw),
+        {"forbid.gpc_extension_lists": []},
+        {"forbid.gpc_extension_lists": "structural"},
+        lambda: {"forbid.gpc_extension_lists": []},
+        clock=clock,
+        sleep=clock.sleep,
     )
     assert result.status == "satisfied"
-    assert result.frozen == {}
+    assert result.frozen == {"forbid.gpc_extension_lists": []}
 
 
 def test_convergence_accepts_a_callable_object_as_observer() -> None:
@@ -770,10 +788,10 @@ def test_convergence_polls_are_typed_as_callables() -> None:
     clock: Callable[[], float] = FakeClock()
     sleeper: Callable[[float], None] = FakeClock().sleep
     result = converge(
-        parse_envelope({}),
-        {},  # no delta, so the (empty) envelope is satisfied
-        {},
-        lambda: {},
+        parse_envelope({"require": [{"fact": "present", "predicate": "post.present"}]}),
+        {"present": True},
+        {"present": "structural"},
+        lambda: {"present": True},
         clock=clock,
         sleep=sleeper,
     )

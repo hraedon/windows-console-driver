@@ -26,8 +26,14 @@ import sys
 from pathlib import Path
 
 from . import console_ops
+from .capability_schema import (
+    CapabilitySchemaError,
+    validate_capability_arguments,
+    validate_capability_document,
+)
 from .estate import EstateConfig, EstateError, load_estate
 from .exec_transaction import TransactionPaths, execute_transaction
+from .record_schema import RecordSchemaError, validate_record
 from .transport import SessionTransport, default_repl_path
 
 
@@ -140,7 +146,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.verb == "exec-transaction":
         paths = TransactionPaths(repo_root=_repo_root())
         if args.capability:
-            capability = json.loads(Path(args.capability).read_text(encoding="utf-8"))
+            try:
+                capability = json.loads(Path(args.capability).read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                print(f"capability error: cannot read JSON document: {exc}", file=sys.stderr)
+                return 2
             arguments: dict[str, object] = {}
             for pair in args.arg:
                 key, _, value = pair.partition("=")
@@ -178,6 +188,13 @@ def main(argv: list[str] | None = None) -> int:
                 "identity": plan.get("identity"),
             }
 
+        try:
+            validate_capability_document(capability, paths.repo_root)
+            validate_capability_arguments(capability, arguments)
+        except CapabilitySchemaError as exc:
+            print(f"capability error: {exc}", file=sys.stderr)
+            return 2
+
         transport = _default_transport(estate)
         try:
             record = execute_transaction(
@@ -190,6 +207,11 @@ def main(argv: list[str] | None = None) -> int:
             )
         finally:
             transport.close()
+        try:
+            validate_record(record)
+        except RecordSchemaError as exc:
+            print(f"record error: executor emitted an invalid record: {exc}", file=sys.stderr)
+            return 2
         _emit_json(record, args.out)
         return 0
     return 2

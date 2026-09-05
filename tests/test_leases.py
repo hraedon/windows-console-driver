@@ -12,11 +12,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 
 from wcd.leases import (
     ContextMismatch,
+    FileLeaseRegistry,
     ForegroundContext,
     InteractiveContext,
     Lease,
@@ -56,6 +58,21 @@ def test_second_concurrent_acquire_is_refused_naming_the_holder() -> None:
     assert excinfo.value.holder == "wcd-driver"
     assert "wcd-driver" in str(excinfo.value)
     assert registry.holder_of("desktop-1") == "wcd-driver"
+
+
+def test_independent_file_registries_contend_on_the_same_kernel_lock(tmp_path: Path) -> None:
+    first = FileLeaseRegistry(tmp_path)
+    second = FileLeaseRegistry(tmp_path)
+    lease = first.acquire("desktop-1", "first-process")
+
+    with pytest.raises(LeaseHeldError) as excinfo:
+        second.acquire("desktop-1", "second-process")
+    assert excinfo.value.holder == "first-process"
+
+    first.release(lease)
+    replacement = second.acquire("desktop-1", "second-process")
+    assert second.is_active(replacement)
+    second.release(replacement)
 
 
 def test_different_targets_do_not_conflict() -> None:

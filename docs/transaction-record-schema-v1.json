@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/transaction-record-schema-v1.json",
+  "title": "Windows Console Driver transaction record",
+  "description": "Version 1 of the five-key transaction wire record. The version stamp is inside provenance so the existing WEL wire envelope remains stable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "verdict", "envelope_result", "events", "provenance"],
+  "properties": {
+    "state": {
+      "type": "string",
+      "enum": ["verified", "disproven", "indeterminate"]
+    },
+    "verdict": { "type": "string", "maxLength": 512 },
+    "envelope_result": {
+      "oneOf": [
+        { "type": "object", "maxProperties": 0 },
+        { "$ref": "#/$defs/envelope" }
+      ]
+    },
+    "events": { "$ref": "#/$defs/events" },
+    "provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "state": { "enum": ["verified", "disproven"] } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": { "envelope_result": { "$ref": "#/$defs/envelope" } }
+      }
+    }
+  ],
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "satisfied", "violated", "unresolved", "unclassified", "characterization", "delta"],
+      "properties": {
+        "status": { "type": "string", "enum": ["satisfied", "disproven", "indeterminate"] },
+        "satisfied": { "type": "array", "items": { "type": "string" } },
+        "violated": { "type": "array", "items": { "type": "string" } },
+        "unresolved": { "type": "array", "items": { "type": "string" } },
+        "unclassified": { "type": "array", "items": { "type": "string" } },
+        "characterization": { "type": "string" },
+        "delta": { "$ref": "#/$defs/delta" }
+      }
+    },
+    "delta": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "kind", "before", "after"],
+        "properties": {
+          "key": { "type": "string" },
+          "kind": { "type": "string", "enum": ["added", "changed", "removed"] },
+          "before": {},
+          "after": {}
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sequence", "from_state", "to_state", "reason"],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1 },
+          "from_state": { "type": ["string", "null"], "enum": [null, "prepared", "armed", "commit_attempted", "verified", "disproven", "indeterminate"] },
+          "to_state": { "type": "string", "enum": ["prepared", "armed", "commit_attempted", "verified", "disproven", "indeterminate"] },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$schema", "schema_version", "capability", "run_sheet", "transaction_id", "console", "steps", "cleanup", "notes"],
+      "properties": {
+        "$schema": { "const": "docs/transaction-record-schema-v1.json" },
+        "schema_version": { "const": 1 },
+        "capability": { "type": "string" },
+        "run_sheet": { "type": "string" },
+        "transaction_id": { "type": "string" },
+        "console": { "type": "object" },
+        "steps": { "type": "array" },
+        "cleanup": { "type": "object" },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

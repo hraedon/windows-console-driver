@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 
 from wcd.estate import EstateConfig
-from wcd.exec_transaction import TransactionPaths, execute_transaction
+from wcd.exec_transaction import ExecTransactionError, TransactionPaths, execute_transaction
 from wcd.helper_client import HelperResult
 from wcd.leases import LeaseRegistry
 from wcd.transport import TransportError
@@ -42,7 +42,7 @@ from wcd.transport import TransportError
 # Synthetic-estate identifiers only: zz- placeholders per the project
 # convention. Nothing here names a real host, domain, user, or path.
 GPO_GUID = "11111111-2222-3333-4444-555555555555"
-LEASE_TARGET = "wcd.console:zz-vm"
+LEASE_TARGET = "wcd.console:zz-hyperv:zz-vm"
 
 Matcher = Callable[[str], bool]
 ScriptResponder = Callable[[str, list[object]], str]
@@ -57,11 +57,19 @@ def _b64(raw: bytes) -> str:
 
 
 def _migtable_present(script: str, args: list[object]) -> str:
-    return json.dumps({"ok": True, "data": {"file_b64": _b64(b"<MigrationTable/>")}})
+    return json.dumps(
+        {
+            "ok": True,
+            "data": {
+                "file_b64": _b64(b"<MigrationTable/>"),
+                "unexpected_entry_count": 0,
+            },
+        }
+    )
 
 
 def _migtable_absent(script: str, args: list[object]) -> str:
-    return json.dumps({"ok": True, "data": {}})
+    return json.dumps({"ok": True, "data": {"unexpected_entry_count": 0}})
 
 
 class FakeTransport:
@@ -83,6 +91,7 @@ class FakeTransport:
         self.user = "zz-lab-user"
         self.desktop = "Default"
         self.digest = "zz-surface-digest-1"
+        self.gpo_create_response = f"guid={GPO_GUID}\ndomain=zzlab.invalid\n"
         self.migtable_responder: ScriptResponder = _migtable_absent
         self.requery_response = "remaining=0\n"
         self.guest_routes: list[tuple[Matcher, ScriptResponder]] = [
@@ -170,7 +179,7 @@ class FakeTransport:
         )
 
     def _gpo_create(self, script: str, args: list[object]) -> str:
-        return f"guid={GPO_GUID}\ndomain=zzlab.invalid\n"
+        return self.gpo_create_response
 
     def _context_payload(self) -> dict[str, object]:
         return {
@@ -233,6 +242,7 @@ def _estate(**overrides: str) -> EstateConfig:
         "domain": "zzlab.invalid",
         "username": "zz-operator",
         "password_env": "WCD_ZZ_PW",
+        "checkpoint_name": "zz-qualified-baseline",
     }
     values.update(overrides)
     return EstateConfig(**values)
@@ -270,6 +280,35 @@ _CLEANUP_STEPS: list[dict[str, object]] = [
 
 
 def _make_repo(tmp_path: Path, sheet: dict[str, object]) -> TransactionPaths:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "capability-schema-v0.json").write_text(
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "required": [
+                    "id",
+                    "surface",
+                    "run_sheet",
+                    "gpo_transaction",
+                    "fact_plan",
+                    "envelope",
+                    "parameters",
+                ],
+                "properties": {
+                    "id": {"type": "string"},
+                    "surface": {"type": "string"},
+                    "run_sheet": {"type": "string"},
+                    "gpo_transaction": {"type": "boolean"},
+                    "fact_plan": {"type": "object"},
+                    "envelope": {"type": "object"},
+                    "parameters": {"type": "object"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
     (tmp_path / "profiles").mkdir()
     (tmp_path / "profiles" / "zz-fake-surface.toml").write_text(_PROFILE_TOML, encoding="utf-8")
     scripts = tmp_path / "tools" / "guest_scripts"
@@ -297,6 +336,20 @@ def _capability(sheet_name: str, envelope: dict[str, object]) -> dict[str, objec
         "surface": "zz-fake-surface",
         "run_sheet": sheet_name,
         "gpo_transaction": True,
+        "channel_contract": {
+            "setup": ["powershell"],
+            "operation_under_test": ["gpmc_ui", "gpmc_com"],
+            "orientation": ["uia", "hwnd", "screenshot"],
+            "input_delivery": ["helper_input"],
+            "oracle": ["gpo_observers"],
+            "cleanup": ["powershell", "programmatic_requery"],
+        },
+        "parameters": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["gpo_name"],
+            "properties": {"gpo_name": {"type": "string"}},
+        },
         "fact_plan": {
             "observers": [
                 {"name": "migration_table", "params": {"path": "C:\\lab\\wcd\\zz.migtable"}}
@@ -357,6 +410,47 @@ def _cleanup_of(record: dict[str, object]) -> dict[str, object]:
     cleanup = record["provenance"]["cleanup"]  # type: ignore[index]
     assert isinstance(cleanup, dict)
     return cleanup
+
+
+def test_direct_executor_rejects_invalid_capability_before_transport(tmp_path: Path) -> None:
+    sheet = _sheet("zz_schema_boundary", _commit_crossing_gesture())
+    paths = _make_repo(tmp_path, sheet)
+    capability = _capability(str(sheet["name"]), _SATISFIED_ENVELOPE)
+    capability.pop("id")
+    transport = FakeTransport()
+
+    with pytest.raises(ExecTransactionError, match="capability schema invalid"):
+        execute_transaction(
+            capability=capability,
+            arguments={"gpo_name": "zz-studio-evidence-t"},
+            estate=_estate(),
+            paths=paths,
+            transport=transport,  # type: ignore[arg-type]
+        )
+
+    assert not transport.guest_calls
+    assert not transport.host_calls
+    assert not transport.helper_calls
+
+
+def test_direct_executor_rejects_invalid_arguments_before_transport(tmp_path: Path) -> None:
+    sheet = _sheet("zz_argument_boundary", _commit_crossing_gesture())
+    paths = _make_repo(tmp_path, sheet)
+    capability = _capability(str(sheet["name"]), _SATISFIED_ENVELOPE)
+    transport = FakeTransport()
+
+    with pytest.raises(ExecTransactionError, match="capability schema invalid: arguments"):
+        execute_transaction(
+            capability=capability,
+            arguments={},
+            estate=_estate(),
+            paths=paths,
+            transport=transport,  # type: ignore[arg-type]
+        )
+
+    assert not transport.guest_calls
+    assert not transport.host_calls
+    assert not transport.helper_calls
 
 
 # --- 1. convergence timeout -------------------------------------------------------
@@ -492,7 +586,7 @@ def test_run_sheet_failure_after_prepare_emits_record_and_cleans_up(tmp_path: Pa
     cleanup phase ran, and the lease was released."""
     transport = FakeTransport()
     registry = LeaseRegistry()
-    gesture = [{"action": "guest", "script": "zz_missing_script"}]
+    gesture = [{"action": "guest", "channel": "gpmc_com", "script": "zz_missing_script"}]
     record = _run(
         tmp_path,
         _sheet("zz_abort", gesture),
@@ -509,6 +603,22 @@ def test_run_sheet_failure_after_prepare_emits_record_and_cleans_up(tmp_path: Pa
     assert isinstance(cleanup["journal"], list) and cleanup["journal"]
     assert any("zzfake: mmc_kill" in str(call["script"]) for call in transport.guest_calls)
     assert registry.holder_of(LEASE_TARGET) is None
+
+
+def test_malformed_captured_gpo_guid_is_refused_before_prepare(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    transport.gpo_create_response = "guid=bad'; Remove-GPO -All; 'value\n"
+    record = _run(
+        tmp_path,
+        _sheet("zz_bad_guid", _commit_crossing_gesture()),
+        _SATISFIED_ENVELOPE,
+        transport,
+    )
+
+    assert record["state"] == "indeterminate"
+    assert "malformed GUID" in str(record["verdict"])
+    assert "prepared" not in _states(record)
+    assert "evidence_gpo_guid" not in _cleanup_of(record)
 
 
 # --- 5. undeclared profile actions ----------------------------------------------------
@@ -593,6 +703,39 @@ def test_keys_step_classified_commit_point_fires_on_commit(tmp_path: Path) -> No
     assert registry.holder_of(LEASE_TARGET) is None
 
 
+def test_every_mutating_step_gets_a_fresh_context_assertion(tmp_path: Path) -> None:
+    """Later crossings belong to one attempt, but contract s7 still requires
+    a fresh context assertion before every potentially mutating action."""
+    transport = FakeTransport()
+    gesture = [
+        {"action": "dump", "profile_action": "zz_navigate", "depth": 12},
+        {
+            "action": "click_element",
+            "profile_action": "zz_commit",
+            "name_regex": "^OK$",
+            "control_type": "Button",
+        },
+        {
+            "action": "click_element",
+            "profile_action": "zz_commit",
+            "name_regex": "^OK$",
+            "control_type": "Button",
+        },
+    ]
+
+    record = _run(
+        tmp_path,
+        _sheet("zz_each_crossing_context", gesture),
+        _SATISFIED_ENVELOPE,
+        transport,
+    )
+
+    assert record["state"] == "verified"
+    assert _states(record).count("commit_attempted") == 1
+    context_calls = [call for call in transport.helper_calls if call["action"] == "context"]
+    assert len(context_calls) == 4  # console check, prepare baseline, then both crossings
+
+
 # --- 7. context mismatch at a commit point ------------------------------------------------
 
 
@@ -625,6 +768,38 @@ def test_context_mismatch_at_commit_point_is_indeterminate_and_crossing_does_not
     assert not [call for call in transport.helper_calls if call["action"] == "mouse"]
 
 
+def test_helper_console_foreground_churn_does_not_invalidate_targeted_commit(
+    tmp_path: Path,
+) -> None:
+    """The helper self-shadows with a transient foreground window; the sheet's
+    explicit HWND dump/focus guard owns surface identity, while ``context``
+    protects stable session/user/desktop identity."""
+    transport = FakeTransport()
+    reads = {"n": 0}
+
+    def churning_helper_foreground(request: dict[str, object]) -> dict[str, object]:
+        reads["n"] += 1
+        transport.digest = f"zz-helper-console-{reads['n']}"
+        payload = transport._context_payload()
+        foreground = payload["foreground"]
+        assert isinstance(foreground, dict)
+        foreground["hwnd"] = 9000 + reads["n"]
+        foreground["pid"] = 500 + reads["n"]
+        return payload
+
+    transport.helper_routes["context"] = churning_helper_foreground
+    record = _run(
+        tmp_path,
+        _sheet("zz_helper_foreground_churn", _commit_crossing_gesture()),
+        _SATISFIED_ENVELOPE,
+        transport,
+    )
+
+    assert record["state"] == "verified"
+    assert _states(record).count("commit_attempted") == 1
+    assert [call for call in transport.helper_calls if call["action"] == "mouse"]
+
+
 # --- lease, fail-closed context, evidence anchor, cleanup discipline ----------------------
 
 
@@ -647,6 +822,43 @@ def test_held_lease_refuses_the_transaction_before_anything_moves(tmp_path: Path
     assert any("lease" in str(note) for note in record["provenance"]["notes"])  # type: ignore[index]
     assert registry.holder_of(LEASE_TARGET) == "zz-squatter"
     assert _cleanup_of(record) == {}  # refused before setup: nothing to clean
+    assert not transport.guest_calls
+    assert not transport.host_calls
+    assert not transport.helper_calls
+
+
+def test_recovery_probe_names_the_exact_qualified_checkpoint(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    record = _run(
+        tmp_path,
+        _sheet("zz_exact_checkpoint", _commit_crossing_gesture()),
+        _SATISFIED_ENVELOPE,
+        transport,
+    )
+
+    assert record["state"] == "verified"
+    checkpoint_calls = [
+        call for call in transport.host_calls if "Get-VMSnapshot" in str(call["script"])
+    ]
+    assert len(checkpoint_calls) == 1
+    assert checkpoint_calls[0]["args"] == ["zz-vm", "zz-qualified-baseline"]
+    assert "-Name $args[1]" in str(checkpoint_calls[0]["script"])
+
+
+def test_missing_checkpoint_identity_fails_closed_at_prepare(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    record = _run(
+        tmp_path,
+        _sheet("zz_no_checkpoint_name", _commit_crossing_gesture()),
+        _SATISFIED_ENVELOPE,
+        transport,
+        estate=_estate(checkpoint_name=""),
+    )
+
+    assert record["state"] == "indeterminate"
+    assert "exact qualified recovery checkpoint" in str(record["verdict"])
+    assert not [call for call in transport.host_calls if "Get-VMSnapshot" in str(call["script"])]
+    assert _cleanup_of(record) == {}
 
 
 def test_unreadable_context_refuses_before_arming(tmp_path: Path) -> None:
@@ -685,8 +897,14 @@ def test_screenshot_evidence_is_anchored_not_cwd_relative(
     monkeypatch.chdir(cwd)
     transport = FakeTransport()
     gesture = [
+        {"action": "dump", "profile_action": "zz_navigate", "depth": 12},
         {"action": "shot", "name": "zzcap"},
-        *_commit_crossing_gesture(),
+        {
+            "action": "click_element",
+            "profile_action": "zz_commit",
+            "name_regex": "^OK$",
+            "control_type": "Button",
+        },
     ]
     record = _run(
         tmp_path,
@@ -699,6 +917,36 @@ def test_screenshot_evidence_is_anchored_not_cwd_relative(
     assert record["state"] == "verified"
     assert (evidence / "zzcap.png").read_bytes() == b"zz-png"
     assert not (cwd / "runs").exists()
+    shot_request = next(call for call in transport.helper_calls if call["action"] == "screenshot")
+    assert shot_request["hwnd"] == 4242
+    assert "full" not in shot_request
+
+
+def test_malformed_screenshot_is_contained_recorded_and_cleaned_up(tmp_path: Path) -> None:
+    """A corrupt helper payload is a run-sheet failure, not an escape hatch
+    around the executor's every-terminal-path record and cleanup invariant."""
+    transport = FakeTransport()
+    transport.helper_routes["screenshot"] = lambda request: {"png_base64": "not-base64!"}
+    registry = LeaseRegistry()
+    gesture = [
+        {"action": "dump", "profile_action": "zz_navigate", "depth": 12},
+        {"action": "shot", "name": "zz-corrupt"},
+        *_commit_crossing_gesture(),
+    ]
+
+    record = _run(
+        tmp_path,
+        _sheet("zz_bad_shot", gesture),
+        _SATISFIED_ENVELOPE,
+        transport,
+        lease_registry=registry,
+    )
+
+    assert record["state"] == "indeterminate"
+    assert "invalid base64 PNG payload" in str(record["verdict"])
+    assert registry.holder_of(LEASE_TARGET) is None
+    assert _cleanup_of(record)["ran"] is True
+    assert any("zzfake: gpo_remove" in str(call["script"]) for call in transport.guest_calls)
 
 
 def test_cleanup_runs_every_step_and_flags_absence_violation(tmp_path: Path) -> None:

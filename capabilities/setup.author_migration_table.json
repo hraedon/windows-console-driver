@@ -2,7 +2,7 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "setup.author_migration_table",
   "surface": "gpmc-server2025",
-  "revision": 1,
+  "revision": 2,
   "gpo_transaction": false,
   "run_sheet": "setup.author_migration_table",
   "intent": "Author one migration table through the GPMC COM API (GPMgmt.GPM CreateMigrationTable/AddEntry/Save) and read the bytes back -- a setup-only transaction with no interactive step that exercises the full engine plumbing (ensure-console, recovery check, pre-oracle, prepare/arm, commit crossing, converge/reproduce, envelope, cleanup) at near-zero surface risk (work order R1).",
@@ -55,7 +55,12 @@
     "allow": [
       { "category": "timestamps" }
     ],
-    "forbid": [],
+    "forbid": [
+      {
+        "scope": "migtable.parent.unexpected_entry_count",
+        "predicate": "scope == 0"
+      }
+    ],
     "derive": [],
     "convergence": { "window_seconds": 30, "poll_seconds": 5, "reproduce": 2 }
   },

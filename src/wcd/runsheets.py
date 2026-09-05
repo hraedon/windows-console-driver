@@ -71,6 +71,9 @@ _GESTURE_ACTIONS = frozenset(
         "keys",
     }
 )
+_PHASES = frozenset({"setup", "gesture", "cleanup"})
+_INPUT_ACTIONS = frozenset({"click_element", "type_text", "key", "keys"})
+_UI_OPERATION_ACTIONS = _INPUT_ACTIONS
 
 
 class RunSheetError(RuntimeError):
@@ -154,8 +157,121 @@ def load_run_sheet(path: str | Path) -> RunSheet:
         if profile_action is not None and not isinstance(profile_action, str):
             raise RunSheetError(f"step {index} of {path}: profile_action must be a string")
         params = {k: v for k, v in raw.items() if k not in ("action", "profile_action")}
+        phase = params.get("phase", "gesture")
+        if not isinstance(phase, str) or phase not in _PHASES:
+            raise RunSheetError(
+                f"step {index} of {path}: phase must be one of {sorted(_PHASES)}, "
+                f"got {phase!r}"
+            )
         steps.append(Step(action=action, profile_action=profile_action, params=params))
     return RunSheet(name=name, surface=surface, steps=tuple(steps))
+
+
+def validate_channel_contract(
+    sheet: RunSheet,
+    raw_contract: object,
+    *,
+    require_programmatic_requery: bool,
+) -> None:
+    """Refuse run-sheet primitives that the capability's channels do not permit.
+
+    The capability schema validates the vocabulary; this function gives that
+    declaration runtime force.  Programmatic scripts are legal only in setup or
+    cleanup, except for an explicitly labelled ``gpmc_com`` operation step.
+    UI input and orientation primitives must declare every channel they use.
+    """
+    if not isinstance(raw_contract, dict):
+        raise RunSheetError("capability declares no channel_contract")
+
+    def channels(role: str) -> set[str]:
+        value = raw_contract.get(role)
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            raise RunSheetError(f"channel_contract.{role} must be an array of channel names")
+        return set(value)
+
+    setup = channels("setup")
+    operation = channels("operation_under_test")
+    orientation = channels("orientation")
+    input_delivery = channels("input_delivery")
+    oracle = channels("oracle")
+    cleanup = channels("cleanup")
+
+    if "gpo_observers" not in oracle:
+        raise RunSheetError("the executor's oracle uses gpo_observers, but the contract forbids it")
+    if require_programmatic_requery and "programmatic_requery" not in cleanup:
+        raise RunSheetError(
+            "GPO cleanup performs a programmatic_requery, but the contract forbids it"
+        )
+
+    for index, step in enumerate(sheet.steps):
+        phase = str(step.params.get("phase", "gesture"))
+        if phase == "setup":
+            if step.action not in {"guest", "host"}:
+                raise RunSheetError(
+                    f"step {index} ({step.label}) uses {step.action!r} in setup; "
+                    "setup accepts only programmatic guest/host steps"
+                )
+            if "powershell" not in setup:
+                raise RunSheetError(
+                    f"step {index} ({step.label}) uses PowerShell setup, but the "
+                    "contract forbids it"
+                )
+            continue
+        if phase == "cleanup":
+            if step.action not in {"guest", "host"}:
+                raise RunSheetError(
+                    f"step {index} ({step.label}) uses {step.action!r} in cleanup; "
+                    "cleanup accepts only programmatic guest/host steps"
+                )
+            if "powershell" not in cleanup:
+                raise RunSheetError(
+                    f"step {index} ({step.label}) uses PowerShell cleanup, but the "
+                    "contract forbids it"
+                )
+            continue
+
+        if step.action in {"guest", "host"}:
+            declared = step.params.get("channel")
+            if declared != "gpmc_com" or declared not in operation:
+                raise RunSheetError(
+                    f"step {index} ({step.label}) runs a programmatic operation in the gesture "
+                    "phase without an allowed explicit gpmc_com channel"
+                )
+            continue
+
+        required_orientation: set[str] = set()
+        if step.action == "wait_foreground" or step.action == "context":
+            required_orientation.add("hwnd")
+        elif step.action == "dump":
+            required_orientation.update(("uia", "hwnd"))
+        elif step.action == "shot":
+            required_orientation.update(("screenshot", "hwnd"))
+        elif step.action == "click_element":
+            required_orientation.update(("uia", "hwnd"))
+        elif step.action in {"type_text", "key"}:
+            required_orientation.add("hwnd")
+        elif step.action == "keys":
+            required_orientation.add("hwnd")
+            nested = step.params.get("steps")
+            if isinstance(nested, list) and any(
+                isinstance(item, dict) and "click_element" in item for item in nested
+            ):
+                required_orientation.add("uia")
+        missing_orientation = required_orientation - orientation
+        if missing_orientation:
+            raise RunSheetError(
+                f"step {index} ({step.label}) uses undeclared orientation channels "
+                f"{sorted(missing_orientation)}"
+            )
+        if step.action in _INPUT_ACTIONS and "helper_input" not in input_delivery:
+            raise RunSheetError(
+                f"step {index} ({step.label}) uses helper_input, but the contract forbids it"
+            )
+        if step.action in _UI_OPERATION_ACTIONS and "gpmc_ui" not in operation:
+            raise RunSheetError(
+                f"step {index} ({step.label}) performs the UI operation under test, "
+                "but the contract forbids gpmc_ui"
+            )
 
 
 @dataclass
@@ -252,12 +368,12 @@ class GestureExecutor:
     ) -> list[dict[str, object]]:
         """Run every step in order; return the journal.
 
-        ``on_commit(boundary)`` is called for ``commit`` steps and for the
-        FIRST step whose profile action classifies as ``potentially_mutating``
-        or ``commit_point`` (contract section 2: crossing the first declared
-        commit point -- or any potentially mutating action -- is terminal for
-        replay; later crossings are part of the same attempt and are not
-        re-reported). The classification applies to ANY step carrying a
+        ``on_commit(boundary)`` is called for ``commit`` steps and for EVERY
+        step whose profile action classifies as ``potentially_mutating`` or
+        ``commit_point``. The transaction records only the first crossing as
+        ``commit-attempted``, but every later crossing still needs the callback's
+        fresh interactive-context assertion (contract section 7). The
+        classification applies to ANY step carrying a
         ``profile_action``, regardless of its primitive action name.
         ``classify`` resolves profile action names to their declared classes;
         a step naming an action the profile does not declare is refused, on
@@ -266,7 +382,6 @@ class GestureExecutor:
         cleanup.
         """
         journal: list[dict[str, object]] = []
-        crossed = False
         for index, step in enumerate(sheet.steps):
             if before_step is not None:
                 before_step(step)
@@ -292,12 +407,8 @@ class GestureExecutor:
                             f"profile action {step.profile_action!r} is not declared by the "
                             "loaded profile; refusing the step"
                         )
-                    if (
-                        not crossed
-                        and declared in ("potentially_mutating", "commit_point")
-                    ):
+                    if declared in ("potentially_mutating", "commit_point"):
                         on_commit(step.profile_action)
-                        crossed = True
                 detail = self._execute_step(step, ctx, on_commit)
                 entry["ok"] = True
                 if detail:
@@ -338,7 +449,7 @@ class GestureExecutor:
         if step.action == "key":
             return self._key(params, ctx)
         if step.action == "shot":
-            return self._shot(params)
+            return self._shot(params, ctx)
         if step.action == "keys":
             return self._keys(params, ctx)
         if step.action == "commit":
@@ -387,7 +498,16 @@ class GestureExecutor:
                     key, _, value = line.partition("=")
                     key = key.strip()
                     if key and re.fullmatch(r"[A-Za-z0-9_]+", key):
-                        ctx.outputs[f"{output_key}.{key}"] = value.strip()
+                        full_key = f"{output_key}.{key}"
+                        captured = value.strip()
+                        if full_key.endswith(".guid"):
+                            try:
+                                captured = str(__import__("uuid").UUID(captured))
+                            except ValueError as exc:
+                                raise RunSheetError(
+                                    f"script {script_ref!r} emitted malformed GUID for {full_key}"
+                                ) from exc
+                        ctx.outputs[full_key] = captured
         return {"stdout": stdout[:512]}
 
     def _find_window_by_class(self, window_class: str) -> dict[str, object] | None:
@@ -554,23 +674,34 @@ class GestureExecutor:
             raise RunSheetError(f"keys failed: {result.error}")
         return {"injected_events": result.payload.get("injected_events")}
 
-    def _shot(self, params: dict[str, object]) -> dict[str, object]:
-        """Full-screen capture saved into the anchored evidence directory."""
+    def _shot(self, params: dict[str, object], ctx: SheetContext) -> dict[str, object]:
+        """Capture the sheet's current target window into the evidence directory."""
         import base64
+        import binascii
 
         name = params.get("name")
         if not isinstance(name, str) or not name:
             raise RunSheetError("shot needs a name")
-        request: dict[str, object] = {"action": "screenshot", "full": True}
+        target = self._live_target(ctx)
+        if target is None:
+            raise RunSheetError("shot step has no target window")
+        request: dict[str, object] = {"action": "screenshot", "hwnd": target}
         result = self._t.helper(request, timeout=self._helper_timeout)
         if result.outcome != "ok":
             raise RunSheetError(f"shot failed: {result.error}")
         png = result.payload.get("png_base64")
         if not isinstance(png, str):
             raise RunSheetError("shot returned no png payload")
+        try:
+            raw = base64.b64decode(png, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise RunSheetError("shot returned an invalid base64 PNG payload") from exc
         path = self._evidence_dir / f"{name}.png"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(base64.b64decode(png))
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+        except OSError as exc:
+            raise RunSheetError(f"shot could not save evidence to {path}: {exc}") from exc
         return {"saved": str(path)}
 
     def _surface_hwnd(self, hwnd: int) -> bool:

@@ -56,25 +56,81 @@ class FakeCliTransport:
         self.closed = True
 
 
-# A canned executor record with exactly the five wire keys of the contract.
+# A canned v1 executor record with exactly the five wire keys of the contract.
 _RECORD: dict[str, object] = {
     "state": "verified",
     "verdict": "envelope satisfied and reproduction verified",
-    "envelope_result": {"status": "satisfied", "satisfied": [], "violated": []},
+    "envelope_result": {
+        "status": "satisfied",
+        "satisfied": [],
+        "violated": [],
+        "unresolved": [],
+        "unclassified": [],
+        "characterization": "satisfied",
+        "delta": [],
+    },
     "events": [
         {"sequence": 1, "from_state": "armed", "to_state": "commit_attempted", "reason": "crossed"}
     ],
-    "provenance": {"capability": "zz.capability.cli", "run_sheet": "zz_cli_sheet", "notes": []},
+    "provenance": {
+        "$schema": "docs/transaction-record-schema-v1.json",
+        "schema_version": 1,
+        "capability": "zz.capability.cli",
+        "run_sheet": "zz_cli_sheet",
+        "transaction_id": "zz-transaction",
+        "console": {},
+        "steps": [],
+        "cleanup": {},
+        "notes": [],
+    },
 }
 
 _CAPABILITY: dict[str, object] = {
+    "$schema": "docs/capability-schema-v0.json",
     "id": "zz.capability.cli",
-    "surface": "zz-fake-surface",
+    "surface": "gpmc-server2025",
+    "revision": 1,
+    "intent": "Exercise the CLI contract with synthetic arguments.",
+    "parameters": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["gpo_name"],
+        "properties": {
+            "gpo_name": {"type": "string"},
+            "targets": {"type": "array", "items": {"type": "string"}},
+            "threshold": {"type": "integer"},
+            "zz_flag": {"type": "string"},
+        },
+    },
+    "channel_contract": {
+        "setup": ["powershell"],
+        "operation_under_test": ["gpmc_ui"],
+        "orientation": ["uia"],
+        "input_delivery": ["helper_input"],
+        "oracle": ["gpo_observers"],
+        "cleanup": ["powershell"],
+    },
+    "first_commit_point": "zz_commit",
     "run_sheet": "zz_cli_sheet",
     "gpo_transaction": True,
-    "fact_plan": {"observers": []},
-    "envelope": {},
+    "fact_plan": {"observers": [{"name": "r2_core", "params": {}}]},
+    "envelope": {
+        "require": [{"fact": "zz.present", "predicate": "post.zz.present == True"}],
+        "allow": [],
+        "forbid": [],
+        "derive": [],
+        "convergence": {"window_seconds": 10, "poll_seconds": 1, "reproduce": 2},
+    },
+    "structured_checks": [{"id": "zz_check", "checks": "Synthetic CLI check."}],
+    "bindings": {"args": "Synthetic.", "fact_vocabulary": "Synthetic."},
+    "cleanup": {
+        "strategy": "remove_gpo",
+        "requery": "strict_absence",
+        "residual_accounting": True,
+    },
+    "recovery": {"kind": "checkpoint_revert", "demonstration": "Synthetic."},
 }
+_VALID_ARGUMENTS = {"gpo_name": "zz-studio-evidence-01"}
 
 
 def _estate_file(tmp_path: Path) -> Path:
@@ -372,7 +428,10 @@ def test_exec_transaction_mirrors_the_record_to_the_out_file(
     record = dict(_RECORD)
     _install_executor(monkeypatch, record)
     out_path = tmp_path / "record.json"
-    _stdin(monkeypatch, json.dumps({"capability": json.dumps(_CAPABILITY)}))
+    _stdin(
+        monkeypatch,
+        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
+    )
 
     code = cli.main(
         ["--estate", str(_estate_file(tmp_path)), "exec-transaction", "--out", str(out_path)]
@@ -391,12 +450,38 @@ def test_exec_transaction_indeterminate_record_still_exits_zero(
     _install_transport(monkeypatch)
     record = {**_RECORD, "state": "indeterminate", "verdict": "hard stop", "envelope_result": {}}
     _install_executor(monkeypatch, record)
-    _stdin(monkeypatch, json.dumps({"capability": json.dumps(_CAPABILITY)}))
+    _stdin(
+        monkeypatch,
+        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
+    )
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
 
     assert code == 0
     assert json.loads(capsys.readouterr().out) == record
+
+
+def test_exec_transaction_rejects_invalid_executor_record_before_emission(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    built = _install_transport(monkeypatch)
+    _install_executor(monkeypatch, {"state": "verified"})
+    out_path = tmp_path / "must-not-exist.json"
+    _stdin(
+        monkeypatch,
+        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
+    )
+
+    code = cli.main(
+        ["--estate", str(_estate_file(tmp_path)), "exec-transaction", "--out", str(out_path)]
+    )
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "record error: executor emitted an invalid record" in captured.err
+    assert captured.out == ""
+    assert not out_path.exists()
+    assert built[0].closed
 
 
 # --- exec-transaction: clean error exits for malformed plans --------------------------
@@ -443,6 +528,85 @@ def test_exec_transaction_plan_shape_errors_are_clean(
     assert not calls  # the executor never ran for any malformed plan
 
 
+def test_exec_transaction_rejects_schema_invalid_capability_before_transport(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    built = _install_transport(monkeypatch)
+    calls = _install_executor(monkeypatch, dict(_RECORD))
+    malformed = json.loads(json.dumps(_CAPABILITY))
+    malformed["envelope"].pop("require")
+    _stdin(monkeypatch, json.dumps({"capability": json.dumps(malformed)}))
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "capability error" in captured.err
+    assert "require" in captured.err
+    assert captured.out == ""
+    assert not calls and not built
+
+
+@pytest.mark.parametrize("arguments", [{}, {"gpo_name": "zz", "unknown": True}])
+def test_exec_transaction_rejects_invalid_arguments_before_transport(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    arguments: dict[str, object],
+) -> None:
+    built = _install_transport(monkeypatch)
+    calls = _install_executor(monkeypatch, dict(_RECORD))
+    _stdin(
+        monkeypatch,
+        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": arguments}),
+    )
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "capability error: arguments" in captured.err
+    assert captured.out == ""
+    assert not calls and not built
+
+
+@pytest.mark.parametrize(
+    ("filename", "content"),
+    [
+        ("missing.json", None),
+        ("malformed.json", "{zz not json"),
+    ],
+)
+def test_exec_transaction_capability_file_errors_are_clean_before_transport(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    filename: str,
+    content: str | None,
+) -> None:
+    built = _install_transport(monkeypatch)
+    calls = _install_executor(monkeypatch, dict(_RECORD))
+    capability_path = tmp_path / filename
+    if content is not None:
+        capability_path.write_text(content, encoding="utf-8")
+
+    code = cli.main(
+        [
+            "--estate",
+            str(_estate_file(tmp_path)),
+            "exec-transaction",
+            "--capability",
+            str(capability_path),
+        ]
+    )
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "capability error: cannot read JSON document" in captured.err
+    assert captured.out == ""
+    assert not calls and not built
+
+
 # --- estate secrets: named, resolved from the environment, never echoed ----------------
 
 
@@ -451,10 +615,13 @@ def test_estate_names_the_secret_env_var_and_the_value_is_never_echoed(
 ) -> None:
     monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
     built = _install_transport(monkeypatch)
-    record = {**_RECORD, "provenance": {"capability": "zz.capability.cli", "notes": []}}
+    record = json.loads(json.dumps(_RECORD))
     _install_executor(monkeypatch, record)
     estate_path = _estate_file(tmp_path)
-    _stdin(monkeypatch, json.dumps({"capability": json.dumps(_CAPABILITY)}))
+    _stdin(
+        monkeypatch,
+        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
+    )
 
     code = cli.main(["--estate", str(estate_path), "exec-transaction"])
 

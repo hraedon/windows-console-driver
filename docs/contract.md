@@ -58,8 +58,13 @@ commit-attempted
 - **commit-attempted** — the first declared commit point (or any potentially
   mutating action) has been crossed. Terminal for replay: **a capability is
   never replayed from the beginning after this point**, because its UI state is
-  unknown and its effects may be partially durable. The only legal continuations
-  are oracle resolution or reconciliation.
+  unknown and its effects may be partially durable. A single already-armed
+  invocation may finish its remaining declared run-sheet steps (multi-dialog
+  surfaces require this), but every later potentially mutating/commit action
+  receives a fresh session/user/desktop and targeted-HWND context assertion.
+  No failed step is retried and no second invocation is started. After the
+  declared sheet finishes or aborts, the only legal continuations are oracle
+  resolution or reconciliation.
 - **verified** — envelope satisfied after the convergence window, and a second
   fresh observation reproduced the normalized state.
 - **disproven** — envelope violated, with a **characterized delta** (what
@@ -97,9 +102,11 @@ The oracle is a **constrained transition with convergence semantics**, never
 - **derive** — relations over pre/post facts rather than literal expected
   values (e.g. `post.version.machine == pre.version.machine + 1`).
 - **convergence** — post-state may be asynchronous (AD/SYSVOL propagation).
-  Poll within the window until require+derive are stable; freeze the normalized
-  state; take a **second fresh observation** which must reproduce it. Timeout is
-  not failure: it is **indeterminate**.
+  Poll within the window until every post-state fact referenced by require,
+  derive, or forbid is stable; freeze the normalized state; take the declared
+  number of fresh observations, spaced by the poll interval, which must
+  reproduce it. An envelope that observes no post-state facts is invalid.
+  Timeout is not failure: it is **indeterminate**.
 
 Assertion output is always one of: satisfied / disproven (with characterized
 delta) / indeterminate.
@@ -117,6 +124,12 @@ capability's execution pins the channels it may use:
 | Input delivery | `may_use: [helper_input, hyperv_input]` |
 | Oracle | `must_not_use: gpmc_ui` |
 | Cleanup | `must_use: programmatic_requery` |
+
+The executor validates the run-sheet against this declaration before acquiring
+or manipulating the console. Setup and cleanup admit only programmatic script
+steps; a programmatic operation-under-test step must explicitly declare
+`gpmc_com`; UI gestures require `gpmc_ui`, `helper_input`, and the orientation
+channels their primitives actually use. Phase names are a closed vocabulary.
 
 Rationale: using the more trusted channel can invalidate the experiment. If the
 question is "what does GPMC author for this setting?", authoring via COM or by
@@ -187,9 +200,11 @@ Rules:
 
 ### Compatibility predicate
 
-Qualification binds to **observed surface properties**, not administrative
-version labels. The profile declares what its selectors depend on; the
-predicate checks those dependencies per input rung:
+Qualification is intended to bind to **observed surface properties**, not
+administrative version labels. The profile currently declares what its
+selectors depend on, but transaction execution does not yet collect or compare
+a qualified binary/hash/language/dialog-fingerprint baseline. Therefore these
+rows are dependency metadata, not an enforced compatibility predicate:
 
 - **strong**: snap-in/binary module versions and content hashes; dialog/control
   tree fingerprint.
@@ -198,25 +213,33 @@ predicate checks those dependencies per input rung:
   matching).
 - **provenance**: OS build — recorded, not inherently invalidating.
 
-A mismatch on a strong dependency refuses the capability. A mismatch on a weak
-one degrades the driver to a lower input rung *if the capability's channel
-contract still permits that rung*, with provenance recorded. A cumulative OS
-update that leaves the relevant binaries and UI tree identical does not
-invalidate a driver; a GPMC DLL change does, even if the OS build number did
-not move.
+Once baseline capture is implemented, a mismatch on a strong dependency must
+refuse the capability. A mismatch on a weak one must degrade the driver to a
+lower input rung *if the capability's channel contract still permits that
+rung*, with provenance recorded. Until then, banked estate runs qualify only
+the exact exercised environment and do not establish portable compatibility.
 
 ## 7. Lease and interactive context assertions
 
 An **exclusive interactive-session lease** is held for the transaction's
-duration: while active, nothing else — human or agent — manipulates that
-desktop.
+duration. A kernel-backed controller lock excludes cooperating WCD processes
+before wake/unlock or any later desktop action. It cannot technically prevent a
+human or an unrelated tool from touching the console; exclusive operator access
+is an estate precondition, and the fresh context/target checks below detect
+observable interference before commit.
 
 Before every commit point, the driver takes a fresh **interactive context
-assertion** and requires an exact match against the expected context:
+assertion**. Session, user, and desktop must match the prepared context exactly.
+The surface identity is asserted through the run-sheet's current explicit HWND:
+a fresh targeted UIA dump verifies the window still exists and matches the
+selector, and the input request focus-guards that same HWND immediately before
+injection. This split is required because each single-shot helper invocation can
+self-shadow with its own transient console window; the helper's ambient
+foreground HWND/PID is not a stable surface identity.
 
 ```
-session_id + user identity + desktop name + foreground {hwnd, pid, process}
-+ surface fingerprint (title, class, rect, UIA digest)
+session_id + user identity + desktop name
++ targeted surface {hwnd, pid, process, title, class, rect, UIA digest}
 ```
 
 Any deviation invalidates the pending operation -> **indeterminate** (never a
@@ -287,7 +310,11 @@ observer implementation shares no code with the product.
 
 ## 11. Capability specification
 
-`capabilities/*.json`, hash-bound when qualified:
+`capabilities/*.json` are revisioned documents. Current transaction-record v1
+records the capability ID and run-sheet name, but not the capability revision
+or a content digest; current qualification is therefore **not hash-bound**.
+The qualification ledger binds banked evidence to revisions explicitly until a
+future record version carries the immutable digest:
 
 ```jsonc
 {
@@ -312,8 +339,12 @@ relearned from WEL).
 
 ## 12. Modes and policy
 
-- **Qualified execution** — the agent may invoke only hash-bound capability
-  ids whose compatibility predicate passes. Raw input is unreachable.
+- **Qualified execution (target state)** — the agent may invoke only
+  hash-bound capability revisions whose compatibility predicate passes. Raw
+  input is unreachable. The current CLI enforces schemas, profile action
+  classes, channel contracts, lease/context/recovery guards, and independent
+  envelopes, but does not yet enforce the capability hash or compatibility
+  baseline described above.
 - **Driver development** — raw inspect/input allowed, but only when the
   evidence runtime proves the target is a disposable estate with a
   demonstrated exact-baseline recovery route (checkpoint). A confirmation
@@ -339,9 +370,14 @@ residue, e.g. USN movement, audit events). Three terms, used precisely:
   the R2 question space (UTF-16/LF/BOM variants, `[Policy]` vs
   `[ScriptsConfig]`, packed versions).
 - Helper and Hyper-V input scripts are validated structurally (JSON contract
-  round-trips, parse checks under Windows PowerShell 5.1). **Their real
-  behaviour is unknown until the first estate window** — that qualification is
-  Phase 2 work, recorded in `docs/claim-registry.md` when it happens.
+  round-trips, parse checks under Windows PowerShell 5.1). Banked Server 2025
+  runs qualify the exercised targeted-UIA, screenshot, input, context, cleanup,
+  and reproduction paths. Helper death/restart, unsupported desktop states,
+  and new surfaces still require their own qualification.
+- Every shipped capability is validated against the closed Draft 2020-12
+  `docs/capability-schema-v0.json` before execution and in CI. Generated
+  records are stamped/validated as transaction-record v1; the eight immutable
+  estate records are validated through the explicit v0 compatibility path.
 - Every real-environment result is certified against independent observation,
   never against the driver's report.
 
@@ -349,13 +385,13 @@ residue, e.g. USN movement, audit events). Three terms, used precisely:
 
 - No MCP/agent-facing tool surface yet. The boundary is
   runtime -> typed transaction contract -> driver RPC/CLI. The deferral is no
-  longer about the primitive — six transactions have been verified through the
-  engine. The record schema is the actual interface an agent surface would
-  program against, and it is still absorbing changes each window
-  (`unresolved` was added to `envelope_result` on 2026-09-03, commit 0c28257).
-  The plan is to freeze the record schema across one more window's worth of
-  capabilities, then design the agent surface against a schema that has
-  stopped moving.
+  longer about the primitive — eight transactions have been banked through the
+  engine. The record schema is the actual interface an agent surface will
+  program against. Version 1 is now frozen in
+  `docs/transaction-record-schema-v1.json`; new records carry that version in
+  `provenance`, while immutable pre-schema evidence is read through the
+  explicit v0 compatibility path. Agent-surface design remains deferred until
+  v1 has survived the next capability window without a revision.
 - No general GUI-understanding/vision agent. Profiles and capabilities encode
   domain knowledge; the driver aims and verifies.
 - No full Group Policy semantic model. The observer grammar grows from

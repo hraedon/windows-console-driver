@@ -43,10 +43,16 @@ from gpo_observers.facts import FactSet, JSONValue, make_fact
 from gpo_observers.snapshots import GpoRef, capture_snapshot
 
 from . import console_ops
+from .capability_schema import (
+    CapabilitySchemaError,
+    validate_capability_arguments,
+    validate_capability_document,
+)
 from .envelope import AssertionResult, converge, parse_envelope
 from .estate import EstateConfig
 from .leases import (
     ContextMismatch,
+    FileLeaseRegistry,
     ForegroundContext,
     InteractiveContext,
     Lease,
@@ -55,7 +61,15 @@ from .leases import (
     assert_context,
 )
 from .profiles import load_profile
-from .runsheets import GestureExecutor, RunSheet, RunSheetError, SheetContext, load_run_sheet
+from .record_schema import RECORD_SCHEMA_REF, RECORD_SCHEMA_VERSION
+from .runsheets import (
+    GestureExecutor,
+    RunSheet,
+    RunSheetError,
+    SheetContext,
+    load_run_sheet,
+    validate_channel_contract,
+)
 from .transaction import GuardRefused, Transaction, TransitionEvent, UndeclaredMutation
 from .transport import SessionTransport
 
@@ -179,12 +193,25 @@ param([string]$Path)
 $ErrorActionPreference = 'Stop'
 if (Test-Path $Path) {
     $bytes = [IO.File]::ReadAllBytes($Path)
+    $parent = Split-Path -Parent $Path
+    $unexpected = @(
+        Get-ChildItem -LiteralPath $parent -Force -ErrorAction Stop |
+            Where-Object { $_.FullName -ne (Get-Item -LiteralPath $Path).FullName }
+    )
     @{
         ok = $true
-        data = @{ file_b64 = [Convert]::ToBase64String($bytes) }
+        data = @{
+            file_b64 = [Convert]::ToBase64String($bytes)
+            unexpected_entry_count = $unexpected.Count
+        }
     } | ConvertTo-Json -Compress -Depth 4
 } else {
-    @{ ok = $true; data = @{} } | ConvertTo-Json -Compress -Depth 4
+    $parent = Split-Path -Parent $Path
+    $unexpected = if (Test-Path -LiteralPath $parent) {
+        @(Get-ChildItem -LiteralPath $parent -Force -ErrorAction Stop).Count
+    } else { 0 }
+    @{ ok = $true; data = @{ unexpected_entry_count = $unexpected } } |
+        ConvertTo-Json -Compress -Depth 4
 }
 exit 0
 """
@@ -192,6 +219,13 @@ exit 0
         payload = json.loads(stdout)
         facts: FactSet = {}
         data = payload.get("data") or {}
+        unexpected = data.get("unexpected_entry_count")
+        if not isinstance(unexpected, int) or isinstance(unexpected, bool) or unexpected < 0:
+            raise ExecTransactionError(
+                "migration_table observer returned no valid unexpected_entry_count"
+            )
+        fact = make_fact("migtable.parent.unexpected_entry_count", unexpected)
+        facts[fact.key] = fact
         b64 = data.get("file_b64")
         if not b64:
             fact = make_fact("migtable.present", False)
@@ -275,8 +309,6 @@ exit 0
             return facts
         import base64
 
-        fact = make_fact(f"{self._prefix}.present", True)
-        facts[fact.key] = fact
         fact = make_fact(f"{self._prefix}.present", True)
         facts[fact.key] = fact
         facts.update(self._fact_tree(self._prefix, self._parse(base64.b64decode(b64))))
@@ -370,6 +402,10 @@ def _named_collector(
         from gpo_observers.fdeploy_ini import fdeploy_fact_tree
 
         return _FileBytesCollector("fdeploy", fdeploy_fact_tree).collect
+    if name == "fdeploy_marker":
+        from gpo_observers.fdeploy_ini import fdeploy_fact_tree
+
+        return _FileBytesCollector("fdeploy_marker", fdeploy_fact_tree).collect
     raise ExecTransactionError(f"unknown observer {name!r}")
 
 
@@ -390,10 +426,17 @@ def execute_transaction(
 ) -> dict[str, object]:
     """Run one capability to a terminal state and return the record.
 
-    ``lease_registry`` is injectable so tests (and the WEL backend) can
-    observe or pre-occupy the exclusive interactive-session lease; a fresh
-    :class:`~wcd.leases.LeaseRegistry` is used when omitted.
+    ``lease_registry`` is injectable so tests can observe or pre-occupy the
+    exclusive interactive-session lease; a kernel-backed
+    :class:`~wcd.leases.FileLeaseRegistry` is used when omitted so independent
+    CLI processes contend on the same lease.
     """
+    try:
+        validate_capability_document(capability, paths.repo_root)
+        validate_capability_arguments(capability, arguments)
+    except CapabilitySchemaError as exc:
+        raise ExecTransactionError(f"capability schema invalid: {exc}") from exc
+
     capability_id = str(capability.get("id", "unnamed"))
     surface = str(capability.get("surface", estate.vm_name))
     sheet_name = capability.get("run_sheet")
@@ -401,6 +444,15 @@ def execute_transaction(
         raise ExecTransactionError(f"capability {capability_id!r} names no run_sheet")
     sheet = load_run_sheet(paths.run_sheets / f"{sheet_name}.json")
     profile = load_profile(paths.profiles / f"{surface}.toml")
+    gpo_transaction = bool(capability.get("gpo_transaction", True))
+    try:
+        validate_channel_contract(
+            sheet,
+            capability.get("channel_contract"),
+            require_programmatic_requery=gpo_transaction,
+        )
+    except RunSheetError as exc:
+        raise ExecTransactionError(f"channel contract invalid: {exc}") from exc
 
     provenance = RunProvenance()
     if plan_provenance:
@@ -410,8 +462,7 @@ def execute_transaction(
 
     txn = Transaction(transaction_id=str(uuid.uuid4()))
     events_out: list[dict[str, object]] = []
-    gpo_transaction = bool(capability.get("gpo_transaction", True))
-    registry = lease_registry if lease_registry is not None else LeaseRegistry()
+    registry = lease_registry if lease_registry is not None else FileLeaseRegistry()
     lease: Lease | None = None
     # The prepared interactive context: the helper-context baseline every
     # commit crossing is re-asserted against (contract section 7).
@@ -454,7 +505,25 @@ def execute_transaction(
             )
         try:
             fresh_context = _helper_context(transport)
-            assert_context(prepared_context, fresh_context)
+            # The helper is a single-shot scheduled task whose own console may
+            # hold foreground while ``context`` runs.  Comparing that transient
+            # helper HWND/PID across invocations rejects every real crossing.
+            # Assert the stable interactive-session identity here; the gesture
+            # executor independently refreshes the sheet's explicit target HWND,
+            # dumps that exact window, and focus-guards the injection itself.
+            prepared_session = InteractiveContext(
+                session_id=prepared_context.session_id,
+                user=prepared_context.user,
+                desktop=prepared_context.desktop,
+                foreground=None,
+            )
+            fresh_session = InteractiveContext(
+                session_id=fresh_context.session_id,
+                user=fresh_context.user,
+                desktop=fresh_context.desktop,
+                foreground=None,
+            )
+            assert_context(prepared_session, fresh_session)
         except ExecTransactionError as exc:
             raise RunSheetError(
                 f"interactive context unavailable at commit point {boundary!r}; the "
@@ -485,7 +554,20 @@ def execute_transaction(
         )
         record_event(txn.events[-1])
 
-    # -- 1. ensure-console -----------------------------------------------------
+    # -- 1. exclusive interactive-session lease (contract section 7) ----------
+    # Acquire before even the console assurance path: wake/unlock is desktop
+    # manipulation too, so a competing process must be refused first.
+    try:
+        lease = registry.acquire(
+            f"wcd.console:{estate.host}:{estate.vm_name}",
+            f"wcd exec-transaction {txn.transaction_id}",
+        )
+    except LeaseHeldError as exc:
+        abort_indeterminate(f"interactive session lease unavailable: {exc}")
+        return finish(None)
+    provenance.notes.append(f"interactive session lease held: {lease.target_id}")
+
+    # -- 1b. ensure-console ----------------------------------------------------
     console_state = console_ops.wait_console_unlocked(transport, estate)
     provenance.console["state"] = console_state.state
     provenance.console["helper_responds"] = console_state.helper_responds
@@ -495,21 +577,21 @@ def execute_transaction(
         )
         return finish(None)
 
-    # -- 1b. exclusive interactive-session lease (contract section 7) ----------
-    # A real lease against a real registry: a second concurrent transaction
-    # for the same console is refused before anything moves.
-    try:
-        lease = registry.acquire(
-            f"wcd.console:{estate.vm_name}", f"wcd exec-transaction {txn.transaction_id}"
-        )
-    except LeaseHeldError as exc:
-        abort_indeterminate(f"interactive session lease unavailable: {exc}")
-        return finish(None)
-    provenance.notes.append(f"interactive session lease held: {lease.target_id}")
-
     # -- 2. recovery check ------------------------------------------------------
-    recovery_ok = _checkpoint_exists(transport, estate)
-    provenance.notes.append(f"recovery checkpoint present: {recovery_ok}")
+    try:
+        recovery_ok = _checkpoint_exists(transport, estate)
+    except Exception as exc:
+        abort_indeterminate(f"recovery checkpoint probe failed: {exc}")
+        return finish(None)
+    provenance.notes.append(
+        f"recovery checkpoint {estate.checkpoint_name!r} present: {recovery_ok}"
+    )
+    if not recovery_ok:
+        abort_indeterminate(
+            "exact qualified recovery checkpoint is not configured or not present; "
+            "refusing setup"
+        )
+        return finish(None)
 
     # -- 3. setup (setup role: programmatic) -------------------------------------
     executor = GestureExecutor(
@@ -712,11 +794,14 @@ def _phase_sheet(sheet: RunSheet, phase: str) -> RunSheet:
 
 
 def _checkpoint_exists(t: SessionTransport, estate: EstateConfig) -> bool:
+    if not estate.checkpoint_name:
+        return False
     script = (
-        "$s = @(Get-VMSnapshot -VMName $args[0] -ErrorAction SilentlyContinue); "
+        "$s = @(Get-VMSnapshot -VMName $args[0] -Name $args[1] "
+        "-ErrorAction SilentlyContinue); "
         "\"count=$($s.Count)\""
     )
-    stdout = t.host(script, [estate.vm_name], timeout=60)
+    stdout = t.host(script, [estate.vm_name, estate.checkpoint_name], timeout=60)
     match = re.search(r"count=(\d+)", stdout)
     return match is not None and int(match.group(1)) > 0
 
@@ -935,7 +1020,15 @@ def _emit(
     state = txn.state or "indeterminate"
     if state not in _RECORD_STATES:
         state = "indeterminate"
-    verdict = txn.indeterminate_reason or txn.characterization or (
+    pre_prepare_abort = next(
+        (
+            note.removeprefix("pre-prepare abort: ")
+            for note in reversed(provenance.notes)
+            if note.startswith("pre-prepare abort: ")
+        ),
+        None,
+    )
+    verdict = txn.indeterminate_reason or txn.characterization or pre_prepare_abort or (
         "transaction reached " + state
     )
     envelope_out: dict[str, object] = {}
@@ -962,6 +1055,11 @@ def _emit(
             "delta": delta_entries,
         }
     provenance_block: dict[str, object] = {
+        # Keep the five top-level wire keys stable for the WEL backend.  The
+        # record contract is versioned in provenance so new consumers can
+        # select the schema without breaking the existing envelope.
+        "$schema": RECORD_SCHEMA_REF,
+        "schema_version": RECORD_SCHEMA_VERSION,
         "capability": capability_id,
         "run_sheet": sheet_name,
         "transaction_id": txn.transaction_id or "",

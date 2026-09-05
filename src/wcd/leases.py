@@ -1,7 +1,10 @@
 """Exclusive interactive-session lease and context assertions (contract section 7).
 
-While a transaction is live, **nothing else -- human or agent -- manipulates
-that desktop**. This module is the pure, in-memory model of that promise:
+While a transaction is live, cooperating WCD processes must not manipulate the
+same desktop concurrently. This module provides both the pure in-memory model
+and the kernel-backed registry used by real executor processes (human/unrelated
+tool exclusion remains an estate precondition checked indirectly through fresh
+interactive-context assertions):
 
 - :meth:`LeaseRegistry.acquire` is exclusive: a second concurrent acquire for
   the same target is refused with :class:`LeaseHeldError`, which names the
@@ -14,6 +17,8 @@ that desktop**. This module is the pure, in-memory model of that promise:
   not block the desktop forever -- instead the new holder takes over and the
   stale holder discovers the loss at its next :meth:`LeaseRegistry.is_active`
   check. Clock is injected per registry, so tests never wait.
+- :class:`FileLeaseRegistry` applies the same ownership API to an OS file lock,
+  so independent CLI processes contend and process death releases the lock.
 
 Before every commit point the driver takes a **fresh interactive context
 assertion** and requires an exact match against the expected context:
@@ -25,14 +30,22 @@ Named unsupported states (Secure Desktop/UAC, RDP reconnect, session switch,
 resolution change, helper restart in another session) all appear through this
 one mechanism: as context mismatches.
 
-Pure logic only: no I/O, no clocks of its own beyond the injected one.
+The in-memory registry and context comparison remain pure; the file registry is
+the small deployment boundary that owns the kernel lock.
 """
 
 from __future__ import annotations
 
+import hashlib
+import importlib
+import json
+import os
+import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
+from typing import BinaryIO
 
 
 class LeaseError(Exception):
@@ -129,6 +142,144 @@ class LeaseRegistry:
 
     def _is_live(self, lease: Lease) -> bool:
         return lease.expires_at is None or self._clock() < lease.expires_at
+
+
+class FileLeaseRegistry:
+    """Kernel-backed lease registry shared by independent controller processes.
+
+    One stable lock file is used per target.  The operating system owns the
+    actual byte-range/advisory lock, so a crashed process releases exclusivity
+    automatically; the file itself is only durable holder metadata.
+    """
+
+    def __init__(
+        self,
+        directory: str | Path | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._clock = clock
+        self._directory = (
+            Path(directory)
+            if directory is not None
+            else Path(tempfile.gettempdir()) / "windows-console-driver" / "leases"
+        )
+        self._held: dict[str, tuple[Lease, BinaryIO]] = {}
+
+    def acquire(
+        self, target_id: str, holder: str, *, ttl_seconds: float | None = None
+    ) -> Lease:
+        if not target_id:
+            raise ValueError("target_id must be non-empty")
+        if not holder:
+            raise ValueError("holder must be non-empty")
+        if ttl_seconds is not None:
+            raise ValueError("kernel-backed leases do not support TTLs")
+        current = self._held.get(target_id)
+        if current is not None:
+            raise LeaseHeldError(target_id, current[0].holder)
+
+        self._directory.mkdir(parents=True, exist_ok=True)
+        path = self._path_for(target_id)
+        handle = path.open("a+b")
+        try:
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b"\0")
+                handle.flush()
+            _lock_handle(handle)
+        except OSError as exc:
+            handle.close()
+            raise LeaseHeldError(target_id, _read_holder(path) or "another process") from exc
+
+        lease = Lease(
+            target_id=target_id,
+            holder=holder,
+            acquired_at=self._clock(),
+            expires_at=None,
+        )
+        metadata = json.dumps({"holder": holder, "pid": os.getpid()}).encode("utf-8")
+        handle.seek(1)
+        handle.truncate()
+        handle.write(metadata)
+        handle.flush()
+        self._held[target_id] = (lease, handle)
+        return lease
+
+    def release(self, lease: Lease) -> None:
+        current = self._held.get(lease.target_id)
+        if current is None or current[0] is not lease:
+            raise LeaseNotHeldError(
+                lease.target_id,
+                "the registry holds a different lease or none; present the lease "
+                "object you were given",
+            )
+        handle = current[1]
+        try:
+            _unlock_handle(handle)
+        finally:
+            handle.close()
+            del self._held[lease.target_id]
+
+    def holder_of(self, target_id: str) -> str | None:
+        current = self._held.get(target_id)
+        if current is not None:
+            return current[0].holder
+        path = self._path_for(target_id)
+        if not path.exists():
+            return None
+        handle = path.open("a+b")
+        try:
+            try:
+                _lock_handle(handle)
+            except OSError:
+                return _read_holder(path) or "another process"
+            _unlock_handle(handle)
+            return None
+        finally:
+            handle.close()
+
+    def is_active(self, lease: Lease) -> bool:
+        current = self._held.get(lease.target_id)
+        return current is not None and current[0] is lease and not current[1].closed
+
+    def _path_for(self, target_id: str) -> Path:
+        digest = hashlib.sha256(target_id.encode("utf-8")).hexdigest()
+        return self._directory / f"{digest}.lock"
+
+
+def _lock_handle(handle: BinaryIO) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        fcntl = importlib.import_module("fcntl")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _unlock_handle(handle: BinaryIO) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        fcntl = importlib.import_module("fcntl")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def _read_holder(path: Path) -> str | None:
+    try:
+        # Byte zero is the locked region. Read metadata from byte one so a
+        # contender can identify the holder without touching the held byte.
+        with path.open("rb") as handle:
+            handle.seek(1)
+            payload = json.loads(handle.read().decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    holder = payload.get("holder") if isinstance(payload, dict) else None
+    return holder if isinstance(holder, str) and holder else None
 
 
 # --- Interactive context assertions -------------------------------------------

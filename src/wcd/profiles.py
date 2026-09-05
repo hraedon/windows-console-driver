@@ -16,16 +16,12 @@ development**, never discovered at runtime (section 6 rule 1). Crossing an
 undeclared mutating boundary is a hard stop and a
 :class:`ProfileInvalid` finding (rule 2), and everything before the first
 commit point must be replayable from scratch (rule 3). The profile also
-declares what its selectors depend on, which is what the compatibility
-predicate checks per input rung (strong dependencies refuse; weak ones degrade
-the input rung; OS build is provenance, recorded not invalidating).
+   declares what its selectors depend on. Those declarations are retained as
+   qualification metadata; the runtime does not yet capture and compare the
+   qualified dependency values needed for an enforced compatibility predicate.
 
-THE SHIPPED STUB IS NOT YET THIS SHAPE
-    ``profiles/gpmc-server2025.toml`` is, by its own header, a narrative stub
-    ("Status: sketch only. Nothing here is qualified"): markdown-ish tables and
-    bullet prose that :mod:`tomllib` rejects. It is left untouched, and this
-    loader is built against the *typed* TOML shape the stub will be converted
-    to -- documented here so the conversion is mechanical::
+The shipped ``profiles/gpmc-server2025.toml`` uses the typed, closed TOML
+shape this module validates::
 
         [profile]
         surface = "gpmc-server2025"
@@ -49,13 +45,11 @@ THE SHIPPED STUB IS NOT YET THIS SHAPE
         dependency = "ui_language"
         strength = "strong"
 
-    The schema is closed: unknown keys are :class:`ProfileInvalid`, because a
-    profile that silently ignores a misspelled section classifies nothing.
-    The stub's action table converts 1:1 (seven actions; the manual-regime
-    commit-boundary facts fold into ``notes``), its selectors become
-    ``[selectors.*]`` tables, and its dependency prose becomes
-    ``[[selector_dependencies]]`` rows. ``tests/test_profiles.py`` pins the
-    stub's current un-parseability so the conversion cannot happen silently.
+The schema is closed: unknown keys are :class:`ProfileInvalid`, because a
+profile that silently ignores a misspelled section classifies nothing. The
+banked estate records qualify the exercised action/selector paths; the profile
+notes retain conservative classifications where exact per-dialog durability
+was not isolated.
 """
 
 from __future__ import annotations
@@ -80,8 +74,8 @@ ACTION_CLASSES: Final[frozenset[str]] = frozenset(
     }
 )
 
-# The compatibility-predicate vocabulary from contract section 6. OS build is
-# provenance: recorded, not inherently invalidating.
+# The compatibility-dependency vocabulary from contract section 6. Runtime
+# comparison against qualified values is not implemented yet.
 DEPENDENCY_NAMES: Final[frozenset[str]] = frozenset(
     {"binary_version", "dialog_fingerprint", "ui_language", "dpi", "theme", "os_build"}
 )
