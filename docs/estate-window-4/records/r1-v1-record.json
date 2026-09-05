@@ -1,0 +1,210 @@
+{
+  "state": "verified",
+  "verdict": "transaction reached verified",
+  "envelope_result": {
+    "status": "satisfied",
+    "satisfied": [
+      "require[0] fact='migtable'",
+      "require[1] fact='migtable.xml_parses'",
+      "require[2] fact='migtable.mapping_count'",
+      "require[3] fact='migtable.gpmc_namespace'",
+      "require[4] fact='migtable.first_mapping_type'"
+    ],
+    "violated": [],
+    "unresolved": [],
+    "unclassified": [],
+    "characterization": "satisfied: 5 clause(s) held; 18 delta entries all covered\n  covered changed: migtable.present (category 'content')\n  covered added: migtable.bytes (category 'unclassified')\n  covered added: migtable.encoding.bom (category 'unclassified')\n  covered added: migtable.mapping.0.destination (category 'unclassified')\n  covered added: migtable.mapping.0.source (category 'unclassified')\n  covered added: migtable.mapping.0.type (category 'unclassified')\n  covered added: migtable.mapping.1.destination (category 'uncla",
+    "delta": [
+      {
+        "key": "migtable.present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "migtable.bytes",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 1736
+      },
+      {
+        "key": "migtable.encoding.bom",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "utf16le"
+      },
+      {
+        "key": "migtable.mapping.0.destination",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "LAB\\zz-studio-dst-user"
+      },
+      {
+        "key": "migtable.mapping.0.source",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "LAB\\zz-studio-src-user"
+      },
+      {
+        "key": "migtable.mapping.0.type",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "User"
+      },
+      {
+        "key": "migtable.mapping.1.destination",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "LAB\\zz-studio-src-local"
+      },
+      {
+        "key": "migtable.mapping.1.source",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "LAB\\zz-studio-src-local"
+      },
+      {
+        "key": "migtable.mapping.1.type",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "LocalGroup"
+      },
+      {
+        "key": "migtable.mapping.2.destination",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "LAB\\zz-studio-dst-group"
+      },
+      {
+        "key": "migtable.mapping.2.source",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "LAB\\zz-studio-src-group"
+      },
+      {
+        "key": "migtable.mapping.2.type",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "GlobalGroup"
+      },
+      {
+        "key": "migtable.mapping.3.destination",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "\\\\zz-studio-dst\\share"
+      },
+      {
+        "key": "migtable.mapping.3.source",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "\\\\zz-studio-src\\share"
+      },
+      {
+        "key": "migtable.mapping.3.type",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "UNCPath"
+      },
+      {
+        "key": "migtable.mapping_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 4
+      },
+      {
+        "key": "migtable.root_tag",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "{http://www.microsoft.com/GroupPolicy/GPOOperations/MigrationTable}MigrationTable"
+      },
+      {
+        "key": "migtable.xml_parses",
+        "kind": "added",
+        "before": "<missing>",
+        "after": true
+      }
+    ]
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability setup.author_migration_table prepared over GPO None"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability setup.author_migration_table invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'commit_migration_table_save' (profile class 'commit_point')"
+    },
+    {
+      "sequence": 4,
+      "from_state": "commit_attempted",
+      "to_state": "verified",
+      "reason": "converged after 2 polls, 2 reproductions"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v1.json",
+    "schema_version": 1,
+    "capability": "setup.author_migration_table",
+    "run_sheet": "setup.author_migration_table",
+    "transaction_id": "27321b2d-0895-4af3-92fc-de0c77aa97c8",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": {
+            "stdout": "System.__ComObject\r\nSystem.__ComObject\r\nSystem.__ComObject\r\nSystem.__ComObject\r\nsaved=C:\\gpo-studio\\manual\\r01-migtable-v1\\studio.migtable"
+          }
+        },
+        {
+          "index": 1,
+          "step": "commit[commit_migration_table_save]",
+          "ok": true,
+          "detail": {
+            "boundary": "commit_migration_table_save"
+          }
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "removed_dir=C:\\gpo-studio\\manual\\r01-migtable-v1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:LabMS01",
+      "recovery checkpoint present: True"
+    ]
+  }
+}

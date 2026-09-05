@@ -32,9 +32,9 @@
     "orientation": ["uia", "hwnd", "screenshot"],
     "input_delivery": ["helper_input", "hyperv_input"],
     "oracle": ["gpo_observers"],
-    "cleanup": ["powershell"]
+    "cleanup": ["powershell", "programmatic_requery"]
   },
-  "first_commit_point": "startup-scripts-dialog-ok",
+  "first_commit_point": "ok_child_dialog",
   "run_sheet": "gpmc.author_scripts_ps_order",
   "gpo_transaction": true,
   "fact_plan": {
@@ -60,12 +60,36 @@
         "predicate": "post['scripts_ini.machine.Startup.0.script'] == args['script1_name']"
       },
       {
+        "fact": "scripts_ini.machine.Startup.entry_count",
+        "predicate": "post.scripts_ini.machine.Startup.entry_count == 2"
+      },
+      {
+        "fact": "scripts_ini.machine.Startup.0.parameters",
+        "predicate": "post['scripts_ini.machine.Startup.0.parameters'] == args['script1_params']"
+      },
+      {
+        "fact": "scripts_ini.machine.Startup.1.script",
+        "predicate": "post['scripts_ini.machine.Startup.1.script'] == args['script2_name']"
+      },
+      {
+        "fact": "scripts_ini.machine.Startup.1.parameters",
+        "predicate": "post['scripts_ini.machine.Startup.1.parameters'] == ''"
+      },
+      {
         "fact": "scripts_ini.ps.machine",
         "predicate": "post.scripts_ini.ps.machine.present == True"
       },
       {
         "fact": "scripts_ini.ps.machine.Startup.0.script",
         "predicate": "post['scripts_ini.ps.machine.Startup.0.script'] == args['ps1_name']"
+      },
+      {
+        "fact": "scripts_ini.ps.machine.Startup.entry_count",
+        "predicate": "post.scripts_ini.ps.machine.Startup.entry_count == 1"
+      },
+      {
+        "fact": "scripts_ini.ps.machine.Startup.0.parameters",
+        "predicate": "post['scripts_ini.ps.machine.Startup.0.parameters'] == args['ps1_params']"
       },
       {
         "fact": "scripts_ini.ps.machine.config_shape",
@@ -145,7 +169,7 @@
     },
     {
       "id": "startup_entries_match_parameters",
-      "checks": "The post-state scripts.ini machine Startup section carries exactly the parameterized entries from the authored args (script1 with parameters, script2 parameterless, authored order, no extras); psscripts.ini machine Startup carries exactly ps1_name with ps1_params. Beyond the bounded evaluator: list-valued comparison implemented in the assertion layer, read off the record."
+      "checks": "The envelope requires exactly two scripts.ini Startup entries and one psscripts.ini Startup entry, with each script, parameter string, and authored position matched against the capability arguments. The entry counts reject extras."
     },
     {
       "id": "sysvol_paths_contained",

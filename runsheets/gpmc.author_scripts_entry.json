@@ -126,7 +126,7 @@
     },
     {
       "action": "click_element",
-      "profile_action": "add_script_entry",
+      "profile_action": "ok_child_dialog",
       "name_regex": "^OK$"
     },
     {
@@ -148,7 +148,7 @@
     },
     {
       "action": "click_element",
-      "profile_action": "add_script_entry",
+      "profile_action": "ok_child_dialog",
       "name_regex": "^OK$"
     },
     {
@@ -197,7 +197,7 @@
     },
     {
       "action": "click_element",
-      "profile_action": "add_script_entry",
+      "profile_action": "ok_child_dialog",
       "name_regex": "^OK$"
     },
     {

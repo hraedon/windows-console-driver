@@ -2,10 +2,10 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.author_folder_redirection",
   "surface": "gpmc-server2025",
-  "revision": 1,
+  "revision": 2,
   "gpo_transaction": true,
   "run_sheet": "gpmc.author_folder_redirection",
-  "intent": "Author one Basic-mode Documents folder-redirection rule with non-default option flags on a disposable GPO through the Folder Redirection snap-in, so the file the Folder Redirection CSE actually consumes (fdeploy.ini under User\\Documents & Settings, not User Shell Folders), its keying, and its option-flag encoding can be read off the capture.",
+  "intent": "Author one Basic-mode Documents folder-redirection rule with non-default option flags on a disposable GPO through the Folder Redirection snap-in, so the empty fdeploy.ini marker and semantic fdeploy1.ini payload under User\\Documents & Settings, their keying, and the option-flag encoding can be read off the capture.",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
@@ -22,17 +22,22 @@
     "orientation": ["uia", "hwnd", "screenshot"],
     "input_delivery": ["helper_input", "hyperv_input"],
     "oracle": ["gpo_observers"],
-    "cleanup": ["powershell"]
+    "cleanup": ["powershell", "programmatic_requery"]
   },
-  "first_commit_point": "ok-folder-redirect-dialog",
+  "first_commit_point": "ok_folder_redirect_dialog",
   "fact_plan": {
     "observers": [
       {"name": "r2_core", "params": {}},
-      {"name": "fdeploy_ini", "params": {"relpath": "User\\Documents & Settings\\fdeploy.ini"}}
+      {"name": "fdeploy_marker", "params": {"relpath": "User\\Documents & Settings\\fdeploy.ini"}},
+      {"name": "fdeploy_ini", "params": {"relpath": "User\\Documents & Settings\\fdeploy1.ini"}}
     ]
   },
   "envelope": {
     "require": [
+      {
+        "fact": "fdeploy_marker",
+        "predicate": "post.fdeploy_marker.present == True and post.fdeploy_marker.encoding.bom == 'utf16le' and post.fdeploy_marker.encoding.crlf_only == True and post.fdeploy_marker.section_count == 0 and post.fdeploy_marker.entry_count == 0"
+      },
       {
         "fact": "fdeploy",
         "predicate": "post.fdeploy.present == True"
@@ -43,7 +48,27 @@
       },
       {
         "fact": "fdeploy.entries_present",
-        "predicate": "post.fdeploy.section_names != []"
+        "predicate": "post.fdeploy.section_count == 3 and post.fdeploy.entry_count == 4"
+      },
+      {
+        "fact": "fdeploy.section_names.1",
+        "predicate": "post['fdeploy.section_names.1'] == 'Folder_Redirection'"
+      },
+      {
+        "fact": "fdeploy.entries.0",
+        "predicate": "post['fdeploy.entries.0.key'] == 'version' and post['fdeploy.entries.0.value'] == '100'"
+      },
+      {
+        "fact": "fdeploy.entries.2",
+        "predicate": "post['fdeploy.entries.2.key'] == 'Flags' and post['fdeploy.entries.2.value'] == '1021'"
+      },
+      {
+        "fact": "fdeploy.entries.3",
+        "predicate": "post['fdeploy.entries.3.key'] == 'FullPath' and args['root_path'] in post['fdeploy.entries.3.value'] and '%USERNAME%' in post['fdeploy.entries.3.value']"
+      },
+      {
+        "fact": "ad.gPCUserExtensionNames",
+        "predicate": "'{25537BA6-77A8-11D2-9B6C-0000F8080861}' in post.ad.gPCUserExtensionNames and '{88E729D6-BDC1-11D1-BD2A-00C04FB9603F}' in post.ad.gPCUserExtensionNames"
       }
     ],
     "allow": [
@@ -67,18 +92,23 @@
     ],
     "derive": [
       { "relation": "post.version.user > pre.version.user" },
-      { "relation": "post.version.machine == pre.version.machine" }
+      { "relation": "post.version.machine == pre.version.machine" },
+      { "relation": "post.version.ad_versionNumber == pre.version.ad_versionNumber + 65536" },
+      { "relation": "post.version.raw != pre.version.raw" },
+      { "relation": "post.ad.versionNumber == pre.ad.versionNumber + 65536" },
+      { "relation": "post.scope.extension_lists.user != pre.scope.extension_lists.user" },
+      { "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths" }
     ],
     "convergence": { "window_seconds": 120, "poll_seconds": 6, "reproduce": 2 }
   },
   "structured_checks": [
     {
       "id": "root_path_recorded_verbatim",
-      "checks": "The authored root path appears in the recorded fdeploy entries (value-level check done at analysis from the record; the bounded evaluator cannot reach list contents)."
+      "checks": "The FullPath entry is required to contain the authored root path and %USERNAME%; the qualification record carries the complete measured value for exact review."
     },
     {
       "id": "option_flags_recorded",
-      "checks": "The three non-default Settings-tab flags (exclusive rights off, move contents on, redirect-back-on-removal) are located in the recorded entries -- which key encodes which flag is an R3 answer registered from this record."
+      "checks": "The measured semantic payload requires Flags=1021 for exclusive rights off, move contents on, and redirect-back-on-removal."
     },
     {
       "id": "user_shell_folders_absent",
@@ -87,7 +117,7 @@
   ],
   "bindings": {
     "args": "Capability arguments are bound into predicates at load time by wcd.exec_transaction.",
-    "fact_vocabulary": "fdeploy.* facts come from gpo_observers.fdeploy_ini. section_names is the ordered section-name list the observer emits; entry-level facts are dotted per index."
+    "fact_vocabulary": "fdeploy_marker.* observes the 20-byte fdeploy.ini marker; fdeploy.* observes the semantic fdeploy1.ini payload. Counts support the bounded envelope; ordered section names and entry-level facts are dotted per index."
   },
   "cleanup": {
     "strategy": "backup_then_remove_gpo",

@@ -1,6 +1,6 @@
 # Surface onboarding runbook: adding a legacy console surface to the driver
 
-This is the generalized deliverable of the first two estate windows: what it
+This is the generalized deliverable of the first three estate windows: what it
 takes to make a NEW legacy tool (secpol.msc, certificate templates, DFS
 management, anything MMC-shaped) a bounded engineering task instead of an
 adventure. Everything below was learned by driving GPMC/GPME on Server 2025
@@ -39,7 +39,7 @@ section 1). If you are writing shell history, you are skipping one of them:
    The run is done when the envelope is satisfied AND reproduction passes AND
    strict-absence cleanup returns zero.
 
-## What the first two windows measured (design constraints for any new surface)
+## What the first three windows measured (design constraints for any new surface)
 
 - **PSDirect teardown race**: `Remove-PSSession` on a PSDirect session throws
   a terminating NullReferenceException ~25-50% of the time, AFTER the work

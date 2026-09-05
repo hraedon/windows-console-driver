@@ -126,7 +126,7 @@
     },
     {
       "action": "click_element",
-      "profile_action": "add_script_entry",
+      "profile_action": "ok_child_dialog",
       "name_regex": "^OK$"
     },
     {
@@ -148,7 +148,7 @@
     },
     {
       "action": "click_element",
-      "profile_action": "add_script_entry",
+      "profile_action": "ok_child_dialog",
       "name_regex": "^OK$"
     },
     {
@@ -199,7 +199,7 @@
     },
     {
       "action": "click_element",
-      "profile_action": "add_script_entry",
+      "profile_action": "ok_child_dialog",
       "name_regex": "^OK$"
     },
     {
@@ -212,7 +212,7 @@
       "steps": [
         {
           "click_element": {
-            "name_regex": "^Run Windows PowerShell scripts (first|last)$"
+            "name_regex": "^(Not configured|Run Windows PowerShell scripts (first|last))$"
           }
         },
         {
@@ -225,7 +225,7 @@
         }
       ],
       "delay_ms": 400,
-      "label": "PS-order dropdown: click-focus + 'r' type-ahead (closed-combo first-letter select; one invocation -- dialog focus resets across invocations; 'r' picks the first R-item, a second 'r' cycles if the list orders 'last' first)"
+      "label": "PS-order dropdown: click the measured current value ('Not configured' on a fresh GPO) + 'r' type-ahead in one invocation; the selected value is accepted too for a resumed dialog"
     },
     {
       "action": "dump",

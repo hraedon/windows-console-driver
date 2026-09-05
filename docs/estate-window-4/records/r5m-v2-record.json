@@ -1,0 +1,357 @@
+{
+  "state": "verified",
+  "verdict": "transaction reached verified",
+  "envelope_result": {
+    "status": "satisfied",
+    "satisfied": [
+      "require[0] fact='sysvol'",
+      "require[1] fact='scope.sysvol_relpaths'",
+      "require[2] fact='ad.gPCMachineExtensionNames'",
+      "derive[0]",
+      "derive[1]",
+      "derive[2]",
+      "derive[3]",
+      "derive[4]",
+      "derive[5]",
+      "derive[6]",
+      "forbid[0] scope='scope.sysvol_contained'",
+      "forbid[1] scope='scope.policies.gpc_guids'"
+    ],
+    "violated": [],
+    "unresolved": [],
+    "unclassified": [],
+    "characterization": "satisfied: 12 clause(s) held; 13 delta entries all covered\n  covered changed: ad.gPCMachineExtensionNames (category 'structural')\n  covered changed: ad.uSNChanged (category 'replication_metadata')\n  covered changed: ad.versionNumber (category 'structural')\n  covered changed: ad.whenChanged (category 'timestamps')\n  covered changed: scope.extension_lists.machine (category 'structural')\n  covered changed: scope.sysvol_relpaths (category 'structural')\n  covered changed: version.ad_versionNumber (category 'stru",
+    "delta": [
+      {
+        "key": "ad.gPCMachineExtensionNames",
+        "kind": "changed",
+        "before": null,
+        "after": "[{35378EAC-683F-11D2-A89A-00C04FBBCFA2}{D02B1F72-3407-48AE-BA88-E8213C6761F1}]"
+      },
+      {
+        "key": "ad.uSNChanged",
+        "kind": "changed",
+        "before": "38031",
+        "after": "38068"
+      },
+      {
+        "key": "ad.versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "ad.whenChanged",
+        "kind": "changed",
+        "before": "2026-09-05T02:46:50.0000000+00:00",
+        "after": "2026-09-05T02:48:22.0000000+00:00"
+      },
+      {
+        "key": "scope.extension_lists.machine",
+        "kind": "changed",
+        "before": null,
+        "after": "[{35378EAC-683F-11D2-A89A-00C04FBBCFA2}{D02B1F72-3407-48AE-BA88-E8213C6761F1}]"
+      },
+      {
+        "key": "scope.sysvol_relpaths",
+        "kind": "changed",
+        "before": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "User"
+        ],
+        "after": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "Machine/Registry.pol",
+          "Machine/comment.cmtx",
+          "User"
+        ]
+      },
+      {
+        "key": "version.ad_versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "version.machine",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "version.raw",
+        "kind": "changed",
+        "before": "0",
+        "after": "1"
+      },
+      {
+        "key": "sysvol.Machine/Registry.pol.bytes",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 184
+      },
+      {
+        "key": "sysvol.Machine/Registry.pol.sha256",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "602cb9910be8e3af2a4ca75c1dcdb0bb1148b06e5e6cccf36ff9b12e2a408d3b"
+      },
+      {
+        "key": "sysvol.Machine/comment.cmtx.bytes",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 551
+      },
+      {
+        "key": "sysvol.Machine/comment.cmtx.sha256",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "68698cde3a31f93ff9eb3609e31646fec61ad3b9862b364c398c73107264860a"
+      }
+    ]
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability gpmc.author_admin_template_machine prepared over GPO 862a1f9c-722e-4d5b-9db5-8a4576877485"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability gpmc.author_admin_template_machine invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'ok_policy_setting_dialog' (profile class 'potentially_mutating')"
+    },
+    {
+      "sequence": 4,
+      "from_state": "commit_attempted",
+      "to_state": "verified",
+      "reason": "converged after 2 polls, 2 reproductions"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v1.json",
+    "schema_version": 1,
+    "capability": "gpmc.author_admin_template_machine",
+    "run_sheet": "gpmc.author_admin_template_machine",
+    "transaction_id": "ff05ee67-1169-4728-9782-2f65f90382eb",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_gpo_editor]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Local Group Policy Editor",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "context[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 4196,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 25624690
+            },
+            "asserted_window": "Local Group Policy Editor"
+          }
+        },
+        {
+          "index": 2,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "matched": false,
+            "soft": true
+          }
+        },
+        {
+          "index": 4,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              181
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              569,
+              143
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "step": "click_element[open_property_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              569,
+              200
+            ]
+          }
+        },
+        {
+          "index": 7,
+          "step": "wait_foreground[open_property_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Allow Online Tips",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 8,
+          "step": "click_element[interact_dialog_control]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              50,
+              127
+            ]
+          }
+        },
+        {
+          "index": 9,
+          "step": "click_element[ok_policy_setting_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              483,
+              612
+            ]
+          }
+        },
+        {
+          "index": 10,
+          "step": "key[close_editor_window]",
+          "ok": true,
+          "detail": {
+            "injected_events": 4
+          }
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "removed=zz-studio-evidence-r5m-v2-20260904"
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchGPME"
+              }
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence_gpo_guid": "862a1f9c-722e-4d5b-9db5-8a4576877485",
+      "evidence_gpo_remaining": 0
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:LabMS01",
+      "recovery checkpoint present: True"
+    ]
+  }
+}

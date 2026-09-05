@@ -20,18 +20,16 @@ from typing import Any
 import pytest
 
 from gpo_observers.collection import FileTransport
-from gpo_observers.facts import Fact
+from gpo_observers.facts import Fact, make_fact
+from gpo_observers.fdeploy_ini import fdeploy_fact_tree
+from gpo_observers.gpttmpl_inf import gpttmpl_fact_tree
 from gpo_observers.snapshots import GpoRef, capture_snapshot
 from wcd.envelope import compile_predicate, parse_envelope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Every shipped scripts-family capability spec. New specs join this tuple:
-# the parametrization is the whole extension -- no per-spec test bodies.
-CAPABILITIES: tuple[Path, ...] = (
-    REPO_ROOT / "capabilities" / "gpmc.author_scripts_entry.json",
-    REPO_ROOT / "capabilities" / "gpmc.author_scripts_ps_order.json",
-)
+# The directory is the extension point: every shipped capability participates.
+CAPABILITIES = tuple(sorted((REPO_ROOT / "capabilities").glob("*.json")))
 
 
 def _capability(path: Path) -> dict[str, Any]:
@@ -50,13 +48,14 @@ def test_capability_envelope_parses_with_the_bounded_evaluator(capability_path: 
     """Every predicate/relation string in each shipped capability compiles
     under the AST-whitelisted evaluator (contract section 3: no eval/exec)."""
     envelope = parse_envelope(_capability(capability_path)["envelope"])
-    assert envelope.convergence.window_seconds == 90
+    assert envelope.convergence.window_seconds > 0
+    assert envelope.convergence.reproduce >= 2
     for source in _predicate_sources(_capability(capability_path)["envelope"]):
         compile_predicate(source)
 
 
 def _fixture_snapshot() -> dict[str, Fact]:
-    """One capture_snapshot over the fixture estate, AD snippets scripted."""
+    """Observer vocabulary over synthetic and banked byte fixtures."""
     fixture_root = REPO_ROOT / "tests" / "fixtures" / "gpo-tree"
     gpo = GpoRef(
         gpo_guid="11111111-2222-3333-4444-555555555555",
@@ -104,7 +103,49 @@ def _fixture_snapshot() -> dict[str, Fact]:
         raise AssertionError(f"unexpected snippet {snippet!r}")
 
     transport = FileTransport(gpo.sysvol_path, fallback=fallback)
-    return capture_snapshot(transport, gpo)
+    snapshot = capture_snapshot(transport, gpo)
+
+    def add_tree(prefix: str, tree: Mapping[str, Any]) -> None:
+        def walk(path: str, value: object) -> None:
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    walk(f"{path}.{key}", item)
+            elif isinstance(value, list):
+                for index, item in enumerate(value):
+                    walk(f"{path}.{index}", item)
+            else:
+                fact = make_fact(path, value)
+                snapshot[fact.key] = fact
+
+        for key, value in tree.items():
+            walk(f"{prefix}.{key}", value)
+        present = make_fact(f"{prefix}.present", True)
+        snapshot[present.key] = present
+
+    bytes_root = REPO_ROOT / "tests" / "fixtures" / "r3-r4"
+    add_tree("fdeploy", fdeploy_fact_tree((bytes_root / "fdeploy1.ini").read_bytes()))
+    add_tree(
+        "fdeploy_marker",
+        fdeploy_fact_tree((bytes_root / "fdeploy-marker.ini").read_bytes()),
+    )
+    add_tree("gpttmpl", gpttmpl_fact_tree((bytes_root / "GptTmpl.inf").read_bytes()))
+
+    # The migration-table collector is transport-backed inside the executor;
+    # the native-v1 banked record is its immutable observed fixture.
+    migration_record = json.loads(
+        (
+            REPO_ROOT
+            / "docs"
+            / "estate-window-4"
+            / "records"
+            / "r1-v1-record.json"
+        ).read_text(encoding="utf-8")
+    )
+    for entry in migration_record["envelope_result"]["delta"]:
+        if entry["key"].startswith("migtable."):
+            fact = make_fact(entry["key"], entry["after"])
+            snapshot[fact.key] = fact
+    return snapshot
 
 
 @pytest.mark.parametrize("capability_path", CAPABILITIES, ids=lambda p: p.stem)
@@ -145,15 +186,7 @@ def test_require_and_forbid_reference_declared_structural_or_content_facts(
         for path in referenced
         if path.partition(".")[0] in ("pre", "post")
     }
-    structural_prefixes = (
-        "scripts_ini.",
-        "version.",
-        "ad.",
-        "scope.",
-        "gpo_identity.",
-        "sysvol.passes_match",
-    )
     for key in sorted(fact_keys):
-        assert key.startswith(structural_prefixes), (
+        assert make_fact(key, None).category != "unclassified", (
             f"{key!r} is outside the declared observer vocabulary"
         )

@@ -280,11 +280,11 @@ def test_first_commit_point_placeholder_mutation_is_invalid() -> None:
 
 
 def test_shipped_profile_loads_and_classifies_all_seven_actions() -> None:
-    """The shipped profile is now the typed TOML shape (converted 2026-09-02
-    from the narrative stub; see :mod:`wcd.profiles`). Its seven action
-    classifications must load, validate, and match the manual-regime table --
-    while its content stays UNQUALIFIED: qualification happens at the estate
-    window, not by parsing."""
+    """The typed profile's original seven-action baseline remains stable.
+
+    Additional action rows support later capabilities; the baseline mapping
+    stays pinned while estate records, not parsing alone, qualify behavior.
+    """
     stub = REPO_ROOT / "profiles" / "gpmc-server2025.toml"
     profile = load_profile(stub)
     assert profile.surface == "gpmc-server2025"

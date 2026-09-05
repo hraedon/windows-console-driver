@@ -144,19 +144,22 @@
       "name": "r3-setting-basic"
     },
     {
-      "action": "click_element",
+      "action": "keys",
       "profile_action": "interact_dialog_control",
-      "name_regex": "^Root Path:",
-      "offset_x": 0,
-      "offset_y": 16,
-      "soft": true,
-      "settle_ms": 400,
-      "label": "focus the Root Path edit"
-    },
-    {
-      "action": "type_text",
-      "profile_action": "interact_dialog_control",
-      "text": "{args.root_path}"
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Root Path:",
+            "offset_x": 0,
+            "offset_y": 16
+          }
+        },
+        {
+          "text": "{args.root_path}"
+        }
+      ],
+      "delay_ms": 400,
+      "label": "Root Path: click-focus + type in one invocation (dialog focus resets across helper invocations)"
     },
     {
       "action": "shot",
@@ -184,28 +187,45 @@
       "action": "click_element",
       "profile_action": "interact_dialog_control",
       "name_regex": "Grant the user exclusive rights",
-      "soft": true,
-      "settle_ms": 400
-    },
-    {
-      "action": "click_element",
-      "profile_action": "interact_dialog_control",
-      "name_regex": "Move the contents",
-      "soft": true,
       "settle_ms": 400
     },
     {
       "action": "click_element",
       "profile_action": "interact_dialog_control",
       "name_regex": "Redirect the folder back to the local userprofile",
-      "soft": true,
       "settle_ms": 400
+    },
+    {
+      "action": "shot",
+      "name": "r3-settings-selected"
     },
     {
       "action": "click_element",
       "profile_action": "ok_folder_redirect_dialog",
       "name_regex": "^OK$",
       "settle_ms": 2000
+    },
+    {
+      "action": "dump",
+      "label": "surface immediately after properties OK (qualification checkpoint)"
+    },
+    {
+      "action": "shot",
+      "name": "r3-post-ok-surface"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "ok_child_dialog",
+      "name_regex": "^Yes$",
+      "settle_ms": 2000
+    },
+    {
+      "action": "dump",
+      "label": "surface immediately after Folder Redirection warning acceptance"
+    },
+    {
+      "action": "shot",
+      "name": "r3-post-warning-surface"
     },
     {
       "action": "key",

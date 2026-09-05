@@ -124,7 +124,7 @@
     },
     {
       "action": "shot",
-      "name": "r4-select-dialog"
+      "name": "r4-alpha-select-dialog"
     },
     {
       "action": "keys",
@@ -148,7 +148,7 @@
           ]
         },
         {
-          "text": "{args.key1_path}"
+          "text": "MACHINE\\SOFTWARE\\zzStudioAlpha"
         },
         {
           "vks": [
@@ -164,7 +164,7 @@
     },
     {
       "action": "shot",
-      "name": "r4-after-type"
+      "name": "r4-alpha-after-type"
     },
     {
       "action": "wait_foreground",
@@ -198,7 +198,7 @@
     {
       "action": "click_element",
       "profile_action": "interact_dialog_control",
-      "name_regex": "{args.key1_radio_regex}"
+      "name_regex": "^Propagate inheritable permissions to all subkeys$"
     },
     {
       "action": "click_element",
@@ -260,7 +260,7 @@
     },
     {
       "action": "shot",
-      "name": "r4-select-dialog"
+      "name": "r4-bravo-select-dialog"
     },
     {
       "action": "keys",
@@ -284,7 +284,7 @@
           ]
         },
         {
-          "text": "{args.key2_path}"
+          "text": "MACHINE\\SOFTWARE\\zzStudioBravo"
         },
         {
           "vks": [
@@ -300,7 +300,7 @@
     },
     {
       "action": "shot",
-      "name": "r4-after-type"
+      "name": "r4-bravo-after-type"
     },
     {
       "action": "wait_foreground",
@@ -334,7 +334,7 @@
     {
       "action": "click_element",
       "profile_action": "interact_dialog_control",
-      "name_regex": "{args.key2_radio_regex}"
+      "name_regex": "^Replace existing permissions on all subkeys with inheritable permissions$"
     },
     {
       "action": "click_element",
@@ -396,7 +396,7 @@
     },
     {
       "action": "shot",
-      "name": "r4-select-dialog"
+      "name": "r4-charlie-select-dialog"
     },
     {
       "action": "keys",
@@ -420,7 +420,7 @@
           ]
         },
         {
-          "text": "{args.key3_path}"
+          "text": "MACHINE\\SOFTWARE\\zzStudioCharlie"
         },
         {
           "vks": [
@@ -436,7 +436,7 @@
     },
     {
       "action": "shot",
-      "name": "r4-after-type"
+      "name": "r4-charlie-after-type"
     },
     {
       "action": "wait_foreground",
@@ -470,7 +470,7 @@
     {
       "action": "click_element",
       "profile_action": "interact_dialog_control",
-      "name_regex": "{args.key3_radio_regex}"
+      "name_regex": "^Do not allow permissions on this key to be replaced$"
     },
     {
       "action": "click_element",

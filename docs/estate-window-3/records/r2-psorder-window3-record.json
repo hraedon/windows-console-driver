@@ -1,0 +1,758 @@
+{
+  "state": "verified",
+  "verdict": "transaction reached verified",
+  "envelope_result": {
+    "status": "satisfied",
+    "satisfied": [
+      "require[0] fact='scripts_ini.machine'",
+      "require[1] fact='scripts_ini.machine.config_shape'",
+      "require[2] fact='scripts_ini.machine.Startup.0.script'",
+      "require[3] fact='scripts_ini.machine.Startup.entry_count'",
+      "require[4] fact='scripts_ini.machine.Startup.0.parameters'",
+      "require[5] fact='scripts_ini.machine.Startup.1.script'",
+      "require[6] fact='scripts_ini.machine.Startup.1.parameters'",
+      "require[7] fact='scripts_ini.ps.machine'",
+      "require[8] fact='scripts_ini.ps.machine.Startup.0.script'",
+      "require[9] fact='scripts_ini.ps.machine.Startup.entry_count'",
+      "require[10] fact='scripts_ini.ps.machine.Startup.0.parameters'",
+      "require[11] fact='scripts_ini.ps.machine.config_shape'",
+      "require[12] fact='scripts_ini.ps.machine.scripts_config'",
+      "require[13] fact='ad.gPCMachineExtensionNames'",
+      "derive[0]",
+      "derive[1]",
+      "derive[2]",
+      "derive[3]",
+      "derive[4]",
+      "derive[5]",
+      "derive[6]",
+      "forbid[0] scope='ad.gPCMachineExtensionNames'",
+      "forbid[1] scope='scope.sysvol_contained'",
+      "forbid[2] scope='scope.policies.gpc_guids'"
+    ],
+    "violated": [],
+    "unresolved": [],
+    "unclassified": [],
+    "characterization": "satisfied: 24 clause(s) held; 41 delta entries all covered\n  covered changed: ad.gPCMachineExtensionNames (category 'structural')\n  covered changed: ad.uSNChanged (category 'replication_metadata')\n  covered changed: ad.versionNumber (category 'structural')\n  covered changed: ad.whenChanged (category 'timestamps')\n  covered changed: scope.extension_lists.machine (category 'structural')\n  covered changed: scope.sysvol_relpaths (category 'structural')\n  covered changed: scripts_ini.machine.encoding.bom (catego",
+    "delta": [
+      {
+        "key": "ad.gPCMachineExtensionNames",
+        "kind": "changed",
+        "before": null,
+        "after": "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]"
+      },
+      {
+        "key": "ad.uSNChanged",
+        "kind": "changed",
+        "before": "37598",
+        "after": "37691"
+      },
+      {
+        "key": "ad.versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "ad.whenChanged",
+        "kind": "changed",
+        "before": "2026-09-05T00:44:33.0000000+00:00",
+        "after": "2026-09-05T00:48:31.0000000+00:00"
+      },
+      {
+        "key": "scope.extension_lists.machine",
+        "kind": "changed",
+        "before": null,
+        "after": "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]"
+      },
+      {
+        "key": "scope.sysvol_relpaths",
+        "kind": "changed",
+        "before": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "User"
+        ],
+        "after": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "Machine/Scripts",
+          "Machine/Scripts/Shutdown",
+          "Machine/Scripts/Startup",
+          "Machine/Scripts/psscripts.ini",
+          "Machine/Scripts/scripts.ini",
+          "User"
+        ]
+      },
+      {
+        "key": "scripts_ini.machine.encoding.bom",
+        "kind": "changed",
+        "before": null,
+        "after": "utf-16le"
+      },
+      {
+        "key": "scripts_ini.machine.encoding.bom_width",
+        "kind": "changed",
+        "before": null,
+        "after": 2
+      },
+      {
+        "key": "scripts_ini.machine.encoding.cr_count",
+        "kind": "changed",
+        "before": null,
+        "after": 6
+      },
+      {
+        "key": "scripts_ini.machine.encoding.lf_count",
+        "kind": "changed",
+        "before": null,
+        "after": 6
+      },
+      {
+        "key": "scripts_ini.machine.encoding.total_bytes",
+        "kind": "changed",
+        "before": null,
+        "after": 234
+      },
+      {
+        "key": "scripts_ini.machine.present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "scripts_ini.ps.machine.config_shape",
+        "kind": "changed",
+        "before": "none",
+        "after": "scripts_config"
+      },
+      {
+        "key": "scripts_ini.ps.machine.encoding.bom",
+        "kind": "changed",
+        "before": null,
+        "after": "utf-16le"
+      },
+      {
+        "key": "scripts_ini.ps.machine.encoding.bom_width",
+        "kind": "changed",
+        "before": null,
+        "after": 2
+      },
+      {
+        "key": "scripts_ini.ps.machine.encoding.cr_count",
+        "kind": "changed",
+        "before": null,
+        "after": 6
+      },
+      {
+        "key": "scripts_ini.ps.machine.encoding.lf_count",
+        "kind": "changed",
+        "before": null,
+        "after": 6
+      },
+      {
+        "key": "scripts_ini.ps.machine.encoding.total_bytes",
+        "kind": "changed",
+        "before": null,
+        "after": 226
+      },
+      {
+        "key": "scripts_ini.ps.machine.present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "scripts_ini.ps.machine.scripts_config.StartExecutePSFirst",
+        "kind": "changed",
+        "before": null,
+        "after": "true"
+      },
+      {
+        "key": "version.ad_versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "version.machine",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "version.raw",
+        "kind": "changed",
+        "before": "0",
+        "after": "1"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.0.parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "/c alpha beta"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.0.prop.CmdLine",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-marker.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.0.prop.Parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "/c alpha beta"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.0.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "0CmdLine=zz-studio-marker.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.0.script",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-marker.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.1.parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": ""
+      },
+      {
+        "key": "scripts_ini.machine.Startup.1.prop.CmdLine",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-second.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.1.prop.Parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": ""
+      },
+      {
+        "key": "scripts_ini.machine.Startup.1.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "1CmdLine=zz-studio-second.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.1.script",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-second.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Startup.entry_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 2
+      },
+      {
+        "key": "scripts_ini.ps.machine.ScriptsConfig.entry_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 0
+      },
+      {
+        "key": "scripts_ini.ps.machine.Startup.0.parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "-Mode Alpha"
+      },
+      {
+        "key": "scripts_ini.ps.machine.Startup.0.prop.CmdLine",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-marker.ps1"
+      },
+      {
+        "key": "scripts_ini.ps.machine.Startup.0.prop.Parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "-Mode Alpha"
+      },
+      {
+        "key": "scripts_ini.ps.machine.Startup.0.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "0CmdLine=zz-studio-marker.ps1"
+      },
+      {
+        "key": "scripts_ini.ps.machine.Startup.0.script",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-marker.ps1"
+      },
+      {
+        "key": "scripts_ini.ps.machine.Startup.entry_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 1
+      }
+    ]
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability gpmc.author_scripts_ps_order prepared over GPO efc82a00-b86f-4870-b08d-d3a2195379b9"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability gpmc.author_scripts_ps_order invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'ok_child_dialog' (profile class 'potentially_mutating')"
+    },
+    {
+      "sequence": 4,
+      "from_state": "commit_attempted",
+      "to_state": "verified",
+      "reason": "converged after 2 polls, 2 reproductions"
+    }
+  ],
+  "provenance": {
+    "capability": "gpmc.author_scripts_ps_order",
+    "run_sheet": "gpmc.author_scripts_ps_order",
+    "transaction_id": "b592ce41-326c-4401-b85b-4a801b5ad490",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_gpo_editor]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Local Group Policy Editor",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "context[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 3040,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 29622424
+            },
+            "asserted_window": "Local Group Policy Editor"
+          }
+        },
+        {
+          "index": 2,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "matched": false,
+            "soft": true
+          }
+        },
+        {
+          "index": 4,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "step": "click_element[open_startup_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 7,
+          "step": "wait_foreground[open_startup_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Startup Properties",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 8,
+          "step": "click_element[open_startup_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              207,
+              237
+            ]
+          }
+        },
+        {
+          "index": 9,
+          "step": "click_element[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              348,
+              235
+            ]
+          }
+        },
+        {
+          "index": 10,
+          "step": "wait_foreground[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add a Script",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 11,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 20
+          }
+        },
+        {
+          "index": 12,
+          "step": "key[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 13,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 13
+          }
+        },
+        {
+          "index": 14,
+          "step": "click_element[ok_child_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              252,
+              175
+            ]
+          }
+        },
+        {
+          "index": 15,
+          "step": "click_element[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              348,
+              235
+            ]
+          }
+        },
+        {
+          "index": 16,
+          "step": "wait_foreground[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add a Script",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 17,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 20
+          }
+        },
+        {
+          "index": 18,
+          "step": "click_element[ok_child_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              252,
+              175
+            ]
+          }
+        },
+        {
+          "index": 19,
+          "step": "key[interact_dialog_control] Ctrl+Tab -> PowerShell Scripts tab",
+          "ok": true,
+          "detail": {
+            "injected_events": 4
+          }
+        },
+        {
+          "index": 20,
+          "step": "click_element[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              348,
+              216
+            ]
+          }
+        },
+        {
+          "index": 21,
+          "step": "wait_foreground[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add a Script",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 22,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 20
+          }
+        },
+        {
+          "index": 23,
+          "step": "key[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 24,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 11
+          }
+        },
+        {
+          "index": 25,
+          "step": "click_element[ok_child_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              252,
+              175
+            ]
+          }
+        },
+        {
+          "index": 26,
+          "step": "dump PowerShell Scripts tab before ps-order select (journal names identify the order dropdown for the qualification pass)",
+          "ok": true,
+          "detail": {
+            "elements": 22,
+            "hwnd": 54198860,
+            "names": [
+              "Startup Properties",
+              "PowerShell Scripts",
+              "Windows PowerShell Startup Scripts for zz-studio-evidence-02-psorder",
+              "Up",
+              "Down",
+              "Add...",
+              "Edit...",
+              "Remove",
+              "Not configured",
+              "Show Files...",
+              "For this GPO, run scripts in the following order:",
+              "PowerShell scripts require at least Windows 7 or Windows Server 2008 R2",
+              "OK",
+              "Cancel",
+              "Apply"
+            ]
+          }
+        },
+        {
+          "index": 27,
+          "step": "keys[set_ps_order] PS-order dropdown: click the measured current value ('Not configured' on a fresh GPO) + 'r' type-ahead in one invocation; the selected value is accepted too for a resumed dialog",
+          "ok": true,
+          "detail": {
+            "injected_events": 5
+          }
+        },
+        {
+          "index": 28,
+          "step": "dump PowerShell Scripts tab after ps-order select (qualification checkpoint: dropdown must read 'Run Windows PowerShell scripts first')",
+          "ok": true,
+          "detail": {
+            "elements": 22,
+            "hwnd": 54198860,
+            "names": [
+              "Startup Properties",
+              "PowerShell Scripts",
+              "Windows PowerShell Startup Scripts for zz-studio-evidence-02-psorder",
+              "Up",
+              "Down",
+              "Add...",
+              "Edit...",
+              "Remove",
+              "Run Windows PowerShell scripts first",
+              "Show Files...",
+              "For this GPO, run scripts in the following order:",
+              "PowerShell scripts require at least Windows 7 or Windows Server 2008 R2",
+              "OK",
+              "Cancel",
+              "Apply"
+            ]
+          }
+        },
+        {
+          "index": 29,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\r2-ps-order-selected.png"
+          }
+        },
+        {
+          "index": 30,
+          "step": "click_element[ok_startup_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              200,
+              435
+            ]
+          }
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "removed=zz-studio-evidence-02-psorder"
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchGPME"
+              }
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence_gpo_guid": "efc82a00-b86f-4870-b08d-d3a2195379b9",
+      "evidence_gpo_remaining": 0
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:LabMS01",
+      "recovery checkpoint present: True"
+    ]
+  }
+}

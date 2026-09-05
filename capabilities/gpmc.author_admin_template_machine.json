@@ -2,7 +2,7 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.author_admin_template_machine",
   "surface": "gpmc-server2025",
-  "revision": 1,
+  "revision": 2,
   "gpo_transaction": true,
   "run_sheet": "gpmc.author_admin_template_machine",
   "intent": "Enable one machine-side Administrative Templates setting (Registry CSE) on a fresh disposable GPO, so the machine-half version delta in GPT.INI/AD -- and the packed-32-bit-field derive relations -- get their real test (work order R5, reading #1).",
@@ -42,10 +42,11 @@
       "gpo_observers"
     ],
     "cleanup": [
-      "powershell"
+      "powershell",
+      "programmatic_requery"
     ]
   },
-  "first_commit_point": "ok-policy-setting-dialog",
+  "first_commit_point": "ok_policy_setting_dialog",
   "fact_plan": {
     "observers": [
       {
@@ -59,6 +60,10 @@
       {
         "fact": "sysvol",
         "predicate": "post.sysvol.passes_match == True"
+      },
+      {
+        "fact": "scope.sysvol_relpaths",
+        "predicate": "'Machine/Registry.pol' in post.scope.sysvol_relpaths and 'User/Registry.pol' not in post.scope.sysvol_relpaths"
       },
       {
         "fact": "ad.gPCMachineExtensionNames",
@@ -106,9 +111,6 @@
         "relation": "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
       },
       {
-        "relation": "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
-      },
-      {
         "relation": "post.ad.versionNumber == post.version.user * 65536 + post.version.machine"
       }
     ],
@@ -121,7 +123,7 @@
   "structured_checks": [
     {
       "id": "registry_pol_appeared",
-      "checks": "Machine\\Registry.pol appears in the post SYSVOL fingerprint. The sysvol family require clause predicts the addition (the file has no dedicated observer; its appearance is the expected artifact of this capability)."
+      "checks": "Machine\\Registry.pol appears in the post SYSVOL path set while User\\Registry.pol remains absent; the bounded envelope enforces both conditions."
     },
     {
       "id": "version_packing_answer",
@@ -130,7 +132,7 @@
   ],
   "bindings": {
     "args": "Bound at load time by wcd.exec_transaction.",
-    "fact_vocabulary": "r2_core snapshot supplies version/sysvol/scope/ad facts. The sysvol-family require predicts per-file additions (Registry.pol) because this capability's artifact has no dedicated observer."
+    "fact_vocabulary": "r2_core snapshot supplies version/sysvol/scope/ad facts, including the exact relative paths used to prove the side-specific Registry.pol artifact."
   },
   "cleanup": {
     "strategy": "remove_gpo",

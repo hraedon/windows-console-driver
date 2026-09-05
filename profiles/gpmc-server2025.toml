@@ -1,19 +1,18 @@
 # Driver profile: gpmc-server2025
 #
-# Status: STRUCTURALLY TYPED, CONTENT UNQUALIFIED. The shape is the typed TOML
-# documented in wcd.profiles; every substantive value below (selectors,
-# dependencies, commit-boundary facts) is an initial hypothesis from the
-# manual evidence regime and carries an UNVERIFIED marker where it has never
-# been observed on a real Server 2025 GPMC console. The first estate window
-# (driver-development mode, checkpoint-backed estate) validates each marker
-# and fills the fingerprints. Nothing here authorises qualified execution.
+# Status: STRUCTURALLY TYPED, ESTATE-OBSERVED FOR THE EXERCISED FLOWS. R2-R5
+# records cover the named Server 2025 dialogs and actions used by the shipped
+# capabilities. Display-name selectors remain strongly bound to UI language;
+# unexercised paths, different builds, and exact per-dialog durability timing
+# remain qualification work rather than inferred portability.
 
 [profile]
 surface = "gpmc-server2025"
 description = "GPMC / GPME (gpmc.msc, group policy editor snap-ins)"
 os_family = "Windows Server 2025"
 os_build_family = "26100"
-# UNVERIFIED: presumed first commit point; validated at the spike.
+# Historical conservative default. Individual capabilities declare their own
+# first potentially-mutating boundary when it occurs earlier.
 first_commit_point = "ok_startup_scripts_dialog"
 
 # Action classifications (contract section 6). The commit-boundary facts are
@@ -33,24 +32,23 @@ notes = "opens the Scripts (Startup/Shutdown) property sheet"
 
 [actions.add_script_entry]
 class = "reversible_pre_commit"
-notes = "child dialog; cancel undoes; UNVERIFIED whether an OK inside the child dialog is itself a commit point"
+notes = "child dialog; cancel undoes; R2 confirms the end-to-end effect, while exact child-OK durability before the parent OK remains unisolated"
 
 [actions.set_ps_order]
 class = "reversible_pre_commit"
-notes = "PowerShell-order dropdown selection; UNVERIFIED whether it persists before the parent OK"
+notes = "PowerShell-order dropdown selection; R2 ps-order qualifies the visible selection and wire effect, while persistence before parent OK remains unisolated"
 
 [actions.ok_startup_scripts_dialog]
 class = "commit_point"
-notes = "UNVERIFIED: presumed scripts.ini flush under Machine\\Scripts at dialog OK (manual-regime hypothesis)"
+notes = "R2 correlates parent dialog OK with the certified scripts.ini/psscripts.ini result; earlier child boundaries remain conservatively potentially_mutating"
 
 [actions.cancel_dialog]
 class = "reversible_pre_commit"
 notes = "closes without commit"
 
-# Actions added 2026-09-03 for the R3/R4/R5 capability set. The R2 classes
-# above stay untouched: they are qualified by the R2 pilot, not re-typed
-# opportunistically. The new rows carry the same UNVERIFIED discipline --
-# hypotheses to be validated by their captures, refined per capability.
+# Actions added 2026-09-03 for the R3/R4/R5 capability set. Their end-to-end
+# effects are estate-qualified; conservative potentially_mutating classes stay
+# in place where a run did not isolate the exact per-dialog durability edge.
 
 [actions.open_property_dialog]
 class = "reversible_pre_commit"
@@ -66,15 +64,15 @@ notes = "OK inside a child dialog (Add script entry, Add Key...): UNVERIFIED whe
 
 [actions.ok_folder_redirect_dialog]
 class = "commit_point"
-notes = "OK on a Folder Redirection property page; presumed fdeploy.ini flush point (UNVERIFIED until R3)"
+notes = "R3 confirms the Folder Redirection property flow writes the certified fdeploy marker/payload; the compatibility-warning boundary remains conservatively within the same armed invocation"
 
 [actions.ok_security_entry_dialog]
 class = "potentially_mutating"
-notes = "OK on a Template Security Policy Setting dialog; may append the GptTmpl.inf entry per dialog (UNVERIFIED until R4)"
+notes = "R4 confirms the end-to-end GptTmpl.inf effect; exact per-entry dialog durability remains unisolated and therefore potentially_mutating"
 
 [actions.ok_policy_setting_dialog]
 class = "potentially_mutating"
-notes = "OK on an Administrative Templates policy dialog; may write Registry.pol per setting (UNVERIFIED until R5)"
+notes = "R5 confirms the end-to-end Registry.pol effect; exact per-setting dialog durability remains unisolated and therefore potentially_mutating"
 
 [actions.close_editor_window]
 class = "commit_point"
@@ -88,23 +86,23 @@ notes = "the GPMC COM Save call behind the R1 setup-only transaction (GPMgmt.GPM
 # language strongly (contract section 6); automation_ids replace these as
 # the captures observe them.
 
-# Selectors. Every selector below is UNVERIFIED: no UIA dump has been taken
-# on a real guest console yet. automation_id fields are absent until the spike
-# observes them; title_regex values are the classic-dialog guesses.
+# Selectors used by the shipped R2-R5 flows are estate-observed in their banked
+# UI journals. Name/title selectors still lack automation IDs and therefore
+# remain strongly language/version bound; new selectors start unverified.
 
 [selectors.startup_scripts_dialog]
-# UNVERIFIED: title text from classic GPMC; expect localisation dependency.
+# Estate-observed display title; expect localisation dependency.
 title_regex = "Startup Properties"
 
 [selectors.scripts_tab]
-# UNVERIFIED: tab identified by display name until an automation_id exists.
+# Estate-observed display name; automation_id remains unavailable.
 name = "Scripts"
 
 [selectors.add_button]
 name = "Add..."
 
 [selectors.script_name_field]
-# UNVERIFIED: identification strategy not yet chosen (automation_id vs label).
+# Estate-observed label selector; automation_id remains unavailable.
 name_regex = "Script Name"
 
 [selectors.script_parameters_field]
@@ -113,8 +111,8 @@ name_regex = "Script Parameters"
 [selectors.ps_order_dropdown]
 name_regex = "following order"
 
-# Selectors for the R3/R4/R5 dialog families (UNVERIFIED until their
-# captures; classic-dialog guesses carried from the manual regime).
+# Selectors for R3/R4/R5 dialog families, observed in the corresponding banked
+# captures; portability outside the qualified estate remains dependency-bound.
 [selectors.property_sheet_dialog]
 title_regex = "Properties"
 

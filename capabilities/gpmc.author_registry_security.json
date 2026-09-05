@@ -2,54 +2,22 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.author_registry_security",
   "surface": "gpmc-server2025",
-  "revision": 1,
+  "revision": 2,
   "gpo_transaction": true,
   "run_sheet": "gpmc.author_registry_security",
-  "intent": "Author three Registry-security entries (one per propagation radio option) and one File Security entry on a disposable GPO through the Security Settings snap-in, so the integer propagation codes Windows writes to GptTmpl.inf can be read off the capture -- settling the contradiction between object_security.py (0=none/1=propagate/2=replace) and the spec-informed fixture (0=propagate/1=replace/2=do-not-allow).",
+  "intent": "Author three Registry-security entries (one per propagation radio option) on a disposable GPO through the Security Settings snap-in, so the integer propagation codes Windows writes to GptTmpl.inf can be read off the capture -- settling the contradiction between object_security.py (0=none/1=propagate/2=replace) and the spec-informed fixture (0=propagate/1=replace/2=do-not-allow).",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
     "required": [
       "gpo_name",
-      "domain_dns",
-      "key1_path",
-      "key1_radio_regex",
-      "key2_path",
-      "key2_radio_regex",
-      "key3_path",
-      "key3_radio_regex",
-      "file_path",
-      "file_radio_regex"
+      "domain_dns"
     ],
     "properties": {
       "gpo_name": {
         "type": "string"
       },
       "domain_dns": {
-        "type": "string"
-      },
-      "key1_path": {
-        "type": "string"
-      },
-      "key1_radio_regex": {
-        "type": "string"
-      },
-      "key2_path": {
-        "type": "string"
-      },
-      "key2_radio_regex": {
-        "type": "string"
-      },
-      "key3_path": {
-        "type": "string"
-      },
-      "key3_radio_regex": {
-        "type": "string"
-      },
-      "file_path": {
-        "type": "string"
-      },
-      "file_radio_regex": {
         "type": "string"
       }
     }
@@ -74,10 +42,11 @@
       "gpo_observers"
     ],
     "cleanup": [
-      "powershell"
+      "powershell",
+      "programmatic_requery"
     ]
   },
-  "first_commit_point": "ok-security-entry-dialog",
+  "first_commit_point": "ok_security_entry_dialog",
   "fact_plan": {
     "observers": [
       {
@@ -188,7 +157,7 @@
     },
     {
       "id": "entry_shape_recorded",
-      "checks": "Every [Registry Keys]/[File Security] line records its shape (quoted_csv vs key_value). The native shape question (WI-038) is answered from the record: expected quoted_csv per the corpus spec -- but the record decides."
+      "checks": "Every [Registry Keys] line records its shape (quoted_csv vs key_value). The native shape question (WI-038) is answered from the record: expected quoted_csv per the corpus spec -- but the record decides."
     },
     {
       "id": "group_membership_keying_recorded",
@@ -196,7 +165,7 @@
     }
   ],
   "bindings": {
-    "args": "Capability arguments are bound into predicates under the `args` namespace at load time (literal substitution by wcd.exec_transaction).",
+    "args": "Only the disposable GPO name and domain are caller-bound. The three distinctive registry keys and radio choices are fixed by the run sheet because the envelope certifies those exact authored values.",
     "fact_vocabulary": "gpttmpl.* facts come from gpo_observers.gpttmpl_inf; the r2_core snapshot supplies version/sysvol/scope/ad facts consumed by forbid and derive."
   },
   "cleanup": {

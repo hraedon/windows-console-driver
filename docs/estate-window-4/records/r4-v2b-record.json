@@ -1,0 +1,943 @@
+{
+  "state": "verified",
+  "verdict": "transaction reached verified",
+  "envelope_result": {
+    "status": "satisfied",
+    "satisfied": [
+      "require[0] fact='gpttmpl'",
+      "require[1] fact='gpttmpl.encoding'",
+      "require[2] fact='gpttmpl.bom'",
+      "require[3] fact='gpttmpl.alpha_code'",
+      "require[4] fact='gpttmpl.bravo_code'",
+      "require[5] fact='gpttmpl.charlie_code'",
+      "require[6] fact='gpttmpl.codes_distinct'",
+      "require[7] fact='ad.gPCMachineExtensionNames'",
+      "derive[0]",
+      "derive[1]",
+      "derive[2]",
+      "derive[3]",
+      "derive[4]",
+      "derive[5]",
+      "derive[6]",
+      "forbid[0] scope='ad.gPCMachineExtensionNames'",
+      "forbid[1] scope='scope.sysvol_contained'",
+      "forbid[2] scope='scope.policies.gpc_guids'"
+    ],
+    "violated": [],
+    "unresolved": [],
+    "unclassified": [],
+    "characterization": "satisfied: 18 clause(s) held; 53 delta entries all covered\n  covered changed: ad.gPCMachineExtensionNames (category 'structural')\n  covered changed: ad.uSNChanged (category 'replication_metadata')\n  covered changed: ad.versionNumber (category 'structural')\n  covered changed: ad.whenChanged (category 'timestamps')\n  covered changed: gpttmpl.present (category 'content')\n  covered changed: scope.extension_lists.machine (category 'structural')\n  covered changed: scope.sysvol_relpaths (category 'structural')\n  c",
+    "delta": [
+      {
+        "key": "ad.gPCMachineExtensionNames",
+        "kind": "changed",
+        "before": null,
+        "after": "[{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]"
+      },
+      {
+        "key": "ad.uSNChanged",
+        "kind": "changed",
+        "before": "38410",
+        "after": "38549"
+      },
+      {
+        "key": "ad.versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 3
+      },
+      {
+        "key": "ad.whenChanged",
+        "kind": "changed",
+        "before": "2026-09-05T03:04:45.0000000+00:00",
+        "after": "2026-09-05T03:11:06.0000000+00:00"
+      },
+      {
+        "key": "gpttmpl.present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "scope.extension_lists.machine",
+        "kind": "changed",
+        "before": null,
+        "after": "[{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]"
+      },
+      {
+        "key": "scope.sysvol_relpaths",
+        "kind": "changed",
+        "before": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "User"
+        ],
+        "after": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "Machine/Microsoft",
+          "Machine/Microsoft/Windows NT",
+          "Machine/Microsoft/Windows NT/SecEdit",
+          "Machine/Microsoft/Windows NT/SecEdit/GptTmpl.inf",
+          "Machine/Scripts",
+          "Machine/Scripts/Shutdown",
+          "Machine/Scripts/Startup",
+          "User"
+        ]
+      },
+      {
+        "key": "version.ad_versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 3
+      },
+      {
+        "key": "version.machine",
+        "kind": "changed",
+        "before": 0,
+        "after": 3
+      },
+      {
+        "key": "version.raw",
+        "kind": "changed",
+        "before": "0",
+        "after": "3"
+      },
+      {
+        "key": "gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioAlpha.propagation_code",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 0
+      },
+      {
+        "key": "gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioAlpha.sddl",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioBravo.propagation_code",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 2
+      },
+      {
+        "key": "gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioBravo.sddl",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioCharlie.propagation_code",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 1
+      },
+      {
+        "key": "gpttmpl.by_key.MACHINE_SOFTWARE_zzStudioCharlie.sddl",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.encoding.bom",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "utf16le"
+      },
+      {
+        "key": "gpttmpl.encoding.cr_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 9
+      },
+      {
+        "key": "gpttmpl.encoding.crlf_only",
+        "kind": "added",
+        "before": "<missing>",
+        "after": true
+      },
+      {
+        "key": "gpttmpl.encoding.lf_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 9
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.fields.0",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "MACHINE\\SOFTWARE\\zzStudioCharlie"
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.fields.1",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "1"
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.fields.2",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.key_path",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "MACHINE\\SOFTWARE\\zzStudioCharlie"
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.propagation_code",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 1
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "\"MACHINE\\SOFTWARE\\zzStudioCharlie\",1,\"D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)\""
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.sddl",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.registry_keys.0.shape",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "quoted_csv"
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.fields.0",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "MACHINE\\SOFTWARE\\zzStudioBravo"
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.fields.1",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "2"
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.fields.2",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.key_path",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "MACHINE\\SOFTWARE\\zzStudioBravo"
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.propagation_code",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 2
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "\"MACHINE\\SOFTWARE\\zzStudioBravo\",2,\"D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)\""
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.sddl",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.registry_keys.1.shape",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "quoted_csv"
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.fields.0",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "MACHINE\\SOFTWARE\\zzStudioAlpha"
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.fields.1",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "0"
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.fields.2",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.key_path",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "MACHINE\\SOFTWARE\\zzStudioAlpha"
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.propagation_code",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 0
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "\"MACHINE\\SOFTWARE\\zzStudioAlpha\",0,\"D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)\""
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.sddl",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "D:PAR(A;CI;KA;;;BA)(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KR;;;BU)(A;CI;KR;;;S-1-15-2-1)"
+      },
+      {
+        "key": "gpttmpl.registry_keys.2.shape",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "quoted_csv"
+      },
+      {
+        "key": "gpttmpl.sections.0.key_value_shape",
+        "kind": "added",
+        "before": "<missing>",
+        "after": true
+      },
+      {
+        "key": "gpttmpl.sections.0.line_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 1
+      },
+      {
+        "key": "gpttmpl.sections.0.name",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "Unicode"
+      },
+      {
+        "key": "gpttmpl.sections.1.key_value_shape",
+        "kind": "added",
+        "before": "<missing>",
+        "after": true
+      },
+      {
+        "key": "gpttmpl.sections.1.line_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 2
+      },
+      {
+        "key": "gpttmpl.sections.1.name",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "Version"
+      },
+      {
+        "key": "gpttmpl.sections.2.key_value_shape",
+        "kind": "added",
+        "before": "<missing>",
+        "after": false
+      },
+      {
+        "key": "gpttmpl.sections.2.line_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 3
+      },
+      {
+        "key": "gpttmpl.sections.2.name",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "Registry Keys"
+      }
+    ]
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability gpmc.author_registry_security prepared over GPO 149a2f06-c713-4254-8617-47059d7487d2"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability gpmc.author_registry_security invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'ok_security_entry_dialog' (profile class 'potentially_mutating')"
+    },
+    {
+      "sequence": 4,
+      "from_state": "commit_attempted",
+      "to_state": "verified",
+      "reason": "converged after 2 polls, 2 reproductions"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v1.json",
+    "schema_version": 1,
+    "capability": "gpmc.author_registry_security",
+    "run_sheet": "gpmc.author_registry_security",
+    "transaction_id": "e46e5f60-d29f-42dd-aa01-d7c90ed80854",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_gpo_editor]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Local Group Policy Editor",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "context[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 3236,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 47055472
+            },
+            "asserted_window": "Local Group Policy Editor"
+          }
+        },
+        {
+          "index": 2,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "matched": false,
+            "soft": true
+          }
+        },
+        {
+          "index": 4,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              181
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              429,
+              213
+            ]
+          }
+        },
+        {
+          "index": 7,
+          "step": "keys[open_property_dialog] Alt+A -> DOWN -> ENTER (Add Key)",
+          "ok": true,
+          "detail": {
+            "injected_events": 8
+          }
+        },
+        {
+          "index": 8,
+          "step": "wait_foreground[open_property_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Select Registry Key",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 9,
+          "step": "dump select dialog after combo click",
+          "ok": true,
+          "detail": {
+            "elements": 7,
+            "hwnd": 43319984,
+            "names": [
+              "Select Registry Key",
+              "Registry:",
+              "Tree1",
+              "Selected key:",
+              "CLASSES_ROOT",
+              "OK",
+              "Cancel"
+            ]
+          }
+        },
+        {
+          "index": 10,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\r4-alpha-select-dialog.png"
+          }
+        },
+        {
+          "index": 11,
+          "step": "keys[interact_dialog_control] combo click + ctrl+a + path + ENTER (one invocation)",
+          "ok": true,
+          "detail": {
+            "injected_events": 69
+          }
+        },
+        {
+          "index": 12,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\r4-alpha-after-type.png"
+          }
+        },
+        {
+          "index": 13,
+          "step": "wait_foreground[interact_dialog_control]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Database Security for MACHINE\\SOFTWARE\\zzStudioAlpha",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 14,
+          "step": "keys[interact_dialog_control] ENTER = OK on ACL (default ACL kept)",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 15,
+          "step": "wait_foreground[ok_security_entry_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add Object",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 16,
+          "step": "click_element[interact_dialog_control]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              205,
+              135
+            ]
+          }
+        },
+        {
+          "index": 17,
+          "step": "click_element[ok_security_entry_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              257,
+              307
+            ]
+          }
+        },
+        {
+          "index": 18,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              429,
+              213
+            ]
+          }
+        },
+        {
+          "index": 19,
+          "step": "keys[open_property_dialog] Alt+A -> DOWN -> ENTER (Add Key)",
+          "ok": true,
+          "detail": {
+            "injected_events": 8
+          }
+        },
+        {
+          "index": 20,
+          "step": "wait_foreground[open_property_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Select Registry Key",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 21,
+          "step": "dump select dialog after combo click",
+          "ok": true,
+          "detail": {
+            "elements": 7,
+            "hwnd": 35193548,
+            "names": [
+              "Select Registry Key",
+              "Registry:",
+              "Tree1",
+              "Selected key:",
+              "CLASSES_ROOT",
+              "OK",
+              "Cancel"
+            ]
+          }
+        },
+        {
+          "index": 22,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\r4-bravo-select-dialog.png"
+          }
+        },
+        {
+          "index": 23,
+          "step": "keys[interact_dialog_control] combo click + ctrl+a + path + ENTER (one invocation)",
+          "ok": true,
+          "detail": {
+            "injected_events": 69
+          }
+        },
+        {
+          "index": 24,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\r4-bravo-after-type.png"
+          }
+        },
+        {
+          "index": 25,
+          "step": "wait_foreground[interact_dialog_control]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Database Security for MACHINE\\SOFTWARE\\zzStudioBravo",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 26,
+          "step": "keys[interact_dialog_control] ENTER = OK on ACL (default ACL kept)",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 27,
+          "step": "wait_foreground[ok_security_entry_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add Object",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 28,
+          "step": "click_element[interact_dialog_control]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              205,
+              169
+            ]
+          }
+        },
+        {
+          "index": 29,
+          "step": "click_element[ok_security_entry_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              257,
+              307
+            ]
+          }
+        },
+        {
+          "index": 30,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              429,
+              213
+            ]
+          }
+        },
+        {
+          "index": 31,
+          "step": "keys[open_property_dialog] Alt+A -> DOWN -> ENTER (Add Key)",
+          "ok": true,
+          "detail": {
+            "injected_events": 8
+          }
+        },
+        {
+          "index": 32,
+          "step": "wait_foreground[open_property_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Select Registry Key",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 33,
+          "step": "dump select dialog after combo click",
+          "ok": true,
+          "detail": {
+            "elements": 7,
+            "hwnd": 54395500,
+            "names": [
+              "Select Registry Key",
+              "Registry:",
+              "Tree1",
+              "Selected key:",
+              "CLASSES_ROOT",
+              "OK",
+              "Cancel"
+            ]
+          }
+        },
+        {
+          "index": 34,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\r4-charlie-select-dialog.png"
+          }
+        },
+        {
+          "index": 35,
+          "step": "keys[interact_dialog_control] combo click + ctrl+a + path + ENTER (one invocation)",
+          "ok": true,
+          "detail": {
+            "injected_events": 73
+          }
+        },
+        {
+          "index": 36,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\r4-charlie-after-type.png"
+          }
+        },
+        {
+          "index": 37,
+          "step": "wait_foreground[interact_dialog_control]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Database Security for MACHINE\\SOFTWARE\\zzStudioCharlie",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 38,
+          "step": "keys[interact_dialog_control] ENTER = OK on ACL (default ACL kept)",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 39,
+          "step": "wait_foreground[ok_security_entry_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add Object",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 40,
+          "step": "click_element[interact_dialog_control]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              197,
+              215
+            ]
+          }
+        },
+        {
+          "index": 41,
+          "step": "click_element[ok_security_entry_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              257,
+              307
+            ]
+          }
+        },
+        {
+          "index": 42,
+          "step": "key[close_editor_window]",
+          "ok": true,
+          "detail": {
+            "injected_events": 4
+          }
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "backup=C:\\gpo-studio\\manual\\r04-secsettings\\backup"
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "removed=zz-studio-evidence-r4-v2b-20260904"
+              }
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchGPME"
+              }
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence_gpo_guid": "149a2f06-c713-4254-8617-47059d7487d2",
+      "evidence_gpo_remaining": 0
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:LabMS01",
+      "recovery checkpoint present: True"
+    ]
+  }
+}
