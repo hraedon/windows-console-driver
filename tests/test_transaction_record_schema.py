@@ -86,7 +86,17 @@ def test_generated_record_is_v1_and_preserves_five_top_level_wire_keys() -> None
 
 
 def test_committed_records_are_read_without_rewriting_them() -> None:
-    paths = sorted(RECORDS.glob("estate-window-*/records/*.json"))
+    # Request-level evidence records (pilot-style work-order captures, e.g.
+    # R10) are not transaction records: they carry request-shaped fields and
+    # no transaction-record envelope. They live under records/ so the
+    # claim-registry citation test can resolve them, and are excluded from
+    # this transaction-record wire-contract sweep deliberately.
+    request_records = {"r10-record.json"}
+    paths = sorted(
+        path
+        for path in RECORDS.glob("estate-window-*/records/*.json")
+        if path.name not in request_records
+    )
     assert paths
     before = {path: path.read_bytes() for path in paths}
 
