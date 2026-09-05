@@ -1425,8 +1425,9 @@ function Invoke-Dispatch {
 # Reading a redirected stdin as UTF-8 bytes is what actually guarantees the
 # encoding; the [Console]::InputEncoding assignment is for an interactive
 # console host and can legitimately refuse when stdin is redirected.
-try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
-try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+$null = $RequestFile  # Consumed in Read-RequestJson; make the script-scope use explicit.
+try { [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }
 
 function Read-RequestJson {
     if ($RequestFile) {

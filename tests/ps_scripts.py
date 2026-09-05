@@ -15,9 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 GUEST_DIR = REPO_ROOT / "guest"
 HELPER_PATH = GUEST_DIR / "helper.ps1"
 HYPERV_INPUT_PATH = GUEST_DIR / "hyperv-input.ps1"
-# The windows-evidence-lab analyzer settings, reused so the exclusions (and the
-# reasons attached to them) stay identical across the script families.
-WEL_ANALYZER_SETTINGS = Path(r"C:\projects\windows-evidence-lab\PSScriptAnalyzerSettings.psd1")
+ANALYZER_SETTINGS = REPO_ROOT / "PSScriptAnalyzerSettings.psd1"
 _POWERSHELL_FALLBACK = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 POWERSHELL = shutil.which("powershell") or _POWERSHELL_FALLBACK
 
@@ -121,16 +119,21 @@ def psscriptanalyzer_available() -> bool:
 
 
 def scriptanalyzer_findings(script: Path) -> list[str]:
-    """Run PSScriptAnalyzer (Error+Warning) with the WEL settings; return findings."""
-    settings = WEL_ANALYZER_SETTINGS if WEL_ANALYZER_SETTINGS.exists() else None
-    settings_part = f" -Settings {ps_single_quote(str(settings))}" if settings else ""
+    """Run PSScriptAnalyzer with the repository-owned settings; return findings."""
+    assert ANALYZER_SETTINGS.is_file(), f"missing analyzer settings: {ANALYZER_SETTINGS}"
     command = (
+        "$ErrorActionPreference = 'Stop'\n"
         "$findings = Invoke-ScriptAnalyzer -Path "
         + ps_single_quote(str(script))
-        + settings_part
+        + " -Settings "
+        + ps_single_quote(str(ANALYZER_SETTINGS))
         + " -Severity Error,Warning\n"
         "foreach ($f in @($findings)) { "
         "Write-Output ($f.Line.ToString() + ' ' + $f.RuleName + ': ' + $f.Message) }"
     )
     proc = run_powershell_command(command)
+    assert proc.returncode == 0, (
+        f"PSScriptAnalyzer failed for {script.name}: "
+        f"stdout={proc.stdout!r}; stderr={proc.stderr!r}"
+    )
     return [line for line in proc.stdout.splitlines() if line.strip()]
