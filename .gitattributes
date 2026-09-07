@@ -1,3 +1,8 @@
 # Hash-bound fixtures must survive checkouts byte-identical (the WEL
 # autocrlf lesson: CRLF materialization breaks SHA-256 binding).
 tests/fixtures/** -text
+
+# Raw estate captures preserved out of the gitignored runs/ tree; the
+# SHA-256 of each file is banked in gpo-studio provenance and must not
+# drift through a checkout.
+docs/estate-window-3/captures/*.ini -text
