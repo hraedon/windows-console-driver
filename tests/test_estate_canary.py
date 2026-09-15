@@ -54,6 +54,7 @@ class FakeCanaryTransport:
         nltest_rc: str = "0",
         nltest_lines: str = "",
         helper_present: bool = True,
+        helper_state: str = "Ready",
         console_active: bool = True,
         host_error: Exception | None = None,
         alive_error: Exception | None = None,
@@ -65,6 +66,7 @@ class FakeCanaryTransport:
         self.nltest_rc = nltest_rc
         self.nltest_lines = nltest_lines
         self.helper_present = helper_present
+        self.helper_state = helper_state
         self.console_active = console_active
         self.host_error = host_error
         self.alive_error = alive_error
@@ -98,7 +100,9 @@ class FakeCanaryTransport:
         if "nltest" in script:
             return f"rc={self.nltest_rc}\n{self.nltest_lines}"
         if "Get-ScheduledTask" in script:
-            return "present=1 state=Ready\n" if self.helper_present else "present=0\n"
+            if not self.helper_present:
+                return "present=0\n"
+            return f"present=1 state={self.helper_state}\n"
         if "logonui_running" in script:
             return json.dumps(
                 {
@@ -192,6 +196,15 @@ def test_dc_locator_failure_reports_rc_and_the_dns_hint() -> None:
     assert "Cannot find DC" in detail
     # The standing DC clock/DNS trap is named in the line.
     assert "DC-locator DNS" in detail
+
+
+def test_disabled_helper_task_fails_even_though_present() -> None:
+    """Presence is not usability: a disabled helper cannot start mid-lane."""
+    report = run_estate_canary(FakeCanaryTransport(helper_state="Disabled"), _ESTATE)
+    assert report.ok is False
+    detail = _details(report)["helper_task"]
+    assert "disabled" in detail
+    assert "re-enable" in detail
 
 
 def test_missing_helper_task_fails_precisely() -> None:

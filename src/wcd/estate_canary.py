@@ -59,7 +59,11 @@ $u = Get-ADUser -Identity $args[0] -Properties Enabled, PasswordExpired
 """
 
 _DC_LOCATOR_SCRIPT = r"""
-$out = @(nltest /dsgetdc:$args[0] 2>&1 | ForEach-Object { "$_" })
+# The domain binds to a named variable first: a colon-glued $args[0] in
+# argument position parses as '<domain>[0]' (measured live, first canary run),
+# which nltest answers with ERROR_INVALID_DOMAINNAME.
+$domain = [string]$args[0]
+$out = @(nltest "/dsgetdc:$domain" 2>&1 | ForEach-Object { "$_" })
 "rc=$LASTEXITCODE"
 @($out | Where-Object { $_ -and $_.Trim() }) | Select-Object -First 4
 """
@@ -211,12 +215,19 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
         out = transport.guest(
             _HELPER_TASK_SCRIPT, [estate.helper_task], timeout=_GUEST_TIMEOUT_S
         )
-        if re.search(r"present=1", out):
-            state = _line_value(out, "state") or "unknown"
+        state = _line_value(out, "state") or "unknown"
+        if re.search(r"present=1", out) and state != "disabled":
             record(
                 "helper_task",
                 True,
                 f"scheduled task {estate.helper_task!r} present (state {state})",
+            )
+        elif re.search(r"present=1", out):
+            record(
+                "helper_task",
+                False,
+                f"scheduled task {estate.helper_task!r} is {state}; the console "
+                "helper cannot start (re-enable it before the lane)",
             )
         else:
             record(
