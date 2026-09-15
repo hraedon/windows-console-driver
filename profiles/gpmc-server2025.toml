@@ -273,3 +273,19 @@ strength = "strong"
 selector = "wmi_query_dialog"
 dependency = "dialog_fingerprint"
 strength = "strong"
+
+# WI-L5: the one runtime-enforced selector dependency. The prepared-context
+# uia_digest below is the qualified baseline for this surface's pre-gesture
+# desktop; the executor refuses before setup when the live digest differs.
+# Banked from measured evidence: the SAME digest appears in the context steps
+# of every banked record across estate windows 2-7 (2026-09-03 through
+# 2026-09-15, thirteen records, checkpoint reverts between them), so the
+# digest is stable across runs and reverts on this build family.
+[[surface_fingerprints]]
+selector = "prepared_context"
+uia_digest = "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
+banked_from = "docs/estate-window-7/records/w7-record.json"
+
+# Dialog-level fingerprints (new_wmi_filter_dialog, property_sheet_dialog, ...)
+# are deliberately NOT banked yet: no qualification window has captured their
+# digests as standalone facts. They stay declared-only until measured.

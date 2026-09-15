@@ -39,6 +39,7 @@ from wcd import cli, console_ops
 from wcd.console_ops import ConsoleState, LockAudit, RebootReadiness
 from wcd.estate import EstateConfig
 from wcd.estate_canary import CanaryCheck, CanaryReport
+from wcd.exec_transaction import ExecTransactionError
 
 # Synthetic-estate identifiers only: zz- placeholders per the project
 # convention. Nothing here names a real host, domain, user, or path, and the
@@ -700,3 +701,35 @@ def test_estate_canary_refuses_a_transport_that_will_not_start(
     assert code == 2
     assert "canary error" in capsys.readouterr().err
     assert capsys.readouterr().out == ""
+
+
+def test_a_determinate_pre_setup_refusal_exits_2_with_no_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """The surface-fingerprint gate raises; the CLI answers exit 2, no record.
+
+    Nothing mutated, so no record is owed and no reconciliation is implied --
+    WEL reads exit 2 as a determinate refusal, which is exactly the class of
+    failure a mismatched qualified surface is.
+    """
+    monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
+    _install_transport(monkeypatch)
+
+    def refuse(**_kwargs: object) -> dict[str, object]:
+        raise ExecTransactionError(
+            "prepared surface fingerprint mismatch: banked zz, observed zz-other"
+        )
+
+    monkeypatch.setattr(cli, "execute_transaction", refuse)
+    _stdin(
+        monkeypatch,
+        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
+    )
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "transaction error" in captured.err
+    assert "fingerprint mismatch" in captured.err
+    assert captured.out == ""

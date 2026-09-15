@@ -32,6 +32,11 @@ immutable binding, qualification notes must state the revision explicitly and
 must not infer it from the current file at review time.
 
 “Qualified” in this ledger means the named revision completed the banked estate
-experiment. It does not mean that the current runtime checked a binary/hash/UI
-fingerprint compatibility baseline; selector dependencies remain declared but
-not runtime-enforced. These records must not be generalized to a changed estate.
+experiment. Since WI-L5 the runtime enforces ONE declared dependency — the
+prepared-surface `uia_digest` banked in the profile's
+`[[surface_fingerprints]]` is compared at prepare and a mismatch refuses
+before setup (the ledger rows above were qualified with that same prepared
+context, byte-identical across windows 2–7). Every other selector dependency
+(`ui_language`, `binary_version`, per-dialog fingerprints) remains declared
+but not runtime-enforced, and no per-dialog fingerprint is banked yet. These
+records must not be generalized to a changed estate.
