@@ -97,14 +97,21 @@ if (@($hostTrio).Count -eq 3) {
     throw "host credential parameters are all-or-none: -HostUserDomain, -HostUsername, -HostPasswordEnv"
 }
 
+# Host-session parameters, assembled once. OpenTimeout rides along only where
+# the cmdlet exposes it: PowerShell on Linux carries a reduced remoting surface
+# whose New-PSSessionOption has no timeout parameters at all (measured on
+# pwsh 7.6.4), so the Linux path accepts the OS-level connect timeouts.
+$script:HostSessionParams = @{ ComputerName = $HostName }
+if ((Get-Command New-PSSessionOption).Parameters.ContainsKey('OpenTimeout')) {
+    $script:HostSessionParams['SessionOption'] = New-PSSessionOption -OpenTimeout 30000
+}
+if ($null -ne $script:HostCredential) {
+    $script:HostSessionParams['Credential'] = $script:HostCredential
+    $script:HostSessionParams['Authentication'] = 'Negotiate'
+}
+
 function Get-HostSession {
-    if ($null -ne $script:HostCredential) {
-        return New-PSSession -ComputerName $HostName -Credential $script:HostCredential `
-            -Authentication Negotiate `
-            -SessionOption (New-PSSessionOption -OpenTimeout 30000) -ErrorAction Stop
-    }
-    return New-PSSession -ComputerName $HostName `
-        -SessionOption (New-PSSessionOption -OpenTimeout 30000) -ErrorAction Stop
+    return New-PSSession @script:HostSessionParams -ErrorAction Stop
 }
 
 function Remove-HostSessionSafe {
