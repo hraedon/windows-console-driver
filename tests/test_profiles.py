@@ -311,3 +311,71 @@ def test_profiles_are_frozen_and_their_mappings_read_only() -> None:
         profile.surface = "other"  # type: ignore[misc]
     with pytest.raises(TypeError):
         profile.actions["open_gpo_editor"] = "commit_point"  # type: ignore[index]
+
+
+# --- surface fingerprints (WI-L5) -------------------------------------------------
+
+
+def test_a_banked_prepared_context_fingerprint_parses_and_looks_up() -> None:
+    digest = "a" * 64
+    profile = parse_profile_text(
+        PROFILE_TOML
+        + f'\n[[surface_fingerprints]]\nselector = "prepared_context"\n'
+        f'uia_digest = "{digest}"\n'
+        f'banked_from = "docs/estate-window-7/records/w7-record.json"\n'
+    )
+    assert profile.fingerprint_for("prepared_context") == digest
+    assert profile.fingerprint_for("startup_scripts_dialog") is None
+
+
+def test_a_banked_dialog_fingerprint_must_name_a_declared_selector() -> None:
+    digest = "b" * 64
+    profile = parse_profile_text(
+        PROFILE_TOML
+        + f'\n[[surface_fingerprints]]\nselector = "startup_scripts_dialog"\n'
+        f'uia_digest = "{digest}"\nbanked_from = "measured"\n'
+    )
+    assert profile.fingerprint_for("startup_scripts_dialog") == digest
+
+    with pytest.raises(ProfileInvalid, match="does not declare"):
+        parse_profile_text(
+            PROFILE_TOML
+            + f'\n[[surface_fingerprints]]\nselector = "zz-undeclared"\n'
+            f'uia_digest = "{digest}"\nbanked_from = "measured"\n'
+        )
+
+
+def test_a_fingerprint_digest_must_be_64_lowercase_hex() -> None:
+    for bad in ("SHORT", "z" * 64, "A" * 64, "a" * 63):
+        with pytest.raises(ProfileInvalid, match="64 lowercase hex"):
+            parse_profile_text(
+                PROFILE_TOML
+                + f'\n[[surface_fingerprints]]\nselector = "prepared_context"\n'
+                f'uia_digest = "{bad}"\nbanked_from = "measured"\n'
+            )
+
+
+def test_one_fingerprint_per_selector_and_no_unknown_keys() -> None:
+    digest = "c" * 64
+    row = (
+        f'\n[[surface_fingerprints]]\nselector = "prepared_context"\n'
+        f'uia_digest = "{digest}"\nbanked_from = "measured"\n'
+    )
+    with pytest.raises(ProfileInvalid, match="second time"):
+        parse_profile_text(PROFILE_TOML + row + row)
+    with pytest.raises(ProfileInvalid, match="unknown keys"):
+        parse_profile_text(
+            PROFILE_TOML
+            + f'\n[[surface_fingerprints]]\nselector = "prepared_context"\n'
+            f'uia_digest = "{digest}"\nbanked_from = "m"\ndigrst = "x"\n'
+        )
+
+
+def test_the_shipped_profile_banks_the_measured_prepared_context() -> None:
+    from pathlib import Path
+
+    profile = load_profile(
+        Path(__file__).resolve().parent.parent / "profiles" / "gpmc-server2025.toml"
+    )
+    digest = profile.fingerprint_for("prepared_context")
+    assert digest == "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"

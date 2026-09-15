@@ -60,7 +60,7 @@ from .leases import (
     LeaseRegistry,
     assert_context,
 )
-from .profiles import load_profile
+from .profiles import PREPARED_CONTEXT_SELECTOR, load_profile
 from .record_schema import RECORD_SCHEMA_REF, RECORD_SCHEMA_VERSION
 from .runsheets import (
     GestureExecutor,
@@ -669,6 +669,43 @@ def execute_transaction(
             "refusing setup"
         )
         return finish(None)
+
+    # -- 2b. surface fingerprint gate (WI-L5) ------------------------------------
+    # A banked prepared-context fingerprint is the ONE runtime-enforced
+    # selector dependency: refuse BEFORE setup when the live surface's
+    # uia_digest does not match the qualified baseline. This is a determinate
+    # refusal (nothing has mutated; no reconciliation is owed), so it raises
+    # rather than writing an indeterminate record. The lease is released
+    # first -- raising skips finish().
+    banked_digest = profile.fingerprint_for(PREPARED_CONTEXT_SELECTOR)
+    banked_row = profile.surface_fingerprints.get(PREPARED_CONTEXT_SELECTOR)
+    if banked_digest is not None:
+        assert banked_row is not None  # fingerprint_for and the row agree by construction
+        try:
+            gate_context = _helper_context(transport)
+        except ExecTransactionError as exc:
+            if lease is not None and registry.is_active(lease):
+                registry.release(lease)
+            raise ExecTransactionError(
+                f"surface fingerprint gate could not read the prepared context: {exc}"
+            ) from exc
+        observed = (
+            gate_context.foreground.fingerprint
+            if gate_context is not None and gate_context.foreground is not None
+            else None
+        )
+        provenance.notes.append(
+            f"surface fingerprint gate: banked {banked_digest[:12]}... observed "
+            f"{(observed or 'none')[:12]}..."
+        )
+        if observed != banked_digest:
+            if lease is not None and registry.is_active(lease):
+                registry.release(lease)
+            raise ExecTransactionError(
+                "prepared surface fingerprint mismatch: banked "
+                f"{banked_digest} from {banked_row.banked_from!r}, observed {observed!r}; "
+                "the estate's surface is not the qualified one, refusing before setup"
+            )
 
     # -- 3. setup (setup role: programmatic) -------------------------------------
     executor = GestureExecutor(

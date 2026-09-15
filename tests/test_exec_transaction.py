@@ -30,6 +30,7 @@ import base64
 import json
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -1055,3 +1056,116 @@ def test_declared_non_mutating_action_crossed_as_mutation_is_undeclared(
     )
     assert _cleanup_of(record)["ran"] is True
     assert registry.holder_of(LEASE_TARGET) is None
+
+
+# --- WI-L5: the prepared-surface fingerprint gate ----------------------------------
+
+
+class _RecordingRegistry:
+    """Minimal lease registry: records acquire/release for gate assertions."""
+
+    def __init__(self) -> None:
+        self.leases: list[object] = []
+        self.released: list[object] = []
+
+    def acquire(self, target_id: str, holder_id: str) -> object:
+        lease = SimpleNamespace(target_id=target_id, holder_id=holder_id)
+        self.leases.append(lease)
+        return lease
+
+    def release(self, lease: object) -> None:
+        self.released.append(lease)
+
+    def is_active(self, lease: object) -> bool:
+        return lease in self.leases and lease not in self.released
+
+
+def _banked_profile_repo(tmp_path: Path, sheet: dict[str, object], digest: str) -> TransactionPaths:
+    paths = _make_repo(tmp_path, sheet)
+    (paths.profiles / "zz-fake-surface.toml").write_text(
+        _PROFILE_TOML
+        + f'\n[[surface_fingerprints]]\nselector = "prepared_context"\n'
+        f'uia_digest = "{digest}"\nbanked_from = "zz: synthetic bank"\n',
+        encoding="utf-8",
+    )
+    return paths
+
+
+def test_fingerprint_mismatch_refuses_before_setup_and_releases_the_lease(
+    tmp_path: Path,
+) -> None:
+    """The gate is a determinate refusal: raise, no record, no setup gesture."""
+    transport = FakeTransport()
+    transport.digest = "b" * 64
+    registry = _RecordingRegistry()
+    sheet = _sheet("zz_fp_mismatch", _commit_crossing_gesture())
+    envelope = {
+        "require": [{"fact": "migtable.present", "predicate": "post.migtable.present == True"}],
+        "convergence": {"window_seconds": 0.5, "poll_seconds": 0.05, "reproduce": 1},
+    }
+
+    with pytest.raises(ExecTransactionError, match="prepared surface fingerprint mismatch"):
+        execute_transaction(
+            capability=_capability("zz_fp_mismatch", envelope),
+            arguments={"gpo_name": "zz-studio-evidence-t"},
+            estate=_estate(),
+            paths=_banked_profile_repo(tmp_path, sheet, "a" * 64),
+            transport=transport,  # type: ignore[arg-type]
+            lease_registry=registry,  # type: ignore[arg-type]
+        )
+
+    # Nothing crossed into setup: the refusal fired before any guest mutation.
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
+    # The lease was released even though the raise skips finish().
+    assert registry.leases and registry.released == registry.leases
+
+
+def test_fingerprint_match_proceeds_to_a_normal_record(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    transport.digest = "a" * 64
+    sheet = _sheet("zz_fp_match", _commit_crossing_gesture())
+    record = execute_transaction(
+        capability=_capability("zz_fp_match", _SATISFIED_ENVELOPE),
+        arguments={"gpo_name": "zz-studio-evidence-t"},
+        estate=_estate(),
+        paths=_banked_profile_repo(tmp_path, sheet, "a" * 64),
+        transport=transport,  # type: ignore[arg-type]
+    )
+    assert record["state"] == "verified"
+
+
+def test_unreadable_context_at_the_gate_is_a_refusal_not_a_pass(tmp_path: Path) -> None:
+    class _ContextDiesAfterConsoleCheck(FakeTransport):
+        """Answers ensure-console's probe, then wedges for the gate's read."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.context_calls = 0
+
+        def helper(
+            self,
+            request: dict[str, object],
+            *,
+            timeout: float = 200.0,
+            timeout_s: float | None = None,
+        ) -> HelperResult:
+            if request.get("action") == "context":
+                self.context_calls += 1
+                if self.context_calls >= 2:
+                    self.helper_errors["context"] = "zz: helper wedged"
+            return super().helper(request, timeout=timeout, timeout_s=timeout_s)
+
+    transport = _ContextDiesAfterConsoleCheck()
+    sheet = _sheet("zz_fp_unreadable", _commit_crossing_gesture())
+    envelope = {
+        "require": [{"fact": "migtable.present", "predicate": "post.migtable.present == True"}],
+        "convergence": {"window_seconds": 0.5, "poll_seconds": 0.05, "reproduce": 1},
+    }
+    with pytest.raises(ExecTransactionError, match="could not read the prepared context"):
+        execute_transaction(
+            capability=_capability("zz_fp_unreadable", envelope),
+            arguments={"gpo_name": "zz-studio-evidence-t"},
+            estate=_estate(),
+            paths=_banked_profile_repo(tmp_path, sheet, "a" * 64),
+            transport=transport,  # type: ignore[arg-type]
+        )

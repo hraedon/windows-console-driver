@@ -16,9 +16,14 @@ development**, never discovered at runtime (section 6 rule 1). Crossing an
 undeclared mutating boundary is a hard stop and a
 :class:`ProfileInvalid` finding (rule 2), and everything before the first
 commit point must be replayable from scratch (rule 3). The profile also
-   declares what its selectors depend on. Those declarations are retained as
-   qualification metadata; the runtime does not yet capture and compare the
-   qualified dependency values needed for an enforced compatibility predicate.
+   declares what its selectors depend on. Strong ``dialog_fingerprint``
+   dependencies are now enforced for the prepared surface: a
+   ``[[surface_fingerprints]]`` row banks the qualified ``uia_digest`` for a
+   selector (or the reserved ``prepared_context`` pseudo-selector), and the
+   executor refuses, before setup, when the live digest does not match.
+   Dependencies other than the banked prepared-context fingerprint --
+   ``ui_language``, ``binary_version``, and per-dialog fingerprints -- remain
+   declared-but-not-runtime-enforced.
 
 The shipped ``profiles/gpmc-server2025.toml`` uses the typed, closed TOML
 shape this module validates::
@@ -45,6 +50,12 @@ shape this module validates::
         dependency = "ui_language"
         strength = "strong"
 
+        [[surface_fingerprints]]
+        # banked at qualification time; enforced at prepare (fail closed)
+        selector = "prepared_context"
+        uia_digest = "<64 lowercase hex>"
+        banked_from = "docs/estate-window-N/records/<record>.json"
+
 The schema is closed: unknown keys are :class:`ProfileInvalid`, because a
 profile that silently ignores a misspelled section classifies nothing. The
 banked estate records qualify the exercised action/selector paths; the profile
@@ -54,6 +65,7 @@ was not isolated.
 
 from __future__ import annotations
 
+import re
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -74,12 +86,20 @@ ACTION_CLASSES: Final[frozenset[str]] = frozenset(
     }
 )
 
-# The compatibility-dependency vocabulary from contract section 6. Runtime
-# comparison against qualified values is not implemented yet.
+# The compatibility-dependency vocabulary from contract section 6. The banked
+# prepared-context fingerprint is enforced at prepare; every other dependency
+# remains declared qualification metadata.
 DEPENDENCY_NAMES: Final[frozenset[str]] = frozenset(
     {"binary_version", "dialog_fingerprint", "ui_language", "dpi", "theme", "os_build"}
 )
 STRENGTHS: Final[frozenset[str]] = frozenset({"strong", "strong_if_used", "provenance"})
+
+# The one pseudo-selector a surface fingerprint may name that is not a
+# profile-declared selector: the pre-gesture desktop the executor's prepare
+# phase asserts (contract section 7). Banking it gates the whole surface up
+# front -- a rebuilt or differently-patched guest answers with a different
+# uia_digest and the transaction refuses before any setup runs.
+PREPARED_CONTEXT_SELECTOR: Final[str] = "prepared_context"
 
 
 class ProfileInvalid(Exception):
@@ -93,6 +113,15 @@ class SelectorDependency:
     selector: str
     dependency: str
     strength: str
+
+
+@dataclass(frozen=True)
+class SurfaceFingerprint:
+    """One banked qualified fingerprint, enforced at prepare (fail closed)."""
+
+    selector: str
+    uia_digest: str
+    banked_from: str
 
 
 @dataclass(frozen=True)
@@ -118,10 +147,21 @@ class DriverProfile:
     selectors: Mapping[str, Mapping[str, object]]
     selector_dependencies: tuple[SelectorDependency, ...]
     action_notes: Mapping[str, str]
+    surface_fingerprints: Mapping[str, SurfaceFingerprint] = MappingProxyType({})
 
     def classification(self, action: str) -> ActionClass | None:
         """The declared class of ``action``, or ``None`` when undeclared."""
         return self.actions.get(action)
+
+    def fingerprint_for(self, selector: str) -> str | None:
+        """The banked qualified ``uia_digest`` for ``selector``, or ``None``.
+
+        ``None`` is the grandfathered state: a selector with no banked
+        fingerprint is not gated. A banked fingerprint with no live digest is
+        a mismatch, never a pass -- the executor refuses fail-closed.
+        """
+        row = self.surface_fingerprints.get(selector)
+        return row.uia_digest if row is not None else None
 
     @property
     def commit_point_actions(self) -> tuple[str, ...]:
@@ -152,7 +192,13 @@ def parse_profile_text(text: str) -> DriverProfile:
 
 def parse_profile(data: Mapping[str, object]) -> DriverProfile:
     """Validate a ``tomllib``-decoded profile mapping and build the profile."""
-    unknown_tables = set(data) - {"profile", "actions", "selectors", "selector_dependencies"}
+    unknown_tables = set(data) - {
+        "profile",
+        "actions",
+        "selectors",
+        "selector_dependencies",
+        "surface_fingerprints",
+    }
     if unknown_tables:
         raise ProfileInvalid(f"unknown profile tables/keys: {sorted(unknown_tables)!r}")
     profile_table = _table(data, "profile", required=True)
@@ -237,6 +283,20 @@ def parse_profile(data: Mapping[str, object]) -> DriverProfile:
         for index, entry in enumerate(dependencies_raw):
             dependencies.append(_parse_dependency_row(entry, index, selectors))
 
+    fingerprints: dict[str, SurfaceFingerprint] = {}
+    fingerprints_raw = data.get("surface_fingerprints")
+    if fingerprints_raw is not None:
+        if not isinstance(fingerprints_raw, list):
+            raise ProfileInvalid("surface_fingerprints must be an array of tables")
+        for index, entry in enumerate(fingerprints_raw):
+            row = _parse_fingerprint_row(entry, index, selectors)
+            if row.selector in fingerprints:
+                raise ProfileInvalid(
+                    f"surface_fingerprints[{index}] banks selector {row.selector!r} "
+                    "a second time; one fingerprint per selector"
+                )
+            fingerprints[row.selector] = row
+
     return DriverProfile(
         surface=surface,
         description=description,
@@ -247,6 +307,7 @@ def parse_profile(data: Mapping[str, object]) -> DriverProfile:
         selectors=MappingProxyType(selectors),
         selector_dependencies=tuple(dependencies),
         action_notes=MappingProxyType(action_notes),
+        surface_fingerprints=MappingProxyType(fingerprints),
     )
 
 
@@ -288,6 +349,42 @@ def _parse_dependency_row(
             f"{sorted(STRENGTHS)}"
         )
     return SelectorDependency(selector=selector, dependency=dependency, strength=strength)
+
+
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _parse_fingerprint_row(
+    entry: object, index: int, selectors: Mapping[str, Mapping[str, object]]
+) -> SurfaceFingerprint:
+    row = _require_table(entry, f"surface_fingerprints[{index}]")
+    unknown_row_keys = set(row) - {"selector", "uia_digest", "banked_from"}
+    if unknown_row_keys:
+        raise ProfileInvalid(
+            f"surface_fingerprints[{index}] has unknown keys: {sorted(unknown_row_keys)!r}"
+        )
+    selector = row.get("selector")
+    digest = row.get("uia_digest")
+    banked_from = row.get("banked_from")
+    for field_name, value in (("selector", selector), ("uia_digest", digest),
+                              ("banked_from", banked_from)):
+        if not isinstance(value, str) or not value.strip():
+            raise ProfileInvalid(
+                f"surface_fingerprints[{index}].{field_name} must be a non-blank string"
+            )
+    assert isinstance(selector, str) and isinstance(digest, str) and isinstance(banked_from, str)
+    if selector != PREPARED_CONTEXT_SELECTOR and selector not in selectors:
+        raise ProfileInvalid(
+            f"surface_fingerprints[{index}] names selector {selector!r}, which the "
+            f"profile does not declare (reserved pseudo-selector: "
+            f"{PREPARED_CONTEXT_SELECTOR!r})"
+        )
+    if not _HEX64.fullmatch(digest):
+        raise ProfileInvalid(
+            f"surface_fingerprints[{index}].uia_digest must be exactly 64 "
+            "lowercase hex characters"
+        )
+    return SurfaceFingerprint(selector=selector, uia_digest=digest, banked_from=banked_from)
 
 
 def _table(data: Mapping[str, object], key: str, *, required: bool) -> Mapping[str, object]:
