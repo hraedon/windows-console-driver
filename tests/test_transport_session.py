@@ -354,3 +354,27 @@ def test_no_host_credential_trio_keeps_the_historical_argv(
     assert "-HostUserDomain" not in argv
     assert "-HostUsername" not in argv
     assert "-HostPasswordEnv" not in argv
+
+
+def test_estate_pwsh_executable_overrides_the_spawned_interpreter(
+    fake_repl: FakeRepl, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A WEL-hosted run has no PATH; the estate names pwsh absolutely."""
+    monkeypatch.setenv(PASSWORD_ENV, "dummy-password-value")
+    estate = EstateConfig(
+        host="lab-hv-01",
+        vm_name="LabT01",
+        domain="lab.example",
+        username="labadmin",
+        password_env=PASSWORD_ENV,
+        pwsh_executable="/synthetic/bin/pwsh",
+    )
+    session = SessionTransport(
+        estate,
+        repl_path=fake_repl.script,
+        startup_timeout=30.0,
+    )
+    try:
+        assert fake_repl.last_spawn[0] == "/synthetic/bin/pwsh"
+    finally:
+        session.close()

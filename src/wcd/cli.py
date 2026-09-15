@@ -57,8 +57,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="wcd", description=__doc__)
     parser.add_argument(
         "--estate",
-        default="local/estate.toml",
-        help="path to the estate TOML (default: local/estate.toml)",
+        # The default is anchored to the driver's own checkout, never the
+        # process working directory: the WEL seam launches this CLI with argv
+        # exactly ("wcd", "exec-transaction") from ITS repository, so a
+        # cwd-relative default made every WEL-hosted run refuse with a
+        # missing-estate-file exit 2 before any transport work (measured,
+        # first lane attempt 2026-09-15).
+        default=str(_repo_root() / "local" / "estate.toml"),
+        help="path to the estate TOML (default: <repo>/local/estate.toml)",
     )
     sub = parser.add_subparsers(dest="verb", required=True)
 

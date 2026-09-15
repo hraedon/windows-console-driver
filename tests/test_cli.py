@@ -243,7 +243,11 @@ def test_unknown_flag_and_missing_value_exit_2(capsys: pytest.CaptureFixture) ->
 def test_missing_or_malformed_estate_is_a_clean_nonzero_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
-    monkeypatch.chdir(tmp_path)  # the default local/estate.toml does not exist here
+    # The default estate is anchored to the driver's own checkout (the WEL
+    # seam launches from a different repository), so the "default is missing"
+    # case is produced by pointing the repo root at an empty directory --
+    # chdir alone no longer touches the default path.
+    monkeypatch.setattr(cli, "_repo_root", lambda: tmp_path)
     assert cli.main(["console-state"]) == 2
     err = capsys.readouterr().err
     assert "estate error" in err
