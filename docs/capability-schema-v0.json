@@ -121,7 +121,8 @@
           "enum": [
             "remove_gpo",
             "backup_then_remove_gpo",
-            "remove_staging_dir"
+            "remove_staging_dir",
+            "remove_wmi_filter"
           ]
         },
         "requery": {
@@ -242,7 +243,8 @@
             "migration_table",
             "gpttmpl_inf",
             "fdeploy_ini",
-            "fdeploy_marker"
+            "fdeploy_marker",
+            "wmi_filter"
           ]
         },
         "params": {
@@ -250,7 +252,8 @@
           "additionalProperties": false,
           "properties": {
             "path": {"$ref": "#/$defs/non-empty-string"},
-            "relpath": {"$ref": "#/$defs/non-empty-string"}
+            "relpath": {"$ref": "#/$defs/non-empty-string"},
+            "filter_name": {"$ref": "#/$defs/non-empty-string"}
           }
         }
       },
@@ -295,6 +298,21 @@
               "params": {
                 "required": ["relpath"],
                 "not": {"required": ["path"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {"const": "wmi_filter"}
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "required": ["filter_name"],
+                "not": {"required": ["path", "relpath"]}
               }
             }
           }

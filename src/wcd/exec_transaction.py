@@ -336,6 +336,81 @@ exit 0
         return facts
 
 
+class _WmiFilterCollector:
+    """The window-7 prep observer: WMI filter objects in the SOM container.
+
+    Guest side transports raw attribute values only: the container's
+    presence and, one-level under ``CN=SOM,CN=WMIPolicy,CN=System``, every
+    object's ``msWMI-Name``/``msWMI-Parm1``/``msWMI-Parm2``/``msWMI-ID``.
+    The controller turns them into ``wmifilter.*`` facts
+    (:mod:`gpo_observers.wmi_filter`); the object class itself is left
+    unmeasured until the first estate window records it.
+    """
+
+    def collect(self, ref: GpoRef, params: Mapping[str, object], t: SessionTransport) -> FactSet:
+        filter_name = str(params.get("filter_name", ""))
+        if not filter_name:
+            raise ExecTransactionError("wmi_filter observer needs a filter_name param")
+        script = r"""
+param([string]$FilterName)
+$ErrorActionPreference = 'Stop'
+function Get-Prop($obj, [string]$Name) {
+    $p = $obj.PSObject.Properties[$Name]
+    if ($null -eq $p -or $null -eq $p.Value) { return $null }
+    return [string]$p.Value
+}
+try {
+    $domainDn = (Get-ADRootDSE).defaultNamingContext
+    $somBase = 'CN=SOM,CN=WMIPolicy,CN=System,' + $domainDn
+    $containerPresent = $false
+    try {
+        Get-ADObject -Identity $somBase -ErrorAction Stop | Out-Null
+        $containerPresent = $true
+    } catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
+        $containerPresent = $false
+    }
+    $objects = @()
+    if ($containerPresent) {
+        $objects = @(Get-ADObject -SearchBase $somBase -SearchScope OneLevel `
+            -LDAPFilter '(objectClass=*)' -ErrorAction Stop `
+            -Properties msWMI-Name, msWMI-Parm1, msWMI-Parm2, msWMI-ID)
+    }
+    $list = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($o in $objects) {
+        $list.Add(@{
+            dn    = [string]$o.DistinguishedName
+            class = [string]$o.ObjectClass
+            name  = Get-Prop $o 'msWMI-Name'
+            parm1 = Get-Prop $o 'msWMI-Parm1'
+            parm2 = Get-Prop $o 'msWMI-Parm2'
+            id    = Get-Prop $o 'msWMI-ID'
+        })
+    }
+    @{ ok = $true; data = @{
+        container_present = $containerPresent
+        objects           = $list
+    } } | ConvertTo-Json -Depth 5 -Compress
+    exit 0
+} catch {
+    @{ ok = $false; error = $_.Exception.Message } | ConvertTo-Json -Depth 4 -Compress
+    exit 2
+}
+"""
+        stdout = t.guest(script, [filter_name], timeout=120.0)
+        payload = json.loads(stdout)
+        if not payload.get("ok"):
+            raise ExecTransactionError(
+                f"wmi_filter observation failed: {payload.get('error', 'unknown error')}"
+            )
+        data = payload.get("data") or {}
+        from gpo_observers.wmi_filter import wmi_filter_fact_tree
+
+        try:
+            return wmi_filter_fact_tree(data, filter_name)
+        except ValueError as exc:
+            raise ExecTransactionError(f"wmi_filter observation malformed: {exc}") from exc
+
+
 @dataclass(frozen=True, slots=True)
 class _ObserverEntry:
     name: str
@@ -394,6 +469,8 @@ def _named_collector(
 ) -> Callable[[GpoRef, Mapping[str, object], SessionTransport], FactSet]:
     if name == "migration_table":
         return _MigtableCollector().collect
+    if name == "wmi_filter":
+        return _WmiFilterCollector().collect
     if name == "gpttmpl_inf":
         from gpo_observers.gpttmpl_inf import gpttmpl_fact_tree
 

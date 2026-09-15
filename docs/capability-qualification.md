@@ -14,13 +14,17 @@ upgrade that record.
 | `gpmc.author_admin_template_machine` | 2 | Qualified; side-specific path envelope, clean cleanup | `estate-window-4/records/r5m-v2-record.json` |
 | `gpmc.author_admin_template_user` | 2 | Qualified; side-specific path envelope, clean cleanup | `estate-window-4/records/r5u-v2-record.json` |
 | `gpmc.author_registry_security` | 2 | Qualified; fixed three-key experiment, six distinct screenshots, clean cleanup | `estate-window-4/records/r4-v2b-record.json` |
+| `gpmc.author_wmi_filter` | 1 | Qualified; exact msWMI-* representation incl. the measured Parm2 wire format, SOM-container blast radius frozen at +1, clean cleanup | `estate-window-7/records/w7-record.json` |
 
-All seven current capabilities now have clean lab qualification evidence at
+All eight current capabilities now have clean lab qualification evidence at
 their current revision. The migration-table capability requalified at revision 2
-in estate window 6 (2026-09-05), which was the last row reading "pending"; its
-revision-1 record remains historical evidence for the revision-1 definition and
-is not retired by the newer run. The window-2 R2/R4/R5 records likewise remain
-revision-1 historical evidence.
+in estate window 6 (2026-09-05), which was the last row reading "pending" until
+the WMI-filter row below was authored and qualified in the same session
+(2026-09-15, estate window 7). The WMI-filter capability is the first whose
+gesture runs in the GPMC main console rather than the GPME editor. Its
+revision-1 qualification is also the first obtained through seven recorded
+iterations (five indeterminate, one disproven, then verified) — the full
+disprove-and-refine arc the qualification process is designed around.
 
 Transaction-record v1 records the capability ID and run-sheet name, but not a
 capability revision or content digest. Until a future record schema adds an

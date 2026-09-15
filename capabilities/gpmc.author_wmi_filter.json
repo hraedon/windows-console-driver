@@ -1,0 +1,149 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_wmi_filter",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "intent": "Author exactly one WMI filter (name, description, one query) through the GPMC main console's WMI Filters node, so the exact AD representation of the created msWMI-Som object -- msWMI-Name, msWMI-Parm1, msWMI-Parm2, msWMI-ID -- can be independently certified against the capability arguments. The first capability whose gesture runs in the GPMC main console rather than the GPME editor.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "filter_name",
+      "filter_description",
+      "wmi_query",
+      "expected_parm2",
+      "domain_dns"
+    ],
+    "properties": {
+      "filter_name": { "type": "string" },
+      "filter_description": { "type": "string" },
+      "wmi_query": { "type": "string" },
+      "expected_parm2": { "type": "string" },
+      "domain_dns": { "type": "string" }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "gpmc_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell",
+      "programmatic_requery"
+    ]
+  },
+  "first_commit_point": "ok_wmi_query_dialog",
+  "run_sheet": "gpmc.author_wmi_filter",
+  "gpo_transaction": false,
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "wmi_filter",
+        "params": {
+          "filter_name": "{args.filter_name}"
+        }
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "wmifilter.container.present",
+        "predicate": "post.wmifilter.container.present == True"
+      },
+      {
+        "fact": "wmifilter.target.present",
+        "predicate": "post.wmifilter.target.present == True"
+      },
+      {
+        "fact": "wmifilter.target.match_count",
+        "predicate": "post['wmifilter.target.match_count'] == 1"
+      },
+      {
+        "fact": "wmifilter.target.name",
+        "predicate": "post['wmifilter.target.name'] == args['filter_name']"
+      },
+      {
+        "fact": "wmifilter.target.parm1",
+        "predicate": "post['wmifilter.target.parm1'] == args['filter_description']"
+      },
+      {
+        "fact": "wmifilter.target.parm2",
+        "predicate": "post['wmifilter.target.parm2'] == args['expected_parm2']"
+      },      {
+        "fact": "wmifilter.target.id",
+        "predicate": "post['wmifilter.target.id'] != ''"
+      }
+    ],
+    "allow": [],
+    "forbid": [
+      {
+        "scope": "wmifilter.container.other_names",
+        "predicate": "scope == pre['wmifilter.container.other_names']"
+      },
+      {
+        "scope": "wmifilter.container.unnamed_count",
+        "predicate": "scope == pre['wmifilter.container.unnamed_count']"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.wmifilter.container.object_count == pre.wmifilter.container.object_count + 1"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 60,
+      "poll_seconds": 5,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "exact_ad_representation",
+      "checks": "The envelope requires the created object's msWMI-Name and msWMI-Parm1 to equal the typed name and description arguments, and msWMI-Parm2 to equal expected_parm2 verbatim. MEASURED window 7 run 6 (2026-09-15, Server 2025 GPMC): Parm2 is NOT the bare 'namespace;query' pair -- it is '1;3;10;35;WQL;root\\CIMv2;SELECT * FROM Win32_OperatingSystem;' -- a semicolon-delimited list with a '1;3;10;35;WQL;' prefix and a trailing semicolon. The prefix constants' semantics stay uninterpreted (measured once, one query, WQL); whether they vary by query language or locale is unmeasured."
+    },
+    {
+      "id": "filter_identity_is_a_fresh_guid",
+      "checks": "msWMI-ID must be present and non-empty; the record carries its value verbatim so the GUID shape and its relation to the object's CN can be analyzed without re-running."
+    },
+    {
+      "id": "no_duplicate_by_name",
+      "checks": "match_count == 1 rejects an estate that already holds a same-named filter as much as one where the gesture created two."
+    },
+    {
+      "id": "blast_radius_is_the_som_container",
+      "checks": "The forbid clauses freeze every other named object and every unnamed object under CN=SOM,CN=WMIPolicy,CN=System, and the derive pins the object count to exactly +1. Stated at its true size: this bounds the blast radius of this capability's own gesture within the SOM container. It does not observe GPO objects (no gPCWQLFilter link is authored by this capability) and does not carry to the interactive authoring capabilities whose gestures touch SYSVOL and AD."
+    },
+    {
+      "id": "container_creation_is_part_of_the_delta",
+      "checks": "A domain that has never held a WMI filter may not carry the SOM container at pre-state; the require clause accepts its creation as part of this transaction rather than treating absence as an error, and the observer reports it as a fact rather than failing the collection."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. expected_parm2 is asserted verbatim against msWMI-Parm2 while wmi_query is what the sheet types into the query box; measured on the estate (window 7), the dialog composes Parm2 as '1;3;10;35;WQL;<namespace>;<query>;' -- the arg carries that full string and the envelope deliberately does not assume the composition.",
+    "fact_vocabulary": "wmifilter.* facts come from the wmi_filter observer (guest transports raw SOM-container attribute values; controller-side fact tree in gpo_observers.wmi_filter). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
+  },
+  "cleanup": {
+    "strategy": "remove_wmi_filter",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}
