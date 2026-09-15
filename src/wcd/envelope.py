@@ -983,7 +983,10 @@ def _characterize(
         )
         for entry in delta.entries:
             lines.append(f"  covered {entry.kind}: {entry.key} (category {entry.category!r})")
-        return "\n".join(lines)
+        # Single line by contract: the record's consumer (WEL's public result
+        # bounds) rejects multi-line strings, and a verified record must never
+        # fail its own seam (measured live, window 8 lane 3).
+        return "; ".join(line.strip() for line in lines)
     if unresolved:
         # assert_envelope returns indeterminate only via unresolved clauses.
         lines.append(
@@ -1012,7 +1015,8 @@ def _characterize(
     for entry in delta.entries:
         if entry.key not in unclassified:
             lines.append(f"  covered {entry.kind}: {entry.key} (category {entry.category!r})")
-    return "\n".join(lines)
+    # Single line by contract: see the satisfied branch above.
+    return "; ".join(line.strip() for line in lines)
 
 
 def _show(value: object) -> str:
