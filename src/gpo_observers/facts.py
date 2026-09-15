@@ -111,6 +111,18 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     # Migration table (R1): the GPMC-authored .migtable XML.
     ("migtable.present", "content", None),
     ("migtable.*", "content", None),
+    # WMI filters (window-7 prep): the SOM container object set and the
+    # target filter's certified AD representation.
+    ("wmifilter.container.present", "structural", None),
+    ("wmifilter.container.object_count", "structural", None),
+    ("wmifilter.container.other_names", "structural", None),
+    ("wmifilter.container.unnamed_count", "structural", None),
+    ("wmifilter.target.match_count", "structural", None),
+    ("wmifilter.target.present", "content", None),
+    ("wmifilter.target.name", "content", None),
+    ("wmifilter.target.parm1", "content", None),
+    ("wmifilter.target.parm2", "content", None),
+    ("wmifilter.target.id", "identity", None),
     # Collection integrity of the two independent enumeration passes.
     ("sysvol.passes_match", "structural", None),
     # Filesystem timestamps, should a future observer collect them.

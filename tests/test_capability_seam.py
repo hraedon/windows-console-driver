@@ -145,6 +145,25 @@ def _fixture_snapshot() -> dict[str, Fact]:
         if entry["key"].startswith("migtable."):
             fact = make_fact(entry["key"], entry["after"])
             snapshot[fact.key] = fact
+
+    # The WMI-filter collector is transport-backed inside the executor; its
+    # fact vocabulary is small and pinned here in the post-state shape (the
+    # target present, one object, no residue). Every pre.* key the envelope
+    # references strips to one of these keys by construction.
+    for key, value in {
+        "wmifilter.container.present": True,
+        "wmifilter.container.object_count": 1,
+        "wmifilter.container.other_names": [],
+        "wmifilter.container.unnamed_count": 0,
+        "wmifilter.target.match_count": 1,
+        "wmifilter.target.present": True,
+        "wmifilter.target.name": "zz-wmi-filter",
+        "wmifilter.target.parm1": "zz description",
+        "wmifilter.target.parm2": "root\\CIMv2;SELECT * FROM Win32_OperatingSystem",
+        "wmifilter.target.id": "zz-guid",
+    }.items():
+        fact = make_fact(key, value)
+        snapshot[fact.key] = fact
     return snapshot
 
 

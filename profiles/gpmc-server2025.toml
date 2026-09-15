@@ -82,6 +82,31 @@ notes = "closing the GPME editor window flushes pending snap-in state; declared 
 class = "commit_point"
 notes = "the GPMC COM Save call behind the R1 setup-only transaction (GPMgmt.GPM MigrationTable.Save writes the .migtable file); programmatic surface, declared so the zero-GUI transaction still crosses a classified boundary"
 
+# Actions added 2026-09-15 for the WMI-filters capability (window-7 prep;
+# first GPMC-main-console flow -- every prior gesture ran inside GPME). All
+# unqualified: no estate run has observed these dialogs yet, so the classes
+# are the conservative readings and the window iterates on measured deltas.
+
+[actions.open_gpmc_console]
+class = "orientation_only"
+notes = "launches/attaches the GPMC main console window (pre-elevated at the setup boundary); no gesture has touched a GPMC-main-console node before this capability"
+
+[actions.open_new_wmi_filter_dialog]
+class = "reversible_pre_commit"
+notes = "Action-menu New on the WMI Filters node: opens the New WMI Filter dialog; cancel before any child/parent OK undoes it (unmeasured dialog)"
+
+[actions.add_wmi_query]
+class = "reversible_pre_commit"
+notes = "Add button inside the New WMI Filter dialog: opens the WMI Query child dialog; cancel undoes (unmeasured dialog)"
+
+[actions.ok_wmi_query_dialog]
+class = "potentially_mutating"
+notes = "OK inside the WMI Query child dialog: unverified whether GPMC flushes the query to AD before the parent OK -- the first mutating boundary by the conservative reading, mirroring ok_child_dialog"
+
+[actions.ok_new_wmi_filter_dialog]
+class = "commit_point"
+notes = "OK on the New WMI Filter dialog: believed to write the msWMI-Som object to AD directly (no parent dialog); the commit boundary the window must correlate with the certified AD representation"
+
 # Selectors added with the same action rows. Name-based criteria bind UI
 # language strongly (contract section 6); automation_ids replace these as
 # the captures observe them.
@@ -118,6 +143,24 @@ title_regex = "Properties"
 
 [selectors.security_entry_dialog]
 title_regex = "Template Security Policy"
+
+# Selectors for the WMI-filters flow (window-7 prep, unobserved until the
+# first run): titles/names follow Microsoft documentation conventions, not
+# estate capture, and are expected to be corrected by the qualification run.
+[selectors.gpmc_console_window]
+title_regex = "Group Policy Management"
+
+[selectors.wmi_filters_node]
+name_regex = "^WMI Filters$"
+
+[selectors.action_menu_new_item]
+name_regex = "^New"
+
+[selectors.new_wmi_filter_dialog]
+title_regex = "^New WMI Filter"
+
+[selectors.wmi_query_dialog]
+title_regex = "WMI Query"
 
 # Selector dependencies: what the compatibility predicate checks, per rung.
 # Title/name selectors bind UI language strongly. Once the spike observes
@@ -192,5 +235,41 @@ strength = "strong"
 
 [[selector_dependencies]]
 selector = "security_entry_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+# WMI-filters flow dependencies (window-7 prep, unqualified until banked).
+[[selector_dependencies]]
+selector = "gpmc_console_window"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "wmi_filters_node"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "action_menu_new_item"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "new_wmi_filter_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "new_wmi_filter_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "wmi_query_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "wmi_query_dialog"
 dependency = "dialog_fingerprint"
 strength = "strong"

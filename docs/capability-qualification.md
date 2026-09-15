@@ -14,13 +14,16 @@ upgrade that record.
 | `gpmc.author_admin_template_machine` | 2 | Qualified; side-specific path envelope, clean cleanup | `estate-window-4/records/r5m-v2-record.json` |
 | `gpmc.author_admin_template_user` | 2 | Qualified; side-specific path envelope, clean cleanup | `estate-window-4/records/r5u-v2-record.json` |
 | `gpmc.author_registry_security` | 2 | Qualified; fixed three-key experiment, six distinct screenshots, clean cleanup | `estate-window-4/records/r4-v2b-record.json` |
+| `gpmc.author_wmi_filter` | 1 | Pending first qualification; window-7 preparation authored 2026-09-15 (first GPMC-main-console gesture; selectors unobserved, Parm2 composition an open question for the run to answer) | -- |
 
 All seven current capabilities now have clean lab qualification evidence at
 their current revision. The migration-table capability requalified at revision 2
 in estate window 6 (2026-09-05), which was the last row reading "pending"; its
 revision-1 record remains historical evidence for the revision-1 definition and
 is not retired by the newer run. The window-2 R2/R4/R5 records likewise remain
-revision-1 historical evidence.
+revision-1 historical evidence. The WMI-filter capability above is the first
+row whose gesture runs in the GPMC main console rather than the GPME editor,
+and the only one whose row reads "pending" today.
 
 Transaction-record v1 records the capability ID and run-sheet name, but not a
 capability revision or content digest. Until a future record schema adds an
