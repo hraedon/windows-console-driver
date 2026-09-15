@@ -38,6 +38,7 @@ import pytest
 from wcd import cli, console_ops
 from wcd.console_ops import ConsoleState, LockAudit, RebootReadiness
 from wcd.estate import EstateConfig
+from wcd.estate_canary import CanaryCheck, CanaryReport
 
 # Synthetic-estate identifiers only: zz- placeholders per the project
 # convention. Nothing here names a real host, domain, user, or path, and the
@@ -222,7 +223,7 @@ def test_missing_verb_and_unknown_verb_exit_2_with_usage_on_stderr(
     err = capsys.readouterr().err
     assert "invalid choice" in err
     # The usage names every verb, so the parse error is actionable.
-    for verb in ("exec-transaction", "ensure-console", "console-state"):
+    for verb in ("exec-transaction", "ensure-console", "console-state", "estate-canary"):
         assert verb in err
 
 
@@ -636,3 +637,66 @@ def test_estate_names_the_secret_env_var_and_the_value_is_never_echoed(
     captured = capsys.readouterr()
     assert SECRET not in captured.out
     assert SECRET not in captured.err
+
+
+# --- estate-canary: pre-flight health checks, fail closed -------------------------------
+
+
+def test_estate_canary_green_exits_0_and_emits_every_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
+    built = _install_transport(monkeypatch)
+    report = CanaryReport(
+        checks=(
+            CanaryCheck(name="host_winrm", ok=True, detail="zz host answered"),
+            CanaryCheck(name="guest_psdirect", ok=True, detail="zz guest answered"),
+        )
+    )
+    monkeypatch.setattr(cli, "run_estate_canary", lambda t, e: report)
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "estate-canary"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert [c["name"] for c in payload["checks"]] == ["host_winrm", "guest_psdirect"]
+    assert built[0].closed is True
+
+
+def test_estate_canary_red_exits_3_with_the_failing_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
+    _install_transport(monkeypatch)
+    report = CanaryReport(
+        checks=(
+            CanaryCheck(name="host_winrm", ok=True, detail="zz host answered"),
+            CanaryCheck(name="checkpoint", ok=False, detail="recovery checkpoint 'zz' NOT present"),
+        )
+    )
+    monkeypatch.setattr(cli, "run_estate_canary", lambda t, e: report)
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "estate-canary"])
+
+    assert code == 3
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is False
+    assert payload["checks"][1]["ok"] is False
+
+
+def test_estate_canary_refuses_a_transport_that_will_not_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
+
+    def broken_build(estate: EstateConfig) -> object:
+        raise OSError("zz: pwsh not found")
+
+    monkeypatch.setattr(cli, "_default_transport", broken_build)
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "estate-canary"])
+
+    assert code == 2
+    assert "canary error" in capsys.readouterr().err
+    assert capsys.readouterr().out == ""

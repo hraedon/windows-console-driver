@@ -656,7 +656,7 @@ def execute_transaction(
 
     # -- 2. recovery check ------------------------------------------------------
     try:
-        recovery_ok = _checkpoint_exists(transport, estate)
+        recovery_ok = checkpoint_exists(transport, estate)
     except Exception as exc:
         abort_indeterminate(f"recovery checkpoint probe failed: {exc}")
         return finish(None)
@@ -870,7 +870,7 @@ def _phase_sheet(sheet: RunSheet, phase: str) -> RunSheet:
     return RunSheet(name=f"{sheet.name}:{phase}", surface=sheet.surface, steps=steps)
 
 
-def _checkpoint_exists(t: SessionTransport, estate: EstateConfig) -> bool:
+def checkpoint_exists(t: SessionTransport, estate: EstateConfig) -> bool:
     if not estate.checkpoint_name:
         return False
     script = (
