@@ -12,6 +12,10 @@ Verbs:
   console; prints the resulting state JSON. ``--audit`` additionally reads
   the 4800/4801 lock/unlock trail once.
 - ``console-state`` -- classify the console without changing anything.
+- ``estate-canary`` -- read-only estate health checks (host WinRM, guest
+  PSDirect, recovery checkpoint, domain account, DC locator, helper task,
+  console session); one precise line per check, fail closed. Exit 0 when
+  every check is green, 3 when any check failed, 2 on estate-config errors.
 
 Secrets come from the environment (the estate file names the variable);
 argv and stdout never carry them. The transaction record is the only
@@ -32,9 +36,10 @@ from .capability_schema import (
     validate_capability_document,
 )
 from .estate import EstateConfig, EstateError, load_estate
+from .estate_canary import run_estate_canary
 from .exec_transaction import TransactionPaths, execute_transaction
 from .record_schema import RecordSchemaError, validate_record
-from .transport import SessionTransport, default_repl_path
+from .transport import SessionTransport, TransportError, default_repl_path
 
 
 def _default_transport(estate: EstateConfig) -> SessionTransport:
@@ -74,6 +79,9 @@ def _build_parser() -> argparse.ArgumentParser:
     ensure.add_argument("--no-unlock", action="store_true", help="report state without wake/unlock")
 
     sub.add_parser("console-state", help="classify the console, changing nothing")
+    sub.add_parser(
+        "estate-canary", help="read-only estate health checks (fail closed)"
+    )
     return parser
 
 
@@ -142,6 +150,26 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if state.state == "unlocked" else 3
         finally:
             transport.close()
+
+    if args.verb == "estate-canary":
+        try:
+            transport = _default_transport(estate)
+        except (OSError, TransportError) as exc:
+            print(f"canary error: transport would not start: {exc}", file=sys.stderr)
+            return 2
+        try:
+            report = run_estate_canary(transport, estate)
+        finally:
+            transport.close()
+        _emit_json(
+            {
+                "ok": report.ok,
+                "checks": [
+                    {"name": c.name, "ok": c.ok, "detail": c.detail} for c in report.checks
+                ],
+            }
+        )
+        return 0 if report.ok else 3
 
     if args.verb == "exec-transaction":
         paths = TransactionPaths(repo_root=_repo_root())
