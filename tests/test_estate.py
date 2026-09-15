@@ -68,3 +68,14 @@ def test_a_partial_trio_is_refused_with_the_missing_keys(
 def test_a_misspelled_host_key_is_still_an_unknown_key(tmp_path: Path) -> None:
     with pytest.raises(EstateError, match="unknown keys"):
         load_estate(_estate_file(tmp_path, _BASE + "host_user_domian = 'zz'\n"))
+
+
+def test_a_configured_pwsh_executable_loads(tmp_path: Path) -> None:
+    estate = load_estate(
+        _estate_file(tmp_path, _BASE + "pwsh_executable = '/usr/bin/pwsh'\n")
+    )
+    assert estate.pwsh_executable == "/usr/bin/pwsh"
+
+
+def test_pwsh_executable_is_optional(tmp_path: Path) -> None:
+    assert load_estate(_estate_file(tmp_path, _BASE)).pwsh_executable == ""

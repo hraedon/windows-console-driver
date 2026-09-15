@@ -81,6 +81,8 @@ class SessionTransport:
         self._counter_lock = threading.Lock()
         env = dict(os.environ)
         env[estate.password_env] = estate.resolved_password()
+        if estate.pwsh_executable:
+            pwsh_executable = estate.pwsh_executable
         argv: list[str] = [
             pwsh_executable,
             "-NoProfile",

@@ -51,6 +51,12 @@ class EstateConfig:
     host_user_domain: str = ""
     host_username: str = ""
     host_password_env: str = ""
+    # Absolute path to the pwsh that speaks the session REPL. Empty keeps the
+    # bare name "pwsh" (resolved through PATH -- correct for a normal shell).
+    # A WEL-hosted run has NO PATH in its environment (the credential broker
+    # omits it on purpose), so the deployment names the absolute path here,
+    # the same discipline WEL's own backend configuration uses.
+    pwsh_executable: str = ""
 
     def resolved_password(self) -> str:
         """The secret behind ``password_env``; never logged, never recorded."""
@@ -113,6 +119,7 @@ def load_estate(path: str | Path) -> EstateConfig:
         "host_user_domain",
         "host_username",
         "host_password_env",
+        "pwsh_executable",
     }
     unknown = set(table) - known
     if unknown:
@@ -150,4 +157,5 @@ def load_estate(path: str | Path) -> EstateConfig:
         host_user_domain=values.get("host_user_domain", ""),
         host_username=values.get("host_username", ""),
         host_password_env=values.get("host_password_env", ""),
+        pwsh_executable=values.get("pwsh_executable", ""),
     )
