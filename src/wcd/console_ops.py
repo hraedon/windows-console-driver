@@ -46,7 +46,12 @@ LOCK_TIMEOUT_DEFAULT_S = 90.0
 _CONSOLE_PROBE = r"""
 $ErrorActionPreference = 'Stop'
 $logonui = [bool](Get-Process LogonUI -ErrorAction SilentlyContinue)
-$sessions = @(quser 2>&1 | ForEach-Object { "$_" })
+# quser errors outright when no session exists at all (measured live,
+# window 8: 'No User exists for *'), and under EAP=Stop a bare 2>&1 turns
+# that first stderr line into a terminating error -- crashing the probe
+# instead of classifying. A failed quser IS the answer: no session.
+$sessions = @()
+try { $sessions = @(quser 2>&1 | ForEach-Object { "$_" }) } catch { $sessions = @() }
 $activeConsole = $false
 foreach ($line in $sessions) {
     if ($line -match '^\s*\S+\s+console\s+\d+\s+Active') { $activeConsole = $true }

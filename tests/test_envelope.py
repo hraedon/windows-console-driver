@@ -796,3 +796,17 @@ def test_convergence_polls_are_typed_as_callables() -> None:
         sleep=sleeper,
     )
     assert result.status == "satisfied"
+
+
+def test_characterization_is_single_line_by_seam_contract() -> None:
+    """WEL's public result bounds reject CR/LF inside strings.
+
+    A verified record must never fail its own seam (measured live, window 8
+    lane 3: the banked window-7 record itself fails the consumer's bound),
+    so every characterization the envelope emits is single-line.
+    """
+    result = assert_envelope(parse_envelope(_envelope_dict()), PRE, POST_OK, CATEGORIES)
+    assert result.status == "satisfied"
+    assert "\n" not in result.characterization
+    assert "\r" not in result.characterization
+    assert "covered" in result.characterization
