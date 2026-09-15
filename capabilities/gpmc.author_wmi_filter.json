@@ -84,8 +84,7 @@
       {
         "fact": "wmifilter.target.parm2",
         "predicate": "post['wmifilter.target.parm2'] == args['expected_parm2']"
-      },
-      {
+      },      {
         "fact": "wmifilter.target.id",
         "predicate": "post['wmifilter.target.id'] != ''"
       }
@@ -115,7 +114,7 @@
   "structured_checks": [
     {
       "id": "exact_ad_representation",
-      "checks": "The envelope requires the created object's msWMI-Name and msWMI-Parm1 to equal the typed name and description arguments, and msWMI-Parm2 to equal expected_parm2 -- the composed 'namespace;query' string the dialog writes for the one authored query. Parm2's exact composition (separator, escaping of semicolons inside the query) is an open question the first qualification run answers from the record."
+      "checks": "The envelope requires the created object's msWMI-Name and msWMI-Parm1 to equal the typed name and description arguments, and msWMI-Parm2 to equal expected_parm2 verbatim. MEASURED window 7 run 6 (2026-09-15, Server 2025 GPMC): Parm2 is NOT the bare 'namespace;query' pair -- it is '1;3;10;35;WQL;root\\CIMv2;SELECT * FROM Win32_OperatingSystem;' -- a semicolon-delimited list with a '1;3;10;35;WQL;' prefix and a trailing semicolon. The prefix constants' semantics stay uninterpreted (measured once, one query, WQL); whether they vary by query language or locale is unmeasured."
     },
     {
       "id": "filter_identity_is_a_fresh_guid",
@@ -135,7 +134,7 @@
     }
   ],
   "bindings": {
-    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. expected_parm2 is asserted verbatim against msWMI-Parm2 while wmi_query is what the sheet types into the query box; the two are related by the dialog's 'namespace;query' composition, which is deliberately not assumed by the envelope.",
+    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. expected_parm2 is asserted verbatim against msWMI-Parm2 while wmi_query is what the sheet types into the query box; measured on the estate (window 7), the dialog composes Parm2 as '1;3;10;35;WQL;<namespace>;<query>;' -- the arg carries that full string and the envelope deliberately does not assume the composition.",
     "fact_vocabulary": "wmifilter.* facts come from the wmi_filter observer (guest transports raw SOM-container attribute values; controller-side fact tree in gpo_observers.wmi_filter). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
   },
   "cleanup": {

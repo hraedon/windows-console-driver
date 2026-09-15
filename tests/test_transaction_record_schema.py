@@ -107,9 +107,9 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     # point of the sweep is that v0 records keep being readable without being
     # rewritten, which stops being tested the moment the last one is migrated.
     # Bump these when an estate window banks a new record (window 6 took v1
-    # from 6 to 7).
+    # from 6 to 7; window 7 took it from 7 to 8).
     assert sum(version == 0 for version in versions.values()) == 8
-    assert sum(version == 1 for version in versions.values()) == 7
+    assert sum(version == 1 for version in versions.values()) == 8
     assert all(path.read_bytes() == content for path, content in before.items())
     assert all(
         ("schema_version" not in json.loads(path.read_text())["provenance"])

@@ -105,7 +105,7 @@ notes = "OK inside the WMI Query child dialog: unverified whether GPMC flushes t
 
 [actions.ok_new_wmi_filter_dialog]
 class = "commit_point"
-notes = "OK on the New WMI Filter dialog: believed to write the msWMI-Som object to AD directly (no parent dialog); the commit boundary the window must correlate with the certified AD representation"
+notes = "Save on the New WMI Filter dialog (MEASURED window 7 run 6: the dialog's commit button is 'Save', not 'OK'; buttons are Add/Remove/Edit + Save/Cancel): writes the msWMI-Som object to AD directly with no parent dialog -- the commit boundary the window correlates with the certified AD representation"
 
 # Selectors added with the same action rows. Name-based criteria bind UI
 # language strongly (contract section 6); automation_ids replace these as

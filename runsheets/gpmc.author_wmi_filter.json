@@ -24,60 +24,56 @@
       "assert_window_regex": "Group Policy Management"
     },
     {
-      "action": "click_element",
-      "profile_action": "navigate_tree",
-      "name_regex": "^Forest:",
-      "control_type": "ListItem",
-      "double": true,
-      "settle_ms": 2000
+      "action": "shot",
+      "name": "w7-gpmc-open"
     },
     {
       "action": "click_element",
       "profile_action": "navigate_tree",
-      "name_regex": "^Domains$",
-      "control_type": "ListItem",
-      "double": true,
-      "soft": true,
-      "settle_ms": 2000
+      "name_regex": "Console Embedded Scope",
+      "control_type": "Tree",
+      "settle_ms": 500
     },
     {
-      "action": "click_element",
+      "action": "key",
       "profile_action": "navigate_tree",
-      "name_regex": "{args.domain_dns}",
-      "control_type": "ListItem",
-      "soft": true,
-      "settle_ms": 2000
+      "vks": [
+        { "vk": 36, "modifiers": [] },
+        { "vk": 40, "modifiers": [] },
+        { "vk": 39, "modifiers": [] },
+        { "vk": 40, "modifiers": [] },
+        { "vk": 39, "modifiers": [] },
+        { "vk": 40, "modifiers": [] },
+        { "vk": 39, "modifiers": [] },
+        { "vk": 87, "modifiers": [] }
+      ]
     },
     {
-      "action": "click_element",
-      "profile_action": "navigate_tree",
-      "name_regex": "^WMI Filters$",
-      "control_type": "ListItem",
-      "settle_ms": 2000
+      "action": "shot",
+      "name": "w7-wmi-node"
     },
     {
       "action": "key",
       "profile_action": "open_new_wmi_filter_dialog",
       "vks": [
-        {
-          "vk": 65,
-          "modifiers": ["alt"]
-        }
+        { "vk": 121, "modifiers": ["shift"] },
+        { "vk": 40, "modifiers": [] },
+        { "vk": 13, "modifiers": [] }
       ]
     },
     {
-      "action": "click_element",
-      "profile_action": "open_new_wmi_filter_dialog",
-      "name_regex": "^New",
-      "control_type": "MenuItem",
-      "soft": true,
-      "settle_ms": 1000
+      "action": "shot",
+      "name": "w7-menu-opened"
     },
     {
       "action": "wait_foreground",
       "profile_action": "open_new_wmi_filter_dialog",
       "title_regex": "New WMI Filter",
       "timeout_ms": 30000
+    },
+    {
+      "action": "shot",
+      "name": "w7-new-filter-dialog"
     },
     {
       "action": "type_text",
@@ -111,9 +107,17 @@
       "timeout_ms": 20000
     },
     {
+      "action": "shot",
+      "name": "w7-query-dialog"
+    },
+    {
       "action": "type_text",
       "profile_action": "add_wmi_query",
       "text": "{args.wmi_query}"
+    },
+    {
+      "action": "shot",
+      "name": "w7-query-typed"
     },
     {
       "action": "click_element",
@@ -123,7 +127,7 @@
     {
       "action": "click_element",
       "profile_action": "ok_new_wmi_filter_dialog",
-      "name_regex": "^OK$"
+      "name_regex": "^Save$"
     },
     {
       "action": "guest",

@@ -159,7 +159,7 @@ def _fixture_snapshot() -> dict[str, Fact]:
         "wmifilter.target.present": True,
         "wmifilter.target.name": "zz-wmi-filter",
         "wmifilter.target.parm1": "zz description",
-        "wmifilter.target.parm2": "root\\CIMv2;SELECT * FROM Win32_OperatingSystem",
+        "wmifilter.target.parm2": "1;3;10;35;WQL;root\\CIMv2;SELECT * FROM Win32_OperatingSystem;",
         "wmifilter.target.id": "zz-guid",
     }.items():
         fact = make_fact(key, value)
