@@ -306,3 +306,51 @@ def test_helper_client_invoke_validates_the_guest_side_budget() -> None:
         hc.invoke(ok_transport, hc.build_request("context"), timeout_s=0)
     with pytest.raises(ValueError, match="timeout_s"):
         hc.invoke(ok_transport, hc.build_request("context"), timeout_s=-3)
+
+
+# --- Optional explicit host WinRM credentials ----------------------------------
+
+
+def test_host_credential_trio_travels_argv_without_its_secret(
+    fake_repl: FakeRepl, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A non-domain-joined controller names the host account and env var.
+
+    The trio travels argv as NAMES; the secret reaches the REPL only through
+    its environment, exactly like the guest credential.
+    """
+    monkeypatch.setenv(PASSWORD_ENV, "dummy-password-value")
+    monkeypatch.setenv("WCD_TEST_FAKE_HOST_PASSWORD", "dummy-host-password-value")
+    estate = EstateConfig(
+        host="lab-hv-01",
+        vm_name="LabT01",
+        domain="lab.example",
+        username="labadmin",
+        password_env=PASSWORD_ENV,
+        host_user_domain="ad.corp.example",
+        host_username="svc-controller",
+        host_password_env="WCD_TEST_FAKE_HOST_PASSWORD",
+    )
+    session = SessionTransport(
+        estate,
+        repl_path=fake_repl.script,
+        pwsh_executable=sys.executable,
+        startup_timeout=30.0,
+    )
+    try:
+        argv = fake_repl.last_spawn
+        assert "-HostUserDomain" in argv and "ad.corp.example" in argv
+        assert "-HostUsername" in argv and "svc-controller" in argv
+        assert "-HostPasswordEnv" in argv and "WCD_TEST_FAKE_HOST_PASSWORD" in argv
+        assert "dummy-host-password-value" not in argv
+    finally:
+        session.close()
+
+
+def test_no_host_credential_trio_keeps_the_historical_argv(
+    transport: SessionTransport, fake_repl: FakeRepl
+) -> None:
+    argv = fake_repl.last_spawn
+    assert "-HostUserDomain" not in argv
+    assert "-HostUsername" not in argv
+    assert "-HostPasswordEnv" not in argv

@@ -41,7 +41,15 @@ param(
     [Parameter(Mandatory = $true)] [string] $VmName,
     [Parameter(Mandatory = $true)] [string] $Domain,
     [Parameter(Mandatory = $true)] [string] $Username,
-    [Parameter(Mandatory = $true)] [string] $PasswordEnv
+    [Parameter(Mandatory = $true)] [string] $PasswordEnv,
+    # Optional explicit WinRM credential for the HOST (all-or-none trio).
+    # Absent: implicit authentication (a domain-joined Windows controller).
+    # Present: Negotiate with the named account -- the shape a
+    # non-domain-joined controller (e.g. a Linux box under a credential
+    # broker) must use, since it has no implicit credential to offer.
+    [Parameter()] [string] $HostUserDomain = '',
+    [Parameter()] [string] $HostUsername = '',
+    [Parameter()] [string] $HostPasswordEnv = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,7 +88,21 @@ function New-LabCredential {
 # continuity; sessions are per-request and disposed in finally.
 $script:Credential = New-LabCredential -DomainName $Domain -UserName $Username -EnvName $PasswordEnv
 
+$script:HostCredential = $null
+$hostTrio = @($HostUserDomain, $HostUsername, $HostPasswordEnv) | Where-Object { $_ }
+if (@($hostTrio).Count -eq 3) {
+    $script:HostCredential = New-LabCredential -DomainName $HostUserDomain `
+        -UserName $HostUsername -EnvName $HostPasswordEnv
+} elseif (@($hostTrio).Count -ne 0) {
+    throw "host credential parameters are all-or-none: -HostUserDomain, -HostUsername, -HostPasswordEnv"
+}
+
 function Get-HostSession {
+    if ($null -ne $script:HostCredential) {
+        return New-PSSession -ComputerName $HostName -Credential $script:HostCredential `
+            -Authentication Negotiate `
+            -SessionOption (New-PSSessionOption -OpenTimeout 30000) -ErrorAction Stop
+    }
     return New-PSSession -ComputerName $HostName `
         -SessionOption (New-PSSessionOption -OpenTimeout 30000) -ErrorAction Stop
 }
