@@ -41,7 +41,15 @@ param(
     [Parameter(Mandatory = $true)] [string] $VmName,
     [Parameter(Mandatory = $true)] [string] $Domain,
     [Parameter(Mandatory = $true)] [string] $Username,
-    [Parameter(Mandatory = $true)] [string] $PasswordEnv
+    [Parameter(Mandatory = $true)] [string] $PasswordEnv,
+    # Optional explicit WinRM credential for the HOST (all-or-none trio).
+    # Absent: implicit authentication (a domain-joined Windows controller).
+    # Present: Negotiate with the named account -- the shape a
+    # non-domain-joined controller (e.g. a Linux box under a credential
+    # broker) must use, since it has no implicit credential to offer.
+    [Parameter()] [string] $HostUserDomain = '',
+    [Parameter()] [string] $HostUsername = '',
+    [Parameter()] [string] $HostPasswordEnv = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,9 +88,30 @@ function New-LabCredential {
 # continuity; sessions are per-request and disposed in finally.
 $script:Credential = New-LabCredential -DomainName $Domain -UserName $Username -EnvName $PasswordEnv
 
+$script:HostCredential = $null
+$hostTrio = @($HostUserDomain, $HostUsername, $HostPasswordEnv) | Where-Object { $_ }
+if (@($hostTrio).Count -eq 3) {
+    $script:HostCredential = New-LabCredential -DomainName $HostUserDomain `
+        -UserName $HostUsername -EnvName $HostPasswordEnv
+} elseif (@($hostTrio).Count -ne 0) {
+    throw "host credential parameters are all-or-none: -HostUserDomain, -HostUsername, -HostPasswordEnv"
+}
+
+# Host-session parameters, assembled once. OpenTimeout rides along only where
+# the cmdlet exposes it: PowerShell on Linux carries a reduced remoting surface
+# whose New-PSSessionOption has no timeout parameters at all (measured on
+# pwsh 7.6.4), so the Linux path accepts the OS-level connect timeouts.
+$script:HostSessionParams = @{ ComputerName = $HostName }
+if ((Get-Command New-PSSessionOption).Parameters.ContainsKey('OpenTimeout')) {
+    $script:HostSessionParams['SessionOption'] = New-PSSessionOption -OpenTimeout 30000
+}
+if ($null -ne $script:HostCredential) {
+    $script:HostSessionParams['Credential'] = $script:HostCredential
+    $script:HostSessionParams['Authentication'] = 'Negotiate'
+}
+
 function Get-HostSession {
-    return New-PSSession -ComputerName $HostName `
-        -SessionOption (New-PSSessionOption -OpenTimeout 30000) -ErrorAction Stop
+    return New-PSSession @script:HostSessionParams -ErrorAction Stop
 }
 
 function Remove-HostSessionSafe {

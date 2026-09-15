@@ -81,26 +81,41 @@ class SessionTransport:
         self._counter_lock = threading.Lock()
         env = dict(os.environ)
         env[estate.password_env] = estate.resolved_password()
+        argv: list[str] = [
+            pwsh_executable,
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(repl_path),
+            "-HostName",
+            estate.host,
+            "-VmName",
+            estate.vm_name,
+            "-Domain",
+            estate.domain,
+            "-Username",
+            estate.username,
+            "-PasswordEnv",
+            estate.password_env,
+        ]
+        if estate.host_credentials_configured():
+            # Explicit host WinRM credentials: the names travel argv, the
+            # secret reaches the REPL only through its environment -- the
+            # same discipline as the guest credential above. Controllers
+            # without the trio keep the historical implicit authentication.
+            env[estate.host_password_env] = estate.resolved_host_password()
+            argv += [
+                "-HostUserDomain",
+                estate.host_user_domain,
+                "-HostUsername",
+                estate.host_username,
+                "-HostPasswordEnv",
+                estate.host_password_env,
+            ]
         self._process = subprocess.Popen(
-            [
-                pwsh_executable,
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(repl_path),
-                "-HostName",
-                estate.host,
-                "-VmName",
-                estate.vm_name,
-                "-Domain",
-                estate.domain,
-                "-Username",
-                estate.username,
-                "-PasswordEnv",
-                estate.password_env,
-            ],
+            argv,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
