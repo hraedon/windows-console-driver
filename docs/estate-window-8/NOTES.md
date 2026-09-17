@@ -61,6 +61,14 @@ repair from the seam.
   restart. Root cause unidentified; the checkpoint is superseded by the
   re-minted baselines. Record: `window8-vhdx-acl-fix` / `window8-vmms-restart`
   scripts in `C:\temp\lab`.
+  **[CORRECTED 2026-09-17, window 9 — see docs/estate-window-9/NOTES.md]**
+  The checkpoint was never unrestorable: `Restore-VMSnapshot` without
+  `-Confirm:$false` throws that NullReferenceException in any headless
+  WinRM session (the confirmation prompt dies before VMMS is contacted;
+  zero VMMS events on failure). Both window-8 repair scripts omitted the
+  flag; with it, the identical restore succeeds. The ACL repair and the
+  VMMS restart were red herrings, and the 20790 security-info events fire
+  on successful restores too.
 - **A Standard-checkpoint revert of a powered-off guest lands it `Saved`**,
   not running — the guest must be running at revert for the running-state
   restore the runner assumes (cost the first `estate-domain-reset` run its
