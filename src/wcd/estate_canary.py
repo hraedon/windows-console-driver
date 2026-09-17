@@ -24,11 +24,12 @@ costs one probe, not five timeouts):
 - ``dc_locator``      -- ``nltest /dsgetdc:`` answers from the guest (the
                          DC-locator DNS canary for the clock trap).
 - ``kerberos``        -- the DC clock is within Kerberos MaxClockSkew of the
-                         guest (read straight from the DC over LDAP at the
-                         DNS-server address) and ``klist`` can mint a fresh
-                         ticket for the domain. Every other guest check rides
-                         NTLM or DNS, which stay green under clock skew while
-                         GPMC dies -- this is the check that does not.
+                         guest (read from the DC's rootDSE currentTime,
+                         authenticated via Get-ADRootDSE) and ``klist`` can
+                         mint a fresh ticket for the domain. Every other
+                         guest check rides NTLM or DNS, which stay green
+                         under clock skew while GPMC dies -- this is the
+                         check that does not.
 - ``helper_task``     -- the console helper's scheduled task exists.
 - ``console_session`` -- an active console session is present (quser facts
                          only; the helper is not probed here).
@@ -75,28 +76,26 @@ $out = @(nltest "/dsgetdc:$domain" 2>&1 | ForEach-Object { "$_" })
 """
 
 # The Kerberos-sensitive probe. Two facts one line apart: the DC's own clock
-# (rootDSE currentTime over LDAP, addressed by the guest's DNS-server
-# address -- in this estate that IS the DC, so deleted DC-locator records
-# cannot hide the skew) versus the guest clock; then a fresh ticket mint for
-# the domain as this identity, which is the exact exchange a skewed KDC
-# rejects and a locator-less client cannot find. Both are read-only.
+# versus the guest clock, then a fresh ticket mint for the domain as this
+# identity, which is the exact exchange a skewed KDC rejects and a
+# locator-less client cannot find. Both are read-only.
+#
+# MEASURED (2026-09-17, first live canary run): an ADSI DirectoryEntry to
+# the DNS server address binds ANONYMOUSLY from the PSDirect network-logon
+# context (one rootDSE property, no currentTime) no matter the
+# AuthenticationFlags -- so the clock read goes through Get-ADRootDSE
+# (the RSAT module the domain_account check already leans on), which
+# authenticates as the caller and returns currentTime as a DateTime.
 _KERBEROS_SCRIPT = r"""
 $ErrorActionPreference = 'Stop'
 $domain = [string]$args[0]
 $delta = 'unreadable'
-$servers = @(Get-DnsClientServerAddress -AddressFamily IPv4 |
-    Where-Object { $_.ServerAddresses } |
-    ForEach-Object { $_.ServerAddresses } | Select-Object -Unique)
-foreach ($addr in $servers) {
-    try {
-        $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$addr/rootDSE")
-        $t = $root.Properties['currentTime'].Value
-        if ($null -ne $t) {
-            $delta = ('{0:F0}' -f ((Get-Date) - [DateTime]$t).TotalSeconds)
-            break
-        }
-    } catch { }
-}
+try {
+    $rde = Get-ADRootDSE -Server $env:USERDNSDOMAIN -ErrorAction Stop
+    if ($null -ne $rde.currentTime) {
+        $delta = ('{0:F0}' -f ((Get-Date) - $rde.currentTime).TotalSeconds)
+    }
+} catch { }
 "dc_time_delta_s=$delta"
 $kout = @(klist get "krbtgt/$domain" 2>&1 | ForEach-Object { "$_" })
 "klist_rc=$LASTEXITCODE"
@@ -265,9 +264,9 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
             record(
                 "kerberos",
                 False,
-                "DC time unreadable over LDAP from the guest's DNS servers; the "
-                "DC may be down or LDAP blocked -- Kerberos health cannot be "
-                "assumed (fix before the lane)",
+                "DC time unreadable (Get-ADRootDSE failed from the guest); the "
+                "DC may be down or the locator records gone -- Kerberos health "
+                "cannot be assumed (fix before the lane)",
             )
         elif abs(delta) > _MAX_CLOCK_SKEW_S:
             direction = "behind" if delta > 0 else "ahead of"

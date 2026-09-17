@@ -27,10 +27,11 @@ Before booking a window, `wcd estate-canary --estate local/estate.toml` makes
 silent estate drift a pre-flight fact instead of a mid-lane failure: one
 read-only pass over the seams a transaction depends on (host WinRM, guest
 PSDirect, the recovery checkpoint, the domain account's enabled/password
-state, the DC locator, Kerberos health — the DC clock read straight over
-LDAP compared against the guest at the measured MaxClockSkew, plus a fresh
-`klist` ticket mint, because clock skew kills GPMC's Kerberos path while
-every NTLM probe stays green — the helper task, the console session), one
+state, the DC locator, Kerberos health — the DC's rootDSE clock read
+(authenticated, via Get-ADRootDSE) compared against the guest at the
+measured MaxClockSkew, plus a fresh `klist` ticket mint, because clock
+skew kills GPMC's Kerberos path while every NTLM probe stays green —
+the helper task, the console session), one
 precise line per check, fail closed — exit 0 green, 3 when any check failed. It is
 an operator tool; the default suite tests its logic against scripted fakes
 and never touches a live host.

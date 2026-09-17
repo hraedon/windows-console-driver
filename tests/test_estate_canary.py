@@ -257,6 +257,7 @@ def test_unreadable_dc_time_fails_kerberos_fail_closed() -> None:
     assert report.ok is False
     detail = _details(report)["kerberos"]
     assert "DC time unreadable" in detail
+    assert "Get-ADRootDSE failed" in detail
     assert "cannot be assumed" in detail
 
 
