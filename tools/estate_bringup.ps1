@@ -390,10 +390,14 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
         $dom = Invoke-GuestScript -Vm $ConsoleVm -ScriptText $locatorScript
         $netBios = (($dom | Where-Object { $_ -like 'netbios=*' }) -replace 'netbios=', '')
         $dsdcLine = (($dom | Where-Object { $_ -like 'dsdc=*' }) -replace '^dsdc=', '')
-        if ($dsdcLine -match 'found DC|DC name') {
+        # Server 2025 nltest success marker (measured 2026-09-17): no
+        # "Found DC:" line, but always "The command completed successfully".
+        if ($dsdcLine -match 'command completed successfully') {
             Write-Output "[4/6] member-domain: locator answers from $ConsoleVm (NetBIOS domain $netBios)"
         } else {
-            Write-Output ("[4/6] member-domain: locator NOT answering ({0}); one nltest /sc_reset attempt" -f $dsdcLine)
+            $shortDc = if ($dsdcLine.Length -gt 120) { $dsdcLine.Substring(0, 120) + '...' } else { $dsdcLine
+            }
+            Write-Output ("[4/6] member-domain: locator NOT answering ({0}); one nltest /sc_reset attempt" -f $shortDc)
             $resetScript = @'
 nltest "/sc_reset:$env:USERDNSDOMAIN" | Out-Null
 Start-Sleep -Seconds 5
@@ -402,10 +406,11 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
 '@
             $reset = Invoke-GuestScript -Vm $ConsoleVm -ScriptText $resetScript
             $after = (($reset | Where-Object { $_ -like 'dsdc=*' }) -replace '^dsdc=', '')
-            if ($after -match 'found DC|DC name') {
+            if ($after -match 'command completed successfully') {
                 Write-Output '[4/6] member-domain: sc_reset restored the locator'
             } else {
-                Write-Output ("fail: member locator still dead after sc_reset: {0} -- a member reboot likely needed (deliberately not automatic: it would kill the console session)" -f $after)
+                $short = if ($after.Length -gt 120) { $after.Substring(0, 120) + '...' } else { $after }
+                Write-Output ("fail: member locator still dead after sc_reset: {0} -- a member reboot likely needed (deliberately not automatic: it would kill the console session)" -f $short)
                 $failed = $true
             }
         }
@@ -567,6 +572,13 @@ if (Test-Path "$helperDir\response.json") { 'smoke=context-answered' } else { 's
                         $account, (ConvertTo-SecureString $secret -AsPlainText -Force))
                     $guest = New-PSSession -VMName $vm -Credential $cred -ErrorAction Stop
                     try {
+                        # The destination directory must exist BEFORE the
+                        # copy: Copy-Item does not create remote intermediate
+                        # directories (measured 2026-09-17, first live deploy).
+                        Invoke-Command -Session $guest -ArgumentList $helperDir -ScriptBlock {
+                            param($dir)
+                            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+                        }
                         Copy-Item -ToSession $guest -Path 'C:\wcd-staging\helper.ps1' `
                             -Destination "$helperDir\helper.ps1" -Force
                         $block = [scriptblock]::Create($scriptText)
