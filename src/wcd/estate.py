@@ -30,6 +30,10 @@ class EstateConfig:
     domain: str
     username: str
     password_env: str
+    # The estate's domain controller VM, named so the bring-up tool can boot
+    # and clock-check it before the console VM depends on it. Optional: the
+    # transaction path itself only ever touches vm_name.
+    dc_vm_name: str = ""
     helper_task: str = "WCDHelper"
     helper_dir: str = "C:\\lab\\wcd"
     guest_scripts_dir: str = "C:\\lab\\wcd\\scripts"
@@ -88,8 +92,9 @@ def load_estate(path: str | Path) -> EstateConfig:
     """Load and validate the estate TOML at *path*.
 
     Required keys: ``host``, ``vm_name``, ``domain``, ``username``,
-    ``password_env``. Optional: ``helper_task``, ``helper_dir``,
-    ``guest_scripts_dir``, ``checkpoint_name``, ``evidence_dir``, and the
+    ``password_env``. Optional: ``dc_vm_name``, ``helper_task``,
+    ``helper_dir``, ``guest_scripts_dir``, ``checkpoint_name``,
+    ``evidence_dir``, and the
     all-or-none host-credential trio ``host_user_domain``/``host_username``/
     ``host_password_env``. Unknown keys are refused (a misspelled secret name
     must fail loudly, not silently unlock nothing).
@@ -108,6 +113,7 @@ def load_estate(path: str | Path) -> EstateConfig:
     known = {
         "host",
         "vm_name",
+        "dc_vm_name",
         "domain",
         "username",
         "password_env",
@@ -146,6 +152,7 @@ def load_estate(path: str | Path) -> EstateConfig:
     return EstateConfig(
         host=values["host"],
         vm_name=values["vm_name"],
+        dc_vm_name=values.get("dc_vm_name", ""),
         domain=values["domain"],
         username=values["username"],
         password_env=values["password_env"],
