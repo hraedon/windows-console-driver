@@ -79,3 +79,14 @@ def test_a_configured_pwsh_executable_loads(tmp_path: Path) -> None:
 
 def test_pwsh_executable_is_optional(tmp_path: Path) -> None:
     assert load_estate(_estate_file(tmp_path, _BASE)).pwsh_executable == ""
+
+
+def test_a_configured_dc_vm_name_loads(tmp_path: Path) -> None:
+    estate = load_estate(
+        _estate_file(tmp_path, _BASE + "dc_vm_name = 'zz-dc01'\n")
+    )
+    assert estate.dc_vm_name == "zz-dc01"
+
+
+def test_dc_vm_name_is_optional(tmp_path: Path) -> None:
+    assert load_estate(_estate_file(tmp_path, _BASE)).dc_vm_name == ""

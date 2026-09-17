@@ -32,6 +32,17 @@ line per check, fail closed — exit 0 green, 3 when any check failed. It is
 an operator tool; the default suite tests its logic against scripted fakes
 and never touches a live host.
 
+The canary detects drift; `tools/estate_bringup.ps1` repairs it. One
+idempotent pass turns the estate from Off (or drifted) to lane-ready in
+failure order: DC boot, DC clock (the restore-trap repair: Set-Date from
+host UTC, `nltest /dsregdns`, NetLogon restart), member boot, member
+locator health, the CAD key-injection console logon, and the helper
+two-hop deploy with a context smoke. `tools/estate_teardown.ps1` is the
+leave-as-found companion (guest-initiated shutdown, never `Stop-VM`).
+Both read the same estate file and the same named environment secrets,
+both refuse non-disposable VM names, and both are operator tools -- the
+suite pins their structure only.
+
 Execution currently requires a source checkout (normally `pip install -e
 ".[dev]"`). Profiles, run-sheets, schemas, capabilities, and guest scripts are
 repository assets resolved from that checkout; a standalone wheel deployment
