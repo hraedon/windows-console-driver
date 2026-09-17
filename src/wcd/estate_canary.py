@@ -23,6 +23,12 @@ costs one probe, not five timeouts):
                          line).
 - ``dc_locator``      -- ``nltest /dsgetdc:`` answers from the guest (the
                          DC-locator DNS canary for the clock trap).
+- ``kerberos``        -- the DC clock is within Kerberos MaxClockSkew of the
+                         guest (read straight from the DC over LDAP at the
+                         DNS-server address) and ``klist`` can mint a fresh
+                         ticket for the domain. Every other guest check rides
+                         NTLM or DNS, which stay green under clock skew while
+                         GPMC dies -- this is the check that does not.
 - ``helper_task``     -- the console helper's scheduled task exists.
 - ``console_session`` -- an active console session is present (quser facts
                          only; the helper is not probed here).
@@ -68,6 +74,35 @@ $out = @(nltest "/dsgetdc:$domain" 2>&1 | ForEach-Object { "$_" })
 @($out | Where-Object { $_ -and $_.Trim() }) | Select-Object -First 4
 """
 
+# The Kerberos-sensitive probe. Two facts one line apart: the DC's own clock
+# (rootDSE currentTime over LDAP, addressed by the guest's DNS-server
+# address -- in this estate that IS the DC, so deleted DC-locator records
+# cannot hide the skew) versus the guest clock; then a fresh ticket mint for
+# the domain as this identity, which is the exact exchange a skewed KDC
+# rejects and a locator-less client cannot find. Both are read-only.
+_KERBEROS_SCRIPT = r"""
+$ErrorActionPreference = 'Stop'
+$domain = [string]$args[0]
+$delta = 'unreadable'
+$servers = @(Get-DnsClientServerAddress -AddressFamily IPv4 |
+    Where-Object { $_.ServerAddresses } |
+    ForEach-Object { $_.ServerAddresses } | Select-Object -Unique)
+foreach ($addr in $servers) {
+    try {
+        $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$addr/rootDSE")
+        $t = $root.Properties['currentTime'].Value
+        if ($null -ne $t) {
+            $delta = ('{0:F0}' -f ((Get-Date) - [DateTime]$t).TotalSeconds)
+            break
+        }
+    } catch { }
+}
+"dc_time_delta_s=$delta"
+$kout = @(klist get "krbtgt/$domain" 2>&1 | ForEach-Object { "$_" })
+"klist_rc=$LASTEXITCODE"
+@($kout | Where-Object { $_ -and $_.Trim() }) | Select-Object -First 3
+"""
+
 _HELPER_TASK_SCRIPT = (
     "$t = Get-ScheduledTask -TaskName $args[0] -ErrorAction SilentlyContinue; "
     "if ($null -eq $t) { 'present=0' } else { \"present=1 state=$($t.State)\" }"
@@ -75,6 +110,11 @@ _HELPER_TASK_SCRIPT = (
 
 _HOST_TIMEOUT_S = 45.0
 _GUEST_TIMEOUT_S = 90.0
+
+# Kerberos MaxClockSkew, measured on this estate (R7 secedit export: 5
+# minutes). Beyond it the KDC rejects tickets while NTLM paths keep answering
+# -- exactly the failure this check exists to catch pre-flight.
+_MAX_CLOCK_SKEW_S = 300
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +158,7 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
             "checkpoint",
             "domain_account",
             "dc_locator",
+            "kerberos",
             "helper_task",
             "console_session",
         ):
@@ -165,7 +206,7 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
             record("checkpoint", False, f"checkpoint probe failed: {_short(exc)}")
 
     if not guest_available:
-        for name in ("domain_account", "dc_locator", "helper_task", "console_session"):
+        for name in ("domain_account", "dc_locator", "kerberos", "helper_task", "console_session"):
             record(name, False, "skipped: guest PSDirect unavailable")
         return CanaryReport(checks=tuple(checks))
 
@@ -209,6 +250,52 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
             )
     except Exception as exc:
         record("dc_locator", False, f"dc locator probe failed: {_short(exc)}")
+
+    # -- Kerberos (the one auth path GPMC needs that NTLM checks cannot see) ---
+    try:
+        out = transport.guest(_KERBEROS_SCRIPT, [estate.domain], timeout=_GUEST_TIMEOUT_S)
+        raw_delta = _line_value(out, "dc_time_delta_s")
+        klist_rc = _line_value(out, "klist_rc")
+        delta: int | None = None
+        try:
+            delta = int(float(raw_delta))
+        except ValueError:
+            delta = None
+        if delta is None:
+            record(
+                "kerberos",
+                False,
+                "DC time unreadable over LDAP from the guest's DNS servers; the "
+                "DC may be down or LDAP blocked -- Kerberos health cannot be "
+                "assumed (fix before the lane)",
+            )
+        elif abs(delta) > _MAX_CLOCK_SKEW_S:
+            direction = "behind" if delta > 0 else "ahead of"
+            record(
+                "kerberos",
+                False,
+                f"DC clock is {abs(delta)}s {direction} the guest (Kerberos "
+                f"MaxClockSkew {_MAX_CLOCK_SKEW_S}s): Kerberos/GPMC will fail "
+                "while NTLM paths stay green -- seed the DC clock from the host "
+                "(Set-Date), nltest /dsregdns, restart NetLogon",
+            )
+        elif klist_rc != "0":
+            first = _kerberos_detail_line(out)
+            record(
+                "kerberos",
+                False,
+                f"klist mint for krbtgt/{estate.domain} failed "
+                f"(rc={klist_rc or 'unreadable'}): {first}",
+            )
+        else:
+            record(
+                "kerberos",
+                True,
+                f"DC clock within {abs(delta)}s; klist minted krbtgt/{estate.domain} "
+                "(rc=0)",
+            )
+    except Exception as exc:
+        record("kerberos", False, f"kerberos probe failed: {_short(exc)}")
 
     # -- helper task -----------------------------------------------------------------
     try:
@@ -266,6 +353,15 @@ def _first_content_line(out: str) -> str:
     for line in out.splitlines():
         text = line.strip()
         if text and not text.startswith("rc="):
+            return text[:120]
+    return "no output"
+
+
+def _kerberos_detail_line(out: str) -> str:
+    """The first klist output line, skipping the probe's own metric lines."""
+    for line in out.splitlines():
+        text = line.strip()
+        if text and not re.match(r"^(dc_time_delta_s|klist_rc)=", text):
             return text[:120]
     return "no output"
 
