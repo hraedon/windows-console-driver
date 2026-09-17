@@ -34,6 +34,7 @@ _CHECK_ORDER = (
     "checkpoint",
     "domain_account",
     "dc_locator",
+    "kerberos",
     "helper_task",
     "console_session",
 )
@@ -53,6 +54,9 @@ class FakeCanaryTransport:
         password_expired: str = "False",
         nltest_rc: str = "0",
         nltest_lines: str = "",
+        dc_time_delta_s: str = "0",
+        klist_rc: str = "0",
+        klist_lines: str = "",
         helper_present: bool = True,
         helper_state: str = "Ready",
         console_active: bool = True,
@@ -65,6 +69,9 @@ class FakeCanaryTransport:
         self.password_expired = password_expired
         self.nltest_rc = nltest_rc
         self.nltest_lines = nltest_lines
+        self.dc_time_delta_s = dc_time_delta_s
+        self.klist_rc = klist_rc
+        self.klist_lines = klist_lines
         self.helper_present = helper_present
         self.helper_state = helper_state
         self.console_active = console_active
@@ -99,6 +106,11 @@ class FakeCanaryTransport:
             return f"enabled={self.enabled}\npassword_expired={self.password_expired}\n"
         if "nltest" in script:
             return f"rc={self.nltest_rc}\n{self.nltest_lines}"
+        if "dc_time_delta_s" in script and "klist" in script:
+            return (
+                f"dc_time_delta_s={self.dc_time_delta_s}\n"
+                f"klist_rc={self.klist_rc}\n{self.klist_lines}"
+            )
         if "Get-ScheduledTask" in script:
             if not self.helper_present:
                 return "present=0\n"
@@ -138,7 +150,7 @@ def test_missing_checkpoint_fails_with_its_name() -> None:
     assert "zz-checkpoint-current" in details["checkpoint"]
     # Every other check still ran and stayed green.
     assert _names(report) == list(_CHECK_ORDER)
-    assert sum(1 for c in report.checks if c.ok) == 6
+    assert sum(1 for c in report.checks if c.ok) == 7
 
 
 def test_empty_checkpoint_name_is_a_config_failure_not_a_probe() -> None:
@@ -161,7 +173,7 @@ def test_vm_off_fails_psdirect_and_skips_guest_checks() -> None:
     assert report.ok is False
     details = _details(report)
     assert "state is Off" in details["guest_psdirect"]
-    for name in ("domain_account", "dc_locator", "helper_task", "console_session"):
+    for name in ("domain_account", "dc_locator", "kerberos", "helper_task", "console_session"):
         assert details[name].startswith("skipped: guest PSDirect unavailable")
     # Host-side checks still ran and stayed green.
     assert fake.host_calls  # vm state + checkpoint probes crossed
@@ -196,6 +208,57 @@ def test_dc_locator_failure_reports_rc_and_the_dns_hint() -> None:
     assert "Cannot find DC" in detail
     # The standing DC clock/DNS trap is named in the line.
     assert "DC-locator DNS" in detail
+
+
+def test_clock_skew_fails_kerberos_while_every_ntlm_check_stays_green() -> None:
+    """The 2026-09-15 trap, made the check's headline: 7h DC skew leaves every
+    NTLM/DNS probe green (PSDirect, Get-ADUser, nltest) while GPMC is dead."""
+    report = run_estate_canary(
+        FakeCanaryTransport(dc_time_delta_s="25200", klist_rc="-2146893022"),
+        _ESTATE,
+    )
+    assert report.ok is False
+    detail = _details(report)["kerberos"]
+    assert "25200s behind" in detail
+    assert "MaxClockSkew 300s" in detail
+    # The fix ritual is named so the line is actionable.
+    assert "Set-Date" in detail and "NetLogon" in detail
+    # Every NTLM-riding check stayed green -- that is the point of this check.
+    details = _details(report)
+    for name in ("host_winrm", "guest_psdirect", "checkpoint", "domain_account", "dc_locator"):
+        assert details[name] and "skipped" not in details[name]
+    assert "MaxClockSkew" not in details["domain_account"]
+
+
+def test_negative_skew_is_reported_as_dc_ahead() -> None:
+    report = run_estate_canary(FakeCanaryTransport(dc_time_delta_s="-400"), _ESTATE)
+    assert report.ok is False
+    detail = _details(report)["kerberos"]
+    assert "400s ahead of" in detail
+
+
+def test_klist_failure_fails_kerberos_with_its_own_error_line() -> None:
+    report = run_estate_canary(
+        FakeCanaryTransport(
+            klist_rc="-1073741715", klist_lines="Error calling API LSBKDC: cannot find KDC\n"
+        ),
+        _ESTATE,
+    )
+    assert report.ok is False
+    detail = _details(report)["kerberos"]
+    assert "klist mint for krbtgt/zzlab.invalid failed" in detail
+    assert "cannot find KDC" in detail
+
+
+def test_unreadable_dc_time_fails_kerberos_fail_closed() -> None:
+    report = run_estate_canary(
+        FakeCanaryTransport(dc_time_delta_s="unreadable"), _ESTATE
+    )
+    assert report.ok is False
+    detail = _details(report)["kerberos"]
+    assert "DC time unreadable" in detail
+    assert "Get-ADRootDSE failed" in detail
+    assert "cannot be assumed" in detail
 
 
 def test_disabled_helper_task_fails_even_though_present() -> None:
@@ -271,6 +334,8 @@ def test_probe_exception_becomes_a_failing_line_never_a_raise() -> None:
         "enabled",
         "password_expired",
         "nltest_rc",
+        "dc_time_delta_s",
+        "klist_rc",
         "helper_present",
         "console_active",
     ],
@@ -282,6 +347,8 @@ def test_every_single_check_alone_can_redden_the_report(field: str) -> None:
         "enabled": {"enabled": "False"},
         "password_expired": {"password_expired": "True"},
         "nltest_rc": {"nltest_rc": "1722"},
+        "dc_time_delta_s": {"dc_time_delta_s": "25200"},
+        "klist_rc": {"klist_rc": "-1073741715"},
         "helper_present": {"helper_present": False},
         "console_active": {"console_active": False},
     }

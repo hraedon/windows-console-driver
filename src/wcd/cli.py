@@ -13,9 +13,10 @@ Verbs:
   the 4800/4801 lock/unlock trail once.
 - ``console-state`` -- classify the console without changing anything.
 - ``estate-canary`` -- read-only estate health checks (host WinRM, guest
-  PSDirect, recovery checkpoint, domain account, DC locator, helper task,
-  console session); one precise line per check, fail closed. Exit 0 when
-  every check is green, 3 when any check failed, 2 on estate-config errors.
+  PSDirect, recovery checkpoint, domain account, DC locator, Kerberos clock
+  + ticket mint, helper task, console session); one precise line per check,
+  fail closed. Exit 0 when every check is green, 3 when any check failed,
+  2 on estate-config errors.
 
 Secrets come from the environment (the estate file names the variable);
 argv and stdout never carry them. The transaction record is the only
