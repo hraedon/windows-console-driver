@@ -310,11 +310,14 @@ observer implementation shares no code with the product.
 
 ## 11. Capability specification
 
-`capabilities/*.json` are revisioned documents. Current transaction-record v1
-records the capability ID and run-sheet name, but not the capability revision
-or a content digest; current qualification is therefore **not hash-bound**.
-The qualification ledger binds banked evidence to revisions explicitly until a
-future record version carries the immutable digest:
+`capabilities/*.json` are revisioned documents. Transaction-record v1 carried
+only the capability ID and run-sheet name; record v2 (see
+`docs/transaction-record-schema.md`) closes that gap by binding the executed
+capability's declared revision plus a SHA-256 of its exact text into every
+record the execution seam mints, and refusing a record whose binding does not
+match the capability content its caller supplied. The qualification ledger
+still binds *banked* evidence to revisions explicitly, because banked v1
+records predate the binding and are never rewritten:
 
 ```jsonc
 {
@@ -343,8 +346,10 @@ relearned from WEL).
   hash-bound capability revisions whose compatibility predicate passes. Raw
   input is unreachable. The current CLI enforces schemas, profile action
   classes, channel contracts, lease/context/recovery guards, and independent
-  envelopes, but does not yet enforce the capability hash or compatibility
-  baseline described above.
+  envelopes; record v2 binds each emitted record to the exact capability
+  content that produced it (and refuses a plan whose machine/identity
+  disagrees with the estate's own target), while the compatibility-baseline
+  predicate across revisions remains future work.
 - **Driver development** — raw inspect/input allowed, but only when the
   evidence runtime proves the target is a disposable estate with a
   demonstrated exact-baseline recovery route (checkpoint). A confirmation
@@ -376,7 +381,9 @@ residue, e.g. USN movement, audit events). Three terms, used precisely:
   and new surfaces still require their own qualification.
 - Every shipped capability is validated against the closed Draft 2020-12
   `docs/capability-schema-v0.json` before execution and in CI. Generated
-  records are stamped/validated as transaction-record v1; the eight immutable
+  records are stamped/validated as transaction-record v2 when their caller
+  supplied the exact capability text (the CLI seam always does; a direct
+  executor call without text still mints v1); the eight immutable
   estate records are validated through the explicit v0 compatibility path.
 - Every real-environment result is certified against independent observation,
   never against the driver's report.
@@ -387,11 +394,11 @@ residue, e.g. USN movement, audit events). Three terms, used precisely:
   runtime -> typed transaction contract -> driver RPC/CLI. The deferral is no
   longer about the primitive — eight transactions have been banked through the
   engine. The record schema is the actual interface an agent surface will
-  program against. Version 1 is now frozen in
-  `docs/transaction-record-schema-v1.json`; new records carry that version in
-  `provenance`, while immutable pre-schema evidence is read through the
-  explicit v0 compatibility path. Agent-surface design remains deferred until
-  v1 has survived the next capability window without a revision.
+  program against. Version 1 is frozen in
+  `docs/transaction-record-schema-v1.json`; version 2 adds the capability
+  revision/content binding (and the plan/estate machine-identity agreement) in
+  `docs/transaction-record-schema-v2.json`, while immutable pre-schema
+  evidence is read through the explicit v0 compatibility path.
 - No general GUI-understanding/vision agent. Profiles and capabilities encode
   domain knowledge; the driver aims and verifies.
 - No full Group Policy semantic model. The observer grammar grows from

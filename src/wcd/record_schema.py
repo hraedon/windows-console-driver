@@ -1,10 +1,15 @@
 """Validation and compatibility policy for transaction records.
 
 The executor's five top-level keys are a wire contract with
-``windows-evidence-lab`` and therefore stay unchanged.  Version 1 stamps the
-record inside ``provenance``.  Records committed before that stamp are not
-rewritten: :func:`load_record` recognizes only the repository's committed
-estate evidence locations as legacy input and validates them against v0.
+``windows-evidence-lab`` and therefore stay unchanged.  The version is stamped
+inside ``provenance``: version 2 adds the capability-spec binding version 1
+lacked (``capability_revision`` + ``capability_sha256`` over the exact
+capability text that was executed), so a record authenticates which content of
+a mutable capability file produced it.  Records committed before schema
+stamping are not rewritten: :func:`load_record` recognizes only the
+repository's committed estate evidence locations as legacy input and validates
+them against v0.  Version 1 records validate exactly as they always have; the
+v2 fields are required only when the record stamps itself v2.
 
 This module intentionally has no third-party dependency.  The JSON Schema
 documents under ``docs/`` are the machine-readable contract; these checks are
@@ -14,16 +19,24 @@ cannot assume a JSON-Schema package is installed.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Final, Literal, NoReturn
 
-RecordVersion = Literal[0, 1]
+RecordVersion = Literal[0, 1, 2]
 
-RECORD_SCHEMA_VERSION: Final[int] = 1
-RECORD_SCHEMA_REF: Final[str] = "docs/transaction-record-schema-v1.json"
+RECORD_SCHEMA_VERSION: Final[int] = 2
+RECORD_SCHEMA_REF: Final[str] = "docs/transaction-record-schema-v2.json"
+# Version 1 is frozen: the eight banked native-v1 records keep validating
+# against their own document with their own stamp, exactly as committed.
+V1_RECORD_SCHEMA_VERSION: Final[int] = 1
+V1_RECORD_SCHEMA_REF: Final[str] = "docs/transaction-record-schema-v1.json"
 LEGACY_SCHEMA_VERSION: Final[int] = 0
+
+_CAPABILITY_SHA256: Final[re.Pattern[str]] = re.compile(r"^[0-9a-f]{64}$")
 
 _TOP_LEVEL_KEYS: Final[frozenset[str]] = frozenset(
     {"state", "verdict", "envelope_result", "events", "provenance"}
@@ -40,6 +53,11 @@ _ENVELOPE_STATUSES: Final[frozenset[str]] = frozenset(
 _DELTA_KINDS: Final[frozenset[str]] = frozenset({"added", "changed", "removed"})
 _BASE_PROVENANCE_KEYS: Final[frozenset[str]] = frozenset(
     {"capability", "run_sheet", "transaction_id", "console", "steps", "cleanup", "notes"}
+)
+# The v2 capability-spec binding: the revision declared by the capability
+# document that was executed, and a SHA-256 over that document's exact text.
+_V2_PROVENANCE_KEYS: Final[frozenset[str]] = frozenset(
+    {"capability_revision", "capability_sha256"}
 )
 _REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 _LEGACY_RECORDS: Final[frozenset[Path]] = frozenset(
@@ -157,21 +175,35 @@ def _validate_events(value: object) -> None:
         _string(event["reason"], f"events[{index}].reason")
 
 
-def _validate_provenance(value: object, *, legacy: bool) -> None:
+def _validate_provenance(value: object, *, legacy: bool, version: RecordVersion) -> None:
     provenance = _object(value, "provenance")
     allowed = _BASE_PROVENANCE_KEYS | frozenset({"$schema", "schema_version"})
     required = _BASE_PROVENANCE_KEYS if legacy else allowed
+    if version == 2:
+        allowed = allowed | _V2_PROVENANCE_KEYS
+        required = required | _V2_PROVENANCE_KEYS
     _keys(provenance, allowed, "provenance", required=required)
-    stamped = "$schema" in provenance or "schema_version" in provenance
     if legacy:
-        if stamped:
+        if "$schema" in provenance or "schema_version" in provenance:
             _fail("provenance", "legacy records must not carry a partial schema stamp")
-    else:
+    elif version == 2:
         if provenance.get("$schema") != RECORD_SCHEMA_REF:
             _fail("provenance.$schema", f"must be {RECORD_SCHEMA_REF!r}")
         if provenance.get("schema_version") != RECORD_SCHEMA_VERSION:
+            _fail("provenance.schema_version", "must be 2")
+    else:
+        if provenance.get("$schema") != V1_RECORD_SCHEMA_REF:
+            _fail("provenance.$schema", f"must be {V1_RECORD_SCHEMA_REF!r}")
+        if provenance.get("schema_version") != V1_RECORD_SCHEMA_VERSION:
             _fail("provenance.schema_version", "must be 1")
     _string(provenance["capability"], "provenance.capability")
+    if version == 2:
+        revision = provenance["capability_revision"]
+        if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+            _fail("provenance.capability_revision", "must be a positive integer")
+        digest = provenance["capability_sha256"]
+        if not isinstance(digest, str) or not _CAPABILITY_SHA256.fullmatch(digest):
+            _fail("provenance.capability_sha256", "must be a lowercase SHA-256 digest")
     _string(provenance["run_sheet"], "provenance.run_sheet")
     _string(provenance["transaction_id"], "provenance.transaction_id")
     _object(provenance["console"], "provenance.console")
@@ -187,19 +219,48 @@ def _is_committed_legacy_source(source: str | Path | None) -> bool:
     return Path(source).resolve(strict=False) in _LEGACY_RECORDS
 
 
+def _record_version(provenance: Mapping[str, object]) -> RecordVersion:
+    """Resolve the schema stamp to its version, or fail with a named reason.
+
+    Unstamped records are NOT a version here: the caller decides (committed
+    legacy evidence or an explicit opt-in) before this helper is reached.
+    """
+    schema_ref = provenance.get("$schema")
+    schema_version = provenance.get("schema_version")
+    if schema_ref == V1_RECORD_SCHEMA_REF:
+        if schema_version != V1_RECORD_SCHEMA_VERSION:
+            _fail("provenance.schema_version", "must be 1")
+        return 1
+    if schema_ref == RECORD_SCHEMA_REF:
+        if schema_version != RECORD_SCHEMA_VERSION:
+            _fail("provenance.schema_version", "must be 2")
+        return 2
+    _fail("provenance.$schema", f"must be {V1_RECORD_SCHEMA_REF!r} or {RECORD_SCHEMA_REF!r}")
+
+
 def validate_record(
     record: Mapping[str, object],
     *,
     source: str | Path | None = None,
     allow_legacy: bool = False,
+    capability_text: str | None = None,
 ) -> RecordVersion:
     """Validate a record and return its version.
 
-    A record is v1 when its provenance contains the complete schema stamp.
-    Unstamped records are accepted only when ``allow_legacy`` is explicit or
-    when ``source`` identifies committed estate-window-2/3 evidence.  This
-    prevents an arbitrary unversioned payload from quietly becoming a legacy
-    record while retaining read access to immutable evidence.
+    A record is v1 or v2 when its provenance contains the complete schema
+    stamp for that version.  Unstamped records are accepted only when
+    ``allow_legacy`` is explicit or when ``source`` identifies committed
+    estate-window-2/3 evidence.  This prevents an arbitrary unversioned
+    payload from quietly becoming a legacy record while retaining read access
+    to immutable evidence.
+
+    ``capability_text`` is the v2 content check: the exact capability
+    document text the caller believes produced the record.  A v2 record whose
+    ``capability_sha256`` is not the SHA-256 of that text, or whose
+    ``capability_revision`` disagrees with the document the text parses to, is
+    refused -- a record that cannot authenticate its capability content is not
+    validated to a weaker standard.  Version 1 records carry no binding, so
+    the text is not consulted for them; their semantics are frozen.
     """
     if not isinstance(record, dict):
         _fail("record", "must be an object")
@@ -219,15 +280,51 @@ def validate_record(
                 "provenance",
                 "partial schema stamp; both $schema and schema_version are required",
             )
-        version: RecordVersion = 1
+        version: RecordVersion = _record_version(provenance)
     elif allow_legacy or _is_committed_legacy_source(source):
         version = 0
     else:
         _fail("provenance", "missing schema stamp; legacy input requires an explicit source")
     _validate_envelope(record["envelope_result"], legacy=version == 0, state=state)
     _validate_events(record["events"])
-    _validate_provenance(record["provenance"], legacy=version == 0)
+    _validate_provenance(record["provenance"], legacy=version == 0, version=version)
+    if version == 2 and capability_text is not None:
+        _verify_capability_binding(provenance, capability_text)
     return version
+
+
+def _verify_capability_binding(
+    provenance: Mapping[str, object], capability_text: str
+) -> None:
+    """Refuse a v2 record whose binding does not match the capability content.
+
+    The digest is recomputed from the text, never taken from the record: the
+    point of the binding is that the record's claim about its capability
+    content is checked against that content, so a record and a pre-computed
+    digest that agree with each other but not with the document would be no
+    check at all.  The revision is read from the same parsed document, which
+    the caller has already validated against the capability schema.
+    """
+    try:
+        document = json.loads(capability_text)
+    except ValueError as exc:
+        _fail("capability_text", f"is not valid JSON: {exc}")
+    if not isinstance(document, dict):
+        _fail("capability_text", "must be a JSON object")
+    revision = document.get("revision")
+    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+        _fail("capability_text.revision", "must be a positive integer")
+    digest = hashlib.sha256(capability_text.encode("utf-8")).hexdigest()
+    if provenance.get("capability_sha256") != digest:
+        _fail(
+            "provenance.capability_sha256",
+            f"does not match the capability content (computed {digest})",
+        )
+    if provenance.get("capability_revision") != revision:
+        _fail(
+            "provenance.capability_revision",
+            f"does not match the capability document (declares {revision})",
+        )
 
 
 def load_record(path: str | Path) -> tuple[dict[str, object], RecordVersion]:

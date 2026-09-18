@@ -7,7 +7,10 @@ Verbs:
   the WEL backend sends it (``{machine, capability, arguments, ...}``), or
   from flags for direct controller-side use:
   ``wcd exec-transaction --capability capabilities/gpmc.author_scripts_entry.json
-  --arg gpo_name=zz-studio-evidence-02-scripts --arg ...``.
+  --arg gpo_name=zz-studio-evidence-02-scripts --arg ...``. A stdin plan's
+  machine and identity must agree with the estate's own target (``vm_name``
+  and ``identity_role``) before anything is launched; a disagreement is a
+  clean exit-2 refusal, not a run against a target the plan never named.
 - ``ensure-console`` -- verify (and if permitted, establish) the unlocked
   console; prints the resulting state JSON. ``--audit`` additionally reads
   the 4800/4801 lock/unlock trail once.
@@ -182,7 +185,8 @@ def main(argv: list[str] | None = None) -> int:
         paths = TransactionPaths(repo_root=_repo_root())
         if args.capability:
             try:
-                capability = json.loads(Path(args.capability).read_text(encoding="utf-8"))
+                capability_text = Path(args.capability).read_text(encoding="utf-8")
+                capability = json.loads(capability_text)
             except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
                 print(f"capability error: cannot read JSON document: {exc}", file=sys.stderr)
                 return 2
@@ -205,22 +209,70 @@ def main(argv: list[str] | None = None) -> int:
             if not isinstance(plan, dict):
                 print("plan error: stdin plan must be a JSON object", file=sys.stderr)
                 return 2
-            capability_text = plan.get("capability")
-            if not isinstance(capability_text, str):
+            capability_text_raw = plan.get("capability")
+            if not isinstance(capability_text_raw, str):
                 print("plan error: stdin plan carries no capability text", file=sys.stderr)
                 return 2
             try:
-                capability = json.loads(capability_text)
+                capability = json.loads(capability_text_raw)
             except ValueError as exc:
                 print(f"plan error: capability text is not valid JSON: {exc}", file=sys.stderr)
                 return 2
             raw_arguments = plan.get("arguments")
             arguments = dict(raw_arguments) if isinstance(raw_arguments, dict) else {}
+            # Machine/identity agreement (record-schema v2): the plan's target
+            # used to be provenance-only -- recorded, then ignored, while the
+            # executor targeted the estate's own vm_name and console user. A
+            # plan naming a different machine or identity is now a determinate
+            # refusal BEFORE any transport, lease, or console work: nothing
+            # mutated, so no record is owed and WEL reads exit 2 as a refusal
+            # exactly like every other pre-flight disagreement. The estate
+            # names its side of the agreement (vm_name; identity_role in WEL's
+            # logical vocabulary), because an agreement between two
+            # independently owned configurations cannot be checked against one
+            # of them alone.
+            plan_machine = plan.get("machine")
+            if not isinstance(plan_machine, str) or not plan_machine:
+                print(
+                    "plan error: stdin plan carries no machine; a WEL plan names its target",
+                    file=sys.stderr,
+                )
+                return 2
+            if plan_machine != estate.vm_name:
+                print(
+                    f"plan error: plan machine {plan_machine!r} does not match the estate's "
+                    f"console VM {estate.vm_name!r}; refusing before any console work",
+                    file=sys.stderr,
+                )
+                return 2
+            plan_identity = plan.get("identity")
+            if not estate.identity_role:
+                print(
+                    "plan error: the estate declares no identity_role, so the plan's identity "
+                    "cannot be agreed; refusing before any console work",
+                    file=sys.stderr,
+                )
+                return 2
+            if not isinstance(plan_identity, str) or not plan_identity:
+                print(
+                    "plan error: stdin plan carries no identity; a WEL plan names its identity",
+                    file=sys.stderr,
+                )
+                return 2
+            if plan_identity != estate.identity_role:
+                print(
+                    f"plan error: plan identity {plan_identity!r} does not match the estate's "
+                    f"declared identity role {estate.identity_role!r}; refusing before any "
+                    "console work",
+                    file=sys.stderr,
+                )
+                return 2
+            capability_text = capability_text_raw
             plan_provenance = {
                 "mode": "wel_exec_transaction",
                 "operation_id": plan.get("operation_id"),
-                "machine": plan.get("machine"),
-                "identity": plan.get("identity"),
+                "machine": plan_machine,
+                "identity": plan_identity,
             }
 
         try:
@@ -239,6 +291,7 @@ def main(argv: list[str] | None = None) -> int:
                 paths=paths,
                 transport=transport,
                 plan_provenance=plan_provenance,
+                capability_text=capability_text,
             )
         except ExecTransactionError as exc:
             # A determinate pre-setup refusal (e.g. the surface fingerprint
@@ -249,7 +302,11 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             transport.close()
         try:
-            validate_record(record)
+            # The record is validated against the capability text this process
+            # actually executed, not merely against its own shape: a v2 record
+            # whose binding disagrees with that content is refused before it
+            # can cross the WEL wire boundary.
+            validate_record(record, capability_text=capability_text)
         except RecordSchemaError as exc:
             print(f"record error: executor emitted an invalid record: {exc}", file=sys.stderr)
             return 2

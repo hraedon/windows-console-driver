@@ -27,6 +27,7 @@ GUID-based strict-absence re-query (contract s12).
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -38,6 +39,7 @@ from wcd.estate import EstateConfig
 from wcd.exec_transaction import ExecTransactionError, TransactionPaths, execute_transaction
 from wcd.helper_client import HelperResult
 from wcd.leases import LeaseRegistry
+from wcd.record_schema import validate_record
 from wcd.transport import TransportError
 
 # Synthetic-estate identifiers only: zz- placeholders per the project
@@ -1169,3 +1171,102 @@ def test_unreadable_context_at_the_gate_is_a_refusal_not_a_pass(tmp_path: Path) 
             paths=_banked_profile_repo(tmp_path, sheet, "a" * 64),
             transport=transport,  # type: ignore[arg-type]
         )
+
+
+# --- capability-spec binding (record-schema v2) ---------------------------------
+
+
+def test_capability_text_mints_a_v2_record_bound_to_that_content(
+    tmp_path: Path,
+) -> None:
+    """The record authenticates its capability content, not just its id.
+
+    Supplied with the exact capability text, the executor stamps schema v2 and
+    binds the document's declared revision plus a SHA-256 over that text, and
+    the emitted record validates against v2 WITH the content check: the digest
+    recomputed from the text must agree with the one the record carries.
+    """
+    transport = FakeTransport()
+    sheet = _sheet("zz_v2_binding", _commit_crossing_gesture())
+    capability = _capability("zz_v2_binding", _SATISFIED_ENVELOPE)
+    capability["revision"] = 4
+    capability_text = json.dumps(capability)
+
+    record = execute_transaction(
+        capability=capability,
+        arguments={"gpo_name": "zz-studio-evidence-t"},
+        estate=_estate(),
+        paths=_make_repo(tmp_path, sheet),
+        transport=transport,  # type: ignore[arg-type]
+        capability_text=capability_text,
+    )
+
+    assert record["state"] == "verified"
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    assert provenance["$schema"] == "docs/transaction-record-schema-v2.json"
+    assert provenance["schema_version"] == 2
+    assert provenance["capability_revision"] == 4
+    assert provenance["capability_sha256"] == hashlib.sha256(
+        capability_text.encode("utf-8")
+    ).hexdigest()
+    assert validate_record(record, capability_text=capability_text) == 2
+
+
+def test_no_capability_text_keeps_minting_frozen_v1_records(tmp_path: Path) -> None:
+    """A direct call that never named the content has nothing to bind.
+
+    Re-serializing the parsed document would digest a text nobody launched,
+    so the executor stamps v1 exactly as before rather than minting an
+    unbacked binding. The WEL seam (the CLI) always supplies the text.
+    """
+    transport = FakeTransport()
+    sheet = _sheet("zz_v1_default", _commit_crossing_gesture())
+    capability = _capability("zz_v1_default", _SATISFIED_ENVELOPE)
+    capability["revision"] = 2
+
+    record = execute_transaction(
+        capability=capability,
+        arguments={"gpo_name": "zz-studio-evidence-t"},
+        estate=_estate(),
+        paths=_make_repo(tmp_path, sheet),
+        transport=transport,  # type: ignore[arg-type]
+    )
+
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    assert provenance["$schema"] == "docs/transaction-record-schema-v1.json"
+    assert provenance["schema_version"] == 1
+    assert "capability_revision" not in provenance
+    assert "capability_sha256" not in provenance
+    assert validate_record(record) == 1
+
+
+def test_capability_text_without_a_usable_revision_refuses_before_transport(
+    tmp_path: Path,
+) -> None:
+    """The binding needs a revision the record can stand behind.
+
+    The shipped capability schema always requires one, but a direct call may
+    carry a lenient document; binding a revision such a document does not
+    declare would be a record asserting content it was never given, so the
+    executor refuses before any transport work, like every other pre-flight
+    disagreement.
+    """
+    transport = FakeTransport()
+    sheet = _sheet("zz_no_revision", _commit_crossing_gesture())
+    capability = _capability("zz_no_revision", _SATISFIED_ENVELOPE)
+
+    with pytest.raises(ExecTransactionError, match="no usable revision"):
+        execute_transaction(
+            capability=capability,
+            arguments={"gpo_name": "zz-studio-evidence-t"},
+            estate=_estate(),
+            paths=_make_repo(tmp_path, sheet),
+            transport=transport,  # type: ignore[arg-type]
+            capability_text=json.dumps(capability),
+        )
+
+    assert not transport.guest_calls
+    assert not transport.host_calls
+    assert not transport.helper_calls

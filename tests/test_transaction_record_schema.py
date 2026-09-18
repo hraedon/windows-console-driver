@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from wcd.envelope import AssertionResult, FactDelta
 from wcd.exec_transaction import RunProvenance, _emit
 from wcd.record_schema import (
     RECORD_SCHEMA_REF,
+    V1_RECORD_SCHEMA_REF,
     RecordSchemaError,
     load_record,
     validate_record,
@@ -20,6 +22,15 @@ from wcd.transaction import Transaction
 
 ROOT = Path(__file__).parents[1]
 RECORDS = ROOT / "docs"
+
+# One synthetic capability document whose exact text is the binding input.
+_CAPABILITY_DOCUMENT: dict[str, object] = {
+    "$schema": "docs/capability-schema-v0.json",
+    "id": "zz.capability.binding",
+    "revision": 3,
+}
+_CAPABILITY_TEXT = json.dumps(_CAPABILITY_DOCUMENT)
+_CAPABILITY_DIGEST = hashlib.sha256(_CAPABILITY_TEXT.encode("utf-8")).hexdigest()
 
 
 def _generated_record() -> dict[str, object]:
@@ -51,6 +62,152 @@ def _generated_record() -> dict[str, object]:
     )
 
 
+def _bound_record() -> dict[str, object]:
+    """A v2 record: the same terminal transaction, minted with the binding.
+
+    The binding is what ``execute_transaction`` computes when its caller
+    supplied the exact capability text -- the document's declared revision and
+    a SHA-256 over that text -- so this fixture is constructed the same way,
+    from the same inputs.
+    """
+    record = _generated_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance["$schema"] = RECORD_SCHEMA_REF
+    provenance["schema_version"] = 2
+    provenance["capability_revision"] = _CAPABILITY_DOCUMENT["revision"]
+    provenance["capability_sha256"] = _CAPABILITY_DIGEST
+    return record
+
+
+def test_generated_record_is_v1_and_preserves_five_top_level_wire_keys() -> None:
+    record = _generated_record()
+
+    assert set(record) == {"state", "verdict", "envelope_result", "events", "provenance"}
+    assert validate_record(record) == 1
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    # No capability text was supplied, so there is no content to bind and the
+    # executor stamps the frozen v1 document rather than minting an unbacked
+    # v2 binding.
+    assert provenance["$schema"] == V1_RECORD_SCHEMA_REF
+    assert provenance["schema_version"] == 1
+
+    schema = json.loads((ROOT / V1_RECORD_SCHEMA_REF).read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(record)
+
+
+def test_bound_record_is_v2_and_carries_the_capability_binding() -> None:
+    record = _bound_record()
+
+    assert set(record) == {"state", "verdict", "envelope_result", "events", "provenance"}
+    assert validate_record(record) == 2
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    assert provenance["$schema"] == RECORD_SCHEMA_REF
+    assert provenance["schema_version"] == 2
+    assert provenance["capability_revision"] == 3
+    assert provenance["capability_sha256"] == _CAPABILITY_DIGEST
+
+    schema = json.loads((ROOT / RECORD_SCHEMA_REF).read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(record)
+
+
+def test_v2_without_the_binding_fields_is_refused() -> None:
+    record = _bound_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance.pop("capability_sha256")
+    with pytest.raises(RecordSchemaError, match="capability_sha256"):
+        validate_record(record)
+
+    record = _bound_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance.pop("capability_revision")
+    with pytest.raises(RecordSchemaError, match="capability_revision"):
+        validate_record(record)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "reason"),
+    [
+        ("capability_revision", 0, "positive integer"),
+        ("capability_revision", -1, "positive integer"),
+        ("capability_revision", True, "positive integer"),
+        ("capability_revision", "3", "positive integer"),
+        ("capability_sha256", "z" * 64, "SHA-256"),
+        ("capability_sha256", "A" * 64, "SHA-256"),
+        ("capability_sha256", "0" * 63, "SHA-256"),
+    ],
+)
+def test_v2_refuses_malformed_binding_values(
+    field: str, value: object, reason: str
+) -> None:
+    record = _bound_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance[field] = value
+    with pytest.raises(RecordSchemaError, match=reason):
+        validate_record(record)
+
+
+def test_v2_refuses_a_stamp_that_mixes_the_versions() -> None:
+    record = _bound_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance["$schema"] = V1_RECORD_SCHEMA_REF
+    with pytest.raises(RecordSchemaError, match="must be 1"):
+        validate_record(record)
+
+    record = _bound_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance["$schema"] = "docs/transaction-record-schema-v99.json"
+    with pytest.raises(RecordSchemaError, match=r"must be .*schema-v1"):
+        validate_record(record)
+
+
+def test_v2_with_matching_capability_text_validates() -> None:
+    assert validate_record(_bound_record(), capability_text=_CAPABILITY_TEXT) == 2
+
+
+def test_v2_refuses_a_record_whose_digest_does_not_match_the_capability_content() -> None:
+    # The record binds the digest of one document; the caller supplies the
+    # text of another. The binding is the ONLY claim that this record was
+    # produced by that content, so a mismatch is a refusal, not a warning.
+    other_text = json.dumps({**_CAPABILITY_DOCUMENT, "intent": "a different document"})
+    with pytest.raises(RecordSchemaError, match="does not match the capability content"):
+        validate_record(_bound_record(), capability_text=other_text)
+
+
+def test_v2_refuses_a_record_whose_revision_disagrees_with_the_capability_document() -> None:
+    # Digest of the real text, revision of a different one: the two binding
+    # fields must agree with the SAME document or the record is not about it.
+    record = _bound_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance["capability_revision"] = 4
+    with pytest.raises(RecordSchemaError, match="does not match the capability document"):
+        validate_record(record, capability_text=_CAPABILITY_TEXT)
+
+
+def test_v2_content_check_refuses_text_that_is_not_a_capability_document() -> None:
+    with pytest.raises(RecordSchemaError, match="capability_text"):
+        validate_record(_bound_record(), capability_text="{zz not json")
+    with pytest.raises(RecordSchemaError, match=r"capability_text\.revision"):
+        validate_record(_bound_record(), capability_text=json.dumps({"id": "zz.no-revision"}))
+
+
+def test_v1_records_ignore_the_capability_text_check() -> None:
+    # Frozen semantics: a v1 record never carried a binding, so supplying the
+    # capability content neither validates nor invalidates it. The v1 corpus
+    # must keep verifying exactly as committed.
+    assert validate_record(_generated_record(), capability_text=_CAPABILITY_TEXT) == 1
+
+
 def _early_stop_record() -> dict[str, object]:
     transaction = Transaction("zz-early-stop")
     transaction.prepare(
@@ -68,21 +225,6 @@ def _early_stop_record() -> dict[str, object]:
         "zz.capability",
         "zz.run_sheet",
     )
-
-
-def test_generated_record_is_v1_and_preserves_five_top_level_wire_keys() -> None:
-    record = _generated_record()
-
-    assert set(record) == {"state", "verdict", "envelope_result", "events", "provenance"}
-    assert validate_record(record) == 1
-    provenance = record["provenance"]
-    assert isinstance(provenance, dict)
-    assert provenance["$schema"] == RECORD_SCHEMA_REF
-    assert provenance["schema_version"] == 1
-
-    schema = json.loads((ROOT / RECORD_SCHEMA_REF).read_text(encoding="utf-8"))
-    Draft202012Validator.check_schema(schema)
-    Draft202012Validator(schema).validate(record)
 
 
 def test_committed_records_are_read_without_rewriting_them() -> None:
@@ -168,7 +310,7 @@ def test_v1_requires_tri_state_envelope_fields() -> None:
 def test_v1_allows_empty_envelope_only_for_indeterminate_early_stop() -> None:
     record = _early_stop_record()
     assert validate_record(record) == 1
-    schema = json.loads((ROOT / RECORD_SCHEMA_REF).read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / V1_RECORD_SCHEMA_REF).read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(record)
 
     record["state"] = "verified"
