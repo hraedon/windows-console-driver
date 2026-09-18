@@ -154,3 +154,43 @@ verified:
   `domain-joined`; CL01 = `domain-joined` + `user-logged-on`); all lab
   guests Off; LabCA01 Running as found. `local/estate.toml` already
   names `domain-joined` as the recovery checkpoint.
+
+## Addendum (2026-09-18, the certificate-template window attempt): BLOCKED on estate provisioning
+
+The owner greenlit the cert-template window (yes-and-now); the offline
+preparation (PR #13) was ready. The window opened with the bring-up tool
+(estate READY first run: clock sane -- the grooming-time seed held through
+boot -- session injected, helper smoke green), then failed its
+preconditions in a way that is the estate's, not the driver's:
+
+- **certtmpl.msc is not on LabMS01** (C:\Windows\System32\certtmpl.msc
+  absent; the RSAT-ADCS feature is *Available* but not installed).
+- **The Certificate Templates container exists but is EMPTY** (0
+  certTemplate objects, authenticated query; CN=Computer does not exist).
+- **Enrollment Services holds zero CA objects** -- no enterprise CA is
+  registered in the forest. LabCA01, running since 2026-09-11, never
+  registered as an enterprise issuing CA (a standalone CA does not
+  populate templates), so the ~30 default templates were never created.
+  The PKI container scaffolding (AIA/CDP/Templates/CAs/Enrollment
+  Services/KRA/OID) exists -- the forest was AD-CS-prepped.
+- Minor observed fact: PSDirect to LabCA01 as the domain user fails
+  ("credential is invalid") -- its machine secure channel is stale after
+  idling through every DC restore since 9/11.
+
+No gestures ran; nothing was mutated; the estate was torn down as found
+(teardown tool, both VMs Off, LabCA01 untouched and still running-idle).
+**The window's claim is deliberately negative and bounded: the
+cert-template surface is blocked on estate provisioning, not on driver
+tooling.** The provisioning fix list for the next baseline generation
+(the one already planned for licensing + the local-claude deletion):
+
+1. Reconfigure LabCA01 as an ENTERPRISE issuing CA (an enterprise CA
+   registers in Enrollment Services and populates the default templates,
+   including Computer -- the duplication source).
+2. Add RSAT-ADCS to LabMS01 (certtmpl.msc) -- one line in the WEL
+   join_lab_domain.ps1 feature list per the 2026-09-04 tiering design.
+3. Repair or reboot LabCA01's domain channel while reconfiguring it.
+
+The qualification (tuning arc to verified x2, fingerprint banking,
+WEL-hosted run) re-books after that generation. gpo-studio's group-deny
+retry remains ready and independent.
