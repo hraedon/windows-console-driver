@@ -1,0 +1,215 @@
+{
+  "name": "certtmpl.duplicate_template",
+  "surface": "certtmpl-server2025",
+  "steps": [
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "certtmpl_launch"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_certtmpl_console",
+      "title_regex": "Certificate Templates",
+      "timeout_ms": 90000,
+      "label": "certtmpl.msc opens directly into the container view (title assumed from documentation conventions; no tree navigation before the first gesture)"
+    },
+    {
+      "action": "context",
+      "profile_action": "open_certtmpl_console",
+      "assert_window_regex": "Certificate Templates",
+      "label": "record the interactive context against the console window before anything touches it"
+    },
+    {
+      "action": "shot",
+      "name": "ct-console-open",
+      "label": "baseline surface before selection"
+    },
+    {
+      "action": "keys",
+      "profile_action": "select_source_template",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "Certificate Templates",
+            "control_type": "Window",
+            "index": 0
+          }
+        },
+        {
+          "text": "{args.source_template}"
+        }
+      ],
+      "label": "window-anchored click focuses the virtualized results list, then type-ahead selects the source row in the SAME invocation (rows are UIA-invisible on MMC surfaces -- the wmi-sheet measured idiom; center-click placement assumed)"
+    },
+    {
+      "action": "shot",
+      "name": "ct-source-selected",
+      "label": "qualification checkpoint: the source row must be the selected one"
+    },
+    {
+      "action": "keys",
+      "profile_action": "open_duplicate_dialog",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 121,
+              "modifiers": [
+                "shift"
+              ]
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "label": "context menu -> Duplicate Template as ONE composite (Shift+F10 / DOWN / ENTER -- menus die between invocations, measured on GPMC); the single DOWN is the assumed walk depth, menu order unmeasured"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_duplicate_dialog",
+      "title_regex": "Properties",
+      "timeout_ms": 30000,
+      "label": "the duplicate's Properties dialog (assumed to open directly; if the estate shows an intermediate schema-version selection dialog, qualification adds it here)"
+    },
+    {
+      "action": "shot",
+      "name": "ct-duplicate-dialog",
+      "label": "dialog baseline before edits"
+    },
+    {
+      "action": "keys",
+      "profile_action": "set_template_name",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Template name",
+            "offset_x": 80,
+            "offset_y": 0
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "ctrl"
+              ]
+            }
+          ]
+        },
+        {
+          "text": "{args.template_name}"
+        }
+      ],
+      "label": "name field: label-anchored click-focus + ctrl+a + type in ONE invocation (dialog focus resets across invocations; the field pre-fills Copy-of style, hence the select-all; field label and offset assumed)"
+    },
+    {
+      "action": "shot",
+      "name": "ct-name-typed",
+      "label": "qualification checkpoint: the name field must read the synthetic template name"
+    },
+    {
+      "action": "keys",
+      "profile_action": "set_validity_period",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "Validity period",
+            "offset_x": 60,
+            "offset_y": 0
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "ctrl"
+              ]
+            }
+          ]
+        },
+        {
+          "text": "{args.validity_units}"
+        },
+        {
+          "click_element": {
+            "name_regex": "Validity period",
+            "offset_x": 220,
+            "offset_y": 0
+          }
+        },
+        {
+          "text": "{args.validity_period}"
+        }
+      ],
+      "label": "validity row in ONE invocation: amount edit click-focus + ctrl+a + type, then units combo click-focus + type-ahead (closed-combo type-ahead is the R3 measured idiom; row label and both offsets assumed)"
+    },
+    {
+      "action": "shot",
+      "name": "ct-validity-set",
+      "label": "qualification checkpoint: amount and units must read the arguments"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "ok_duplicate_dialog",
+      "name_regex": "^OK$",
+      "settle_ms": 2000,
+      "label": "OK on the Properties dialog = the declared commit point (writes the template object to the forest configuration partition; settle lets the dialog close before re-targeting)"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "ok_duplicate_dialog",
+      "title_regex": "Certificate Templates",
+      "timeout_ms": 60000,
+      "label": "re-surface the console as the sheet target after the dialog closes; the new row's AD-side appearance is the oracle's convergence job, not a UI read"
+    },
+    {
+      "action": "shot",
+      "name": "ct-new-row",
+      "label": "results pane after the commit (new-row visibility unmeasured on the virtualized list)"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "certtmpl_remove",
+      "args": [
+        "{args.template_name}"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "task_unregister",
+      "args": [
+        "WCDLaunchCertTmpl"
+      ]
+    }
+  ]
+}

@@ -33,7 +33,7 @@
     },
     "surface": {
       "type": "string",
-      "enum": ["gpmc-server2025"]
+      "enum": ["gpmc-server2025", "certtmpl-server2025"]
     },
     "revision": {
       "type": "integer",
@@ -122,7 +122,8 @@
             "remove_gpo",
             "backup_then_remove_gpo",
             "remove_staging_dir",
-            "remove_wmi_filter"
+            "remove_wmi_filter",
+            "remove_certtmpl"
           ]
         },
         "requery": {
@@ -199,7 +200,7 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": ["gpmc_ui", "gpmc_com"]
+        "enum": ["gpmc_ui", "gpmc_com", "certtmpl_ui"]
       }
     },
     "orientation-channels": {
@@ -244,7 +245,8 @@
             "gpttmpl_inf",
             "fdeploy_ini",
             "fdeploy_marker",
-            "wmi_filter"
+            "wmi_filter",
+            "certtmpl"
           ]
         },
         "params": {
@@ -253,7 +255,9 @@
           "properties": {
             "path": {"$ref": "#/$defs/non-empty-string"},
             "relpath": {"$ref": "#/$defs/non-empty-string"},
-            "filter_name": {"$ref": "#/$defs/non-empty-string"}
+            "filter_name": {"$ref": "#/$defs/non-empty-string"},
+            "template_name": {"$ref": "#/$defs/non-empty-string"},
+            "domain_dns": {"$ref": "#/$defs/non-empty-string"}
           }
         }
       },
@@ -313,6 +317,21 @@
               "params": {
                 "required": ["filter_name"],
                 "not": {"required": ["path", "relpath"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {"const": "certtmpl"}
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "required": ["template_name", "domain_dns"],
+                "not": {"required": ["path", "relpath", "filter_name"]}
               }
             }
           }

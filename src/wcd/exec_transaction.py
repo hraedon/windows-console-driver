@@ -411,6 +411,46 @@ try {
             raise ExecTransactionError(f"wmi_filter observation malformed: {exc}") from exc
 
 
+# Repository guest-scripts directory, anchored to this source file. The
+# certtmpl collector runs the SHIPPED tools/guest_scripts/certtmpl_collect.ps1
+# (the same artifact the sheet machinery and the PS structural tests pin)
+# rather than embedding a second copy inline, as the wmi collector does.
+_REPO_GUEST_SCRIPTS = Path(__file__).resolve().parents[2] / "tools" / "guest_scripts"
+
+
+class _CerttmplCollector:
+    """The certtmpl-surface prep observer: forest Certificate Templates facts.
+
+    Guest side (``certtmpl_collect.ps1``) transports raw attribute values as
+    ``key=value`` lines: one record per template object under
+    ``CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration``
+    plus the container membership digests and the named target block. The
+    controller (:mod:`gpo_observers.certtmpl`) recomputes the counts and
+    digests from the records and refuses any disagreement.
+    """
+
+    def collect(self, ref: GpoRef, params: Mapping[str, object], t: SessionTransport) -> FactSet:
+        template_name = str(params.get("template_name", ""))
+        domain_dns = str(params.get("domain_dns", ""))
+        if not template_name or not domain_dns:
+            raise ExecTransactionError(
+                "certtmpl observer needs template_name and domain_dns params"
+            )
+        # Deliberate narrow path: the executor still passes the null-GUID
+        # GpoRef (gpo_transaction false); this collector ignores it and works
+        # from params, per the surface's wiring decision.
+        script = (_REPO_GUEST_SCRIPTS / "certtmpl_collect.ps1").read_text(
+            encoding="utf-8-sig"
+        )
+        stdout = t.guest(script, [template_name, domain_dns], timeout=120.0)
+        from gpo_observers.certtmpl import certtmpl_fact_tree
+
+        try:
+            return certtmpl_fact_tree(stdout.splitlines(), template_name)
+        except ValueError as exc:
+            raise ExecTransactionError(f"certtmpl observation malformed: {exc}") from exc
+
+
 @dataclass(frozen=True, slots=True)
 class _ObserverEntry:
     name: str
@@ -471,6 +511,8 @@ def _named_collector(
         return _MigtableCollector().collect
     if name == "wmi_filter":
         return _WmiFilterCollector().collect
+    if name == "certtmpl":
+        return _CerttmplCollector().collect
     if name == "gpttmpl_inf":
         from gpo_observers.gpttmpl_inf import gpttmpl_fact_tree
 

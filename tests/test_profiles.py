@@ -379,3 +379,19 @@ def test_the_shipped_profile_banks_the_measured_prepared_context() -> None:
     )
     digest = profile.fingerprint_for("prepared_context")
     assert digest == "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
+
+
+def test_shipped_certtmpl_profile_is_grandfathered_off_the_fingerprint_gate() -> None:
+    """WI-L5's other half: a surface with NO banked prepared-context digest is
+    not gated (``fingerprint_for`` returns None -> the executor's pre-setup
+    refusal never fires). The certtmpl surface ships unbanked until its first
+    qualification window measures the digest; this test pins that deliberate
+    state so an accidental bank (or a dropped profile) cannot pass silently."""
+    profile = load_profile(REPO_ROOT / "profiles" / "certtmpl-server2025.toml")
+    assert profile.surface == "certtmpl-server2025"
+    assert profile.surface_fingerprints == {}
+    assert profile.fingerprint_for("prepared_context") is None
+    assert profile.classification("ok_duplicate_dialog") == "commit_point"
+    assert profile.first_commit_point == "ok_duplicate_dialog"
+    assert profile.classification("select_source_template") == "orientation_only"
+    assert profile.classification("set_validity_period") == "reversible_pre_commit"

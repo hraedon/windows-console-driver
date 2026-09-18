@@ -1,0 +1,139 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "certtmpl.duplicate_template",
+  "surface": "certtmpl-server2025",
+  "revision": 1,
+  "intent": "Duplicate one known built-in certificate template through the certtmpl.msc console under a unique synthetic name, changing exactly one predetermined property -- the validity period -- so the resulting AD object (attributes and security descriptor) can be independently certified against the capability arguments. Template PUBLICATION to a CA and certificate ISSUANCE are deliberately separate future capabilities with separate claims: this capability's claim ends at the template object existing in the directory with the certified shape, and nothing here publishes or issues anything. The template object lives in the forest configuration partition (CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration), so a guest checkpoint revert CANNOT undo this directory mutation -- unlike every SYSVOL/GPO capability before it -- and cleanup is directory-side only. The first non-GPO surface: no GPO is created, and nothing exists in AD before the gesture that this capability does not find already present.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "source_template",
+      "template_name",
+      "validity_units",
+      "validity_period",
+      "domain_dns"
+    ],
+    "properties": {
+      "source_template": { "type": "string" },
+      "template_name": { "type": "string" },
+      "validity_units": { "type": "integer" },
+      "validity_period": { "type": "string" },
+      "domain_dns": { "type": "string" }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "certtmpl_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell",
+      "programmatic_requery"
+    ]
+  },
+  "first_commit_point": "ok_duplicate_dialog",
+  "run_sheet": "certtmpl.duplicate_template",
+  "gpo_transaction": false,
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "certtmpl",
+        "params": {
+          "template_name": "{args.template_name}",
+          "domain_dns": "{args.domain_dns}"
+        }
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "certtmpl.target.present",
+        "predicate": "post.certtmpl.target.present == True"
+      },
+      {
+        "fact": "certtmpl.target.name",
+        "predicate": "post['certtmpl.target.name'] == args['template_name']"
+      },
+      {
+        "fact": "certtmpl.target.validity_period_units",
+        "predicate": "post['certtmpl.target.validity_period_units'] == args['validity_units']"
+      },
+      {
+        "fact": "certtmpl.target.validity_period",
+        "predicate": "post['certtmpl.target.validity_period'] == args['validity_period']"
+      },
+      {
+        "fact": "certtmpl.target.sddl_sha256",
+        "predicate": "post['certtmpl.target.sddl_sha256'] != ''"
+      }
+    ],
+    "allow": [],
+    "forbid": [
+      {
+        "scope": "certtmpl.container.other_names_sha256",
+        "predicate": "scope == pre['certtmpl.container.other_names_sha256']"
+      },
+      {
+        "scope": "certtmpl.container.unnamed_count",
+        "predicate": "scope == pre['certtmpl.container.unnamed_count']"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.certtmpl.container.object_count == pre.certtmpl.container.object_count + 1"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 60,
+      "poll_seconds": 5,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "blast_radius_is_the_container_membership",
+      "checks": "The forbid clause on other_names_sha256 pins the SOURCE template and every unrelated object unchanged AND that no extra objects were created: the target name is new (nothing pre-collects under it), so the pre-state's other-names set is the full pre-state name set, and digest equality over the post-state's other-names set means exactly the same unrelated names remain -- one object added, none renamed, none removed, none added beside it. The unnamed_count forbid and the +1 derive close the same bound for objects whose name could not be read."
+    },
+    {
+      "id": "security_descriptor_as_digest",
+      "checks": "The security descriptor is observed as length plus sha256 (sddl_len / sddl_sha256), never as SDDL text: permissions are certified by digest stability of the duplicated template's descriptor, while qualifying the descriptor's CONTENT (which ACEs the duplicate inherits versus the source) is deliberately deferred to a future capability. The non-empty sddl_sha256 require clause is the presence claim for this revision."
+    },
+    {
+      "id": "certtmpl_msc_estate_precondition",
+      "checks": "certtmpl.msc (the AD CS RSAT console) must be present on the console guest for this surface to run at all. Verify this FIRST in the qualification window; if it is absent, that is a provisioning gap to fix in the next baseline generation, not something to repair mid-window."
+    },
+    {
+      "id": "dialog_facts_unmeasured_until_first_qualification",
+      "checks": "Every dialog fact in the sheet is UNMEASURED until the first qualification run: the sheet encodes the measured MMC idioms from the GPMC surfaces (composite invocations because menus die between invocations; click-focus plus type in one invocation because dialog focus resets) and applies them to control names and menu orders taken from documentation conventions. The usual indeterminate-to-verified tuning arc is expected, and the validity-period arg form (see bindings) is the first open question the run must answer."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. source_template names the built-in template duplicated (a built-in name such as Computer is an estate-provided identifier, not a synthetic creation, so the zz- rule does not apply to it); template_name is the zz- synthetic CN of the duplicate and is what cleanup re-queries by. validity_units is the integer AD stores in msPKI-Validity-PeriodUnits and is asserted verbatim. validity_period is asserted verbatim against the transported msPKI-Validity-Period while being what the sheet's units-combo type-ahead types; AD stores that attribute in DN form (CN=Years,CN=Validity Periods,... per the observer's transported vocabulary), so the first measured run decides which form the arg must carry -- the same open question the window-7 Parm2 composition answered for WMI filters, resolved by revising the arg's documented form rather than the predicate.",
+    "fact_vocabulary": "certtmpl.* facts come from the certtmpl observer (guest transports the forest Certificate Templates container as raw key=value lines over PSDirect; controller-side fact tree in gpo_observers.certtmpl recomputes counts and membership digests from the records and refuses disagreement). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
+  },
+  "cleanup": {
+    "strategy": "remove_certtmpl",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "logical_cleanup",
+    "demonstration": "certtmpl_remove deletes the recorded template name from the forest configuration partition and re-queries strict absence by that recorded name; a guest checkpoint revert cannot reach the configuration partition, so recovery for this mutation is logical (directory-side) only. The estate baseline checkpoint's existence is still asserted at prepare for the console surface itself."
+  }
+}

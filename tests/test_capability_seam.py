@@ -164,6 +164,34 @@ def _fixture_snapshot() -> dict[str, Fact]:
     }.items():
         fact = make_fact(key, value)
         snapshot[fact.key] = fact
+
+    # The certtmpl collector is transport-backed inside the executor too; its
+    # vocabulary is pinned here in the post-state shape (the duplicated target
+    # present, one added object, membership committed as digests). Every
+    # pre./post. key the envelope references strips to one of these keys by
+    # construction.
+    for key, value in {
+        "certtmpl.container.present": True,
+        "certtmpl.container.object_count": 2,
+        "certtmpl.container.names_sha256": "a" * 64,
+        "certtmpl.container.other_names_sha256": "b" * 64,
+        "certtmpl.container.other_count": 1,
+        "certtmpl.container.unnamed_count": 0,
+        "certtmpl.target.present": True,
+        "certtmpl.target.name": "zz-template-duplicate",
+        "certtmpl.target.validity_period": (
+            "CN=FourYears,CN=Validity Periods,CN=Public Key Services,"
+            "CN=Configuration,DC=zzlab,DC=invalid"
+        ),
+        "certtmpl.target.validity_period_units": 4,
+        "certtmpl.target.schema_version": 2,
+        "certtmpl.target.cert_name_flag": 94208,
+        "certtmpl.target.key_flag": 16842752,
+        "certtmpl.target.sddl_len": 70,
+        "certtmpl.target.sddl_sha256": "c" * 64,
+    }.items():
+        fact = make_fact(key, value)
+        snapshot[fact.key] = fact
     return snapshot
 
 

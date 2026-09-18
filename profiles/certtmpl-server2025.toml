@@ -1,0 +1,121 @@
+# Driver profile: certtmpl-server2025
+#
+# Status: UNQUALIFIED DRAFT. The third console surface and the first non-GPO
+# one: the Certificate Templates console (certtmpl.msc, AD CS RSAT). No estate
+# run has observed any dialog on this surface -- every action class and
+# selector below is the conservative reading of the measured GPMC idioms
+# applied to documentation-convention control names, and the qualification
+# window is expected to tune them through the usual indeterminate-to-verified
+# arc. Estate precondition: certtmpl.msc must be present on the console guest
+# (verify first in the qualification window; a gap is fixed in the next
+# baseline generation, not mid-window).
+
+[profile]
+surface = "certtmpl-server2025"
+description = "Certificate Templates console (certtmpl.msc, AD CS RSAT)"
+os_family = "Windows Server 2025"
+os_build_family = "26100"
+# The capability's own first declared mutating boundary: the duplicate's
+# Properties dialog OK writes the template object to the configuration
+# partition. Everything before it (selection, dialog edits) cancels cleanly.
+first_commit_point = "ok_duplicate_dialog"
+
+# Action classifications (contract section 6). All unqualified: no estate run
+# has observed these dialogs yet, so the classes are the conservative
+# readings and the window iterates on measured deltas.
+
+[actions.open_certtmpl_console]
+class = "orientation_only"
+notes = "launches/attaches the certtmpl.msc console window (pre-elevated at the setup boundary); the console opens directly into the Certificate Templates container view -- a flat, virtualized results list"
+
+[actions.select_source_template]
+class = "orientation_only"
+notes = "type-ahead selection of the source row in the virtualized results list; reads surface state only (the wmi-sheet measured idiom for MMC lists whose rows are UIA-invisible)"
+
+[actions.open_duplicate_dialog]
+class = "reversible_pre_commit"
+notes = "context menu walked to Duplicate Template in ONE composite invocation (menus die between invocations -- measured on the GPMC surface); the resulting Properties dialog cancels cleanly before its OK (unmeasured dialog; an intermediate schema-version selection dialog, if the estate shows one, gets added here by qualification)"
+
+[actions.set_template_name]
+class = "reversible_pre_commit"
+notes = "typing the synthetic template name into the Properties dialog's name field; in-memory/surface state only before the dialog OK (unmeasured dialog)"
+
+[actions.set_validity_period]
+class = "reversible_pre_commit"
+notes = "validity amount and units-combo edits inside the Properties dialog; in-memory/surface state only before the dialog OK (unmeasured dialog)"
+
+[actions.ok_duplicate_dialog]
+class = "commit_point"
+notes = "OK on the duplicate's Properties dialog writes the pKICertificateTemplate object to the forest configuration partition -- the commit boundary the envelope correlates with the certified AD representation; unlike every GPMC commit before it, a guest checkpoint revert CANNOT undo this write"
+
+# Selectors for the duplicate-template flow (certtmpl surface prep,
+# unobserved until the first run): titles/names follow Microsoft
+# documentation conventions, not estate capture, and are expected to be
+# corrected by the qualification run the way the wmi selectors were.
+
+[selectors.certtmpl_console_window]
+title_regex = "^Certificate Templates"
+
+[selectors.template_results_list]
+# Assumed: the results pane is a virtualized list with no reliable element
+# name; the sheet focuses it with a window-anchored click, not this selector.
+name_regex = "Certificate Templates"
+
+[selectors.duplicate_menu_item]
+name_regex = "Duplicate Template"
+
+[selectors.duplicate_properties_dialog]
+title_regex = "Properties"
+
+[selectors.template_name_field]
+name_regex = "^Template name"
+
+[selectors.validity_period_row]
+name_regex = "Validity period"
+
+# Selector dependencies: what the compatibility predicate checks, per rung.
+# Title/name selectors bind UI language strongly; the dialogs additionally
+# ride a whole-dialog fingerprint banked at qualification time. No coordinate
+# selectors are declared; DPI would bind only if any are added.
+
+[[selector_dependencies]]
+selector = "certtmpl_console_window"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "certtmpl_console_window"
+dependency = "os_build"
+strength = "provenance"
+
+[[selector_dependencies]]
+selector = "duplicate_menu_item"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "duplicate_properties_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "duplicate_properties_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "template_name_field"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "validity_period_row"
+dependency = "ui_language"
+strength = "strong"
+
+# WI-L5: the one runtime-enforced selector dependency is the banked
+# prepared-context uia_digest. This surface deliberately banks NONE yet: the
+# certtmpl desktop has never been captured, so the profile is grandfathered
+# off the fingerprint gate (fingerprint_for returns None -> no pre-setup
+# refusal) until the first qualification window banks the measured digest.
+# The gate then turns on for every later run on this surface.
