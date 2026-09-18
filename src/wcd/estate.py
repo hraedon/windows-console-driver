@@ -30,6 +30,16 @@ class EstateConfig:
     domain: str
     username: str
     password_env: str
+    # The WEL logical identity role this console serves, in WEL's own vocabulary
+    # (e.g. 'domain_operator'). The WEL plan carries the identity its scenario
+    # declared; the executor targets THIS estate's console regardless. Version 2
+    # of the record contract makes the plan's machine/identity an agreement
+    # rather than an annotation, and an agreement needs the estate's side of it:
+    # a stdin plan whose identity is not the declared role is refused before any
+    # transport work. Empty (the default) refuses every WEL plan -- the same
+    # fail-closed shape checkpoint_name uses -- because an undeclared identity
+    # cannot be shown to agree with anything.
+    identity_role: str = ""
     # The estate's domain controller VM, named so the bring-up tool can boot
     # and clock-check it before the console VM depends on it. Optional: the
     # transaction path itself only ever touches vm_name.
@@ -92,9 +102,9 @@ def load_estate(path: str | Path) -> EstateConfig:
     """Load and validate the estate TOML at *path*.
 
     Required keys: ``host``, ``vm_name``, ``domain``, ``username``,
-    ``password_env``. Optional: ``dc_vm_name``, ``helper_task``,
-    ``helper_dir``, ``guest_scripts_dir``, ``checkpoint_name``,
-    ``evidence_dir``, and the
+    ``password_env``. Optional: ``dc_vm_name``, ``identity_role``,
+    ``helper_task``, ``helper_dir``, ``guest_scripts_dir``,
+    ``checkpoint_name``, ``evidence_dir``, and the
     all-or-none host-credential trio ``host_user_domain``/``host_username``/
     ``host_password_env``. Unknown keys are refused (a misspelled secret name
     must fail loudly, not silently unlock nothing).
@@ -114,6 +124,7 @@ def load_estate(path: str | Path) -> EstateConfig:
         "host",
         "vm_name",
         "dc_vm_name",
+        "identity_role",
         "domain",
         "username",
         "password_env",
@@ -156,6 +167,7 @@ def load_estate(path: str | Path) -> EstateConfig:
         domain=values["domain"],
         username=values["username"],
         password_env=values["password_env"],
+        identity_role=values.get("identity_role", ""),
         helper_task=values.get("helper_task", "WCDHelper"),
         helper_dir=values.get("helper_dir", "C:\\lab\\wcd"),
         guest_scripts_dir=values.get("guest_scripts_dir", "C:\\lab\\wcd\\scripts"),

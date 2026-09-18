@@ -31,6 +31,7 @@ needs the state, and the estate needs its cleanup, whatever happened.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import uuid
@@ -61,7 +62,12 @@ from .leases import (
     assert_context,
 )
 from .profiles import PREPARED_CONTEXT_SELECTOR, load_profile
-from .record_schema import RECORD_SCHEMA_REF, RECORD_SCHEMA_VERSION
+from .record_schema import (
+    RECORD_SCHEMA_REF,
+    RECORD_SCHEMA_VERSION,
+    V1_RECORD_SCHEMA_REF,
+    V1_RECORD_SCHEMA_VERSION,
+)
 from .runsheets import (
     GestureExecutor,
     RunSheet,
@@ -541,6 +547,7 @@ def execute_transaction(
     paths: TransactionPaths,
     transport: SessionTransport,
     plan_provenance: dict[str, object] | None = None,
+    capability_text: str | None = None,
     lease_registry: LeaseRegistry | None = None,
 ) -> dict[str, object]:
     """Run one capability to a terminal state and return the record.
@@ -549,12 +556,38 @@ def execute_transaction(
     exclusive interactive-session lease; a kernel-backed
     :class:`~wcd.leases.FileLeaseRegistry` is used when omitted so independent
     CLI processes contend on the same lease.
+
+    ``capability_text`` is the exact text of the capability document as it
+    arrived (the WEL plan's string, or the file the controller read). When
+    supplied, the record is stamped schema v2 and binds the capability's
+    revision plus a SHA-256 over that text, so the record authenticates which
+    content of a mutable capability file produced it. Without it there is no
+    content to bind -- re-serializing the parsed document would digest a text
+    nobody launched -- so the record is stamped v1, exactly as before. The CLI
+    (the WEL seam) always supplies the text; a v1 record from this executor
+    means a direct library call, not a seam transaction.
     """
     try:
         validate_capability_document(capability, paths.repo_root)
         validate_capability_arguments(capability, arguments)
     except CapabilitySchemaError as exc:
         raise ExecTransactionError(f"capability schema invalid: {exc}") from exc
+
+    capability_binding: tuple[int, str] | None = None
+    if capability_text is not None:
+        revision = capability.get("revision")
+        if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+            # validate_capability_document already required a positive-integer
+            # revision, so reaching here means the caller's text and document
+            # disagree about what was executed; refuse rather than bind a
+            # revision the record cannot stand behind.
+            raise ExecTransactionError(
+                "capability document declares no usable revision for the record binding"
+            )
+        capability_binding = (
+            revision,
+            hashlib.sha256(capability_text.encode("utf-8")).hexdigest(),
+        )
 
     capability_id = str(capability.get("id", "unnamed"))
     surface = str(capability.get("surface", estate.vm_name))
@@ -591,7 +624,9 @@ def execute_transaction(
         """Release the lease and emit the record. EVERY terminal path runs this."""
         if lease is not None and registry.is_active(lease):
             registry.release(lease)
-        return _emit(txn, assertion, provenance, events_out, capability_id, sheet.name)
+        return _emit(
+            txn, assertion, provenance, events_out, capability_id, sheet.name, capability_binding
+        )
 
     def abort_indeterminate(reason: str) -> None:
         if txn.state is not None and not txn.is_terminal:
@@ -1172,6 +1207,7 @@ def _emit(
     events: list[dict[str, object]],
     capability_id: str,
     sheet_name: str,
+    capability_binding: tuple[int, str] | None = None,
 ) -> dict[str, object]:
     state = txn.state or "indeterminate"
     if state not in _RECORD_STATES:
@@ -1213,9 +1249,12 @@ def _emit(
     provenance_block: dict[str, object] = {
         # Keep the five top-level wire keys stable for the WEL backend.  The
         # record contract is versioned in provenance so new consumers can
-        # select the schema without breaking the existing envelope.
-        "$schema": RECORD_SCHEMA_REF,
-        "schema_version": RECORD_SCHEMA_VERSION,
+        # select the schema without breaking the existing envelope.  v2 is
+        # minted exactly when the caller supplied the capability text, so the
+        # binding fields are always backed by digested content; a record
+        # without them is v1 and stays validatable exactly as committed.
+        "$schema": RECORD_SCHEMA_REF if capability_binding else V1_RECORD_SCHEMA_REF,
+        "schema_version": RECORD_SCHEMA_VERSION if capability_binding else V1_RECORD_SCHEMA_VERSION,
         "capability": capability_id,
         "run_sheet": sheet_name,
         "transaction_id": txn.transaction_id or "",
@@ -1224,6 +1263,9 @@ def _emit(
         "cleanup": _truncate(provenance.cleanup),
         "notes": [str(n)[:512] for n in provenance.notes],
     }
+    if capability_binding is not None:
+        provenance_block["capability_revision"] = capability_binding[0]
+        provenance_block["capability_sha256"] = capability_binding[1]
     return {
         "state": state,
         "verdict": verdict[:512].replace("\n", " ").replace("\r", " "),

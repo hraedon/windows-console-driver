@@ -144,10 +144,29 @@ def _estate_file(tmp_path: Path) -> Path:
         "vm_name = 'zz-vm'\n"
         "domain = 'zzlab.invalid'\n"
         "username = 'LAB\\zz-operator'\n"
-        "password_env = 'WCD_LAB_PASSWORD'\n",
+        "password_env = 'WCD_LAB_PASSWORD'\n"
+        "identity_role = 'domain_operator'\n",
         encoding="utf-8",
     )
     return path
+
+
+def _stdin_plan(**overrides: object) -> str:
+    """One well-formed WEL plan: capability text, arguments, and the target.
+
+    Every stdin-mode test sends this shape because the plan's machine and
+    identity are an agreement with the estate (record-schema v2), not optional
+    annotation: the fixture estate serves 'zz-vm' as 'domain_operator'.
+    """
+    plan: dict[str, object] = {
+        "operation_id": "op-zz-1",
+        "machine": "zz-vm",
+        "identity": "domain_operator",
+        "capability": json.dumps(_CAPABILITY),
+        "arguments": _VALID_ARGUMENTS,
+    }
+    plan.update(overrides)
+    return json.dumps(plan)
 
 
 def _install_transport(monkeypatch: pytest.MonkeyPatch) -> list[FakeCliTransport]:
@@ -364,14 +383,10 @@ def test_exec_transaction_stdin_plan_emits_exactly_the_record(
     built = _install_transport(monkeypatch)
     record = dict(_RECORD)
     calls = _install_executor(monkeypatch, record)
-    plan = {
-        "operation_id": "op-zz-1",
-        "machine": "zz-vm",
-        "identity": "LAB\\zz-operator",
-        "capability": json.dumps(_CAPABILITY),
-        "arguments": {"gpo_name": "zz-studio-evidence-01", "threshold": 2},
-    }
-    _stdin(monkeypatch, json.dumps(plan))
+    _stdin(
+        monkeypatch,
+        _stdin_plan(arguments={"gpo_name": "zz-studio-evidence-01", "threshold": 2}),
+    )
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
 
@@ -380,11 +395,14 @@ def test_exec_transaction_stdin_plan_emits_exactly_the_record(
     assert json.loads(capsys.readouterr().out) == record
     assert calls["capability"] == _CAPABILITY
     assert calls["arguments"] == {"gpo_name": "zz-studio-evidence-01", "threshold": 2}
+    # The exact capability text travels with the dispatch so the record can be
+    # minted (and re-validated) against the content that actually ran.
+    assert calls["capability_text"] == json.dumps(_CAPABILITY)
     provenance = calls["plan_provenance"]
     assert provenance["mode"] == "wel_exec_transaction"
     assert provenance["operation_id"] == "op-zz-1"
     assert provenance["machine"] == "zz-vm"
-    assert provenance["identity"] == "LAB\\zz-operator"
+    assert provenance["identity"] == "domain_operator"
     assert calls["transport"] is built[0]
     assert built[0].closed  # the transport closes on the success path too
 
@@ -425,6 +443,9 @@ def test_exec_transaction_capability_flag_mode_binds_args(
         "zz_flag": "",
     }
     assert calls["plan_provenance"] == {"mode": "controller_direct"}
+    # Controller-direct mode reads the file itself, so the binding digests the
+    # file's exact text too -- v2 is not a WEL-plan-only guarantee.
+    assert calls["capability_text"] == json.dumps(_CAPABILITY)
 
 
 def test_exec_transaction_mirrors_the_record_to_the_out_file(
@@ -434,10 +455,7 @@ def test_exec_transaction_mirrors_the_record_to_the_out_file(
     record = dict(_RECORD)
     _install_executor(monkeypatch, record)
     out_path = tmp_path / "record.json"
-    _stdin(
-        monkeypatch,
-        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
-    )
+    _stdin(monkeypatch, _stdin_plan())
 
     code = cli.main(
         ["--estate", str(_estate_file(tmp_path)), "exec-transaction", "--out", str(out_path)]
@@ -456,10 +474,7 @@ def test_exec_transaction_indeterminate_record_still_exits_zero(
     _install_transport(monkeypatch)
     record = {**_RECORD, "state": "indeterminate", "verdict": "hard stop", "envelope_result": {}}
     _install_executor(monkeypatch, record)
-    _stdin(
-        monkeypatch,
-        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
-    )
+    _stdin(monkeypatch, _stdin_plan())
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
 
@@ -473,10 +488,7 @@ def test_exec_transaction_rejects_invalid_executor_record_before_emission(
     built = _install_transport(monkeypatch)
     _install_executor(monkeypatch, {"state": "verified"})
     out_path = tmp_path / "must-not-exist.json"
-    _stdin(
-        monkeypatch,
-        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
-    )
+    _stdin(monkeypatch, _stdin_plan())
 
     code = cli.main(
         ["--estate", str(_estate_file(tmp_path)), "exec-transaction", "--out", str(out_path)]
@@ -488,6 +500,42 @@ def test_exec_transaction_rejects_invalid_executor_record_before_emission(
     assert captured.out == ""
     assert not out_path.exists()
     assert built[0].closed
+
+
+def test_exec_transaction_refuses_a_record_whose_capability_binding_mismatches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Record-schema v2's content check, enforced at the emission boundary.
+
+    The executor returned a v2 record whose digest is not the digest of the
+    capability text this process executed. Whatever produced it, it is not an
+    account of THIS transaction's capability content, so it may not cross the
+    stdout wire -- same exit 2, no record, as any other invalid record.
+    """
+    _install_transport(monkeypatch)
+    base_provenance = dict(_RECORD["provenance"])  # type: ignore[arg-type]
+    provenance = {
+        **base_provenance,
+        "$schema": "docs/transaction-record-schema-v2.json",
+        "schema_version": 2,
+        "capability_revision": 1,
+        "capability_sha256": "0" * 64,  # not the digest of _CAPABILITY's text
+    }
+    record = {**_RECORD, "provenance": provenance}
+    _install_executor(monkeypatch, record)
+    out_path = tmp_path / "must-not-exist.json"
+    _stdin(monkeypatch, _stdin_plan())
+
+    code = cli.main(
+        ["--estate", str(_estate_file(tmp_path)), "exec-transaction", "--out", str(out_path)]
+    )
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "record error" in captured.err
+    assert "does not match the capability content" in captured.err
+    assert captured.out == ""
+    assert not out_path.exists()
 
 
 # --- exec-transaction: clean error exits for malformed plans --------------------------
@@ -541,7 +589,7 @@ def test_exec_transaction_rejects_schema_invalid_capability_before_transport(
     calls = _install_executor(monkeypatch, dict(_RECORD))
     malformed = json.loads(json.dumps(_CAPABILITY))
     malformed["envelope"].pop("require")
-    _stdin(monkeypatch, json.dumps({"capability": json.dumps(malformed)}))
+    _stdin(monkeypatch, _stdin_plan(capability=json.dumps(malformed)))
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
 
@@ -562,10 +610,7 @@ def test_exec_transaction_rejects_invalid_arguments_before_transport(
 ) -> None:
     built = _install_transport(monkeypatch)
     calls = _install_executor(monkeypatch, dict(_RECORD))
-    _stdin(
-        monkeypatch,
-        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": arguments}),
-    )
+    _stdin(monkeypatch, _stdin_plan(arguments=arguments))
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
 
@@ -624,10 +669,7 @@ def test_estate_names_the_secret_env_var_and_the_value_is_never_echoed(
     record = json.loads(json.dumps(_RECORD))
     _install_executor(monkeypatch, record)
     estate_path = _estate_file(tmp_path)
-    _stdin(
-        monkeypatch,
-        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
-    )
+    _stdin(monkeypatch, _stdin_plan())
 
     code = cli.main(["--estate", str(estate_path), "exec-transaction"])
 
@@ -725,10 +767,7 @@ def test_a_determinate_pre_setup_refusal_exits_2_with_no_record(
         )
 
     monkeypatch.setattr(cli, "execute_transaction", refuse)
-    _stdin(
-        monkeypatch,
-        json.dumps({"capability": json.dumps(_CAPABILITY), "arguments": _VALID_ARGUMENTS}),
-    )
+    _stdin(monkeypatch, _stdin_plan())
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
 
@@ -737,3 +776,95 @@ def test_a_determinate_pre_setup_refusal_exits_2_with_no_record(
     assert "transaction error" in captured.err
     assert "fingerprint mismatch" in captured.err
     assert captured.out == ""
+
+
+# --- exec-transaction: the plan/estate target agreement (record-schema v2) ------------
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"machine": "zz-other-vm"},  # names a machine the estate does not serve
+        {"machine": None},  # carries no machine at all
+        {"identity": "standard_user"},  # names an identity the estate does not serve
+        {"identity": None},  # carries no identity at all
+    ],
+)
+def test_exec_transaction_refuses_a_plan_that_disagrees_with_the_estate_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    overrides: dict[str, object],
+) -> None:
+    """The plan's machine/identity are an agreement, not annotation.
+
+    Execution targets the estate's own configuration regardless of what the
+    plan says, so a plan naming a different machine or identity used to run
+    anyway with the disagreement buried in provenance. Record-schema v2 makes
+    the disagreement itself a determinate refusal before any transport is
+    built -- nothing mutated, no record is owed, exit 2 like every other
+    pre-flight refusal.
+    """
+    built = _install_transport(monkeypatch)
+    calls = _install_executor(monkeypatch, dict(_RECORD))
+    _stdin(monkeypatch, _stdin_plan(**overrides))
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "plan error" in captured.err
+    assert captured.out == ""
+    assert not calls and not built  # neither executor nor transport was reached
+
+
+def test_exec_transaction_names_the_disagreeing_side_of_the_agreement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Each refusal names both sides, so the operator can see WHICH config
+    disagrees -- the plan's value and the estate's -- rather than a bare
+    mismatch."""
+    _install_transport(monkeypatch)
+    _install_executor(monkeypatch, dict(_RECORD))
+    argv = ["--estate", str(_estate_file(tmp_path)), "exec-transaction"]
+
+    _stdin(monkeypatch, _stdin_plan(machine="zz-other-vm"))
+    assert cli.main(argv) == 2
+    err = capsys.readouterr().err
+    assert "'zz-other-vm'" in err and "'zz-vm'" in err
+
+    _stdin(monkeypatch, _stdin_plan(identity="standard_user"))
+    assert cli.main(argv) == 2
+    err = capsys.readouterr().err
+    assert "'standard_user'" in err and "'domain_operator'" in err
+
+
+def test_exec_transaction_refuses_every_plan_when_the_estate_declares_no_identity_role(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """An undeclared identity cannot be shown to agree with anything.
+
+    Same fail-closed shape as checkpoint_name: the operator must name the WEL
+    identity role this console serves before a WEL plan can run against it.
+    """
+    estate_path = tmp_path / "estate.toml"
+    estate_path.write_text(
+        "[estate]\n"
+        "host = 'zz-hyperv'\n"
+        "vm_name = 'zz-vm'\n"
+        "domain = 'zzlab.invalid'\n"
+        "username = 'LAB\\zz-operator'\n"
+        "password_env = 'WCD_LAB_PASSWORD'\n",
+        encoding="utf-8",
+    )
+    built = _install_transport(monkeypatch)
+    calls = _install_executor(monkeypatch, dict(_RECORD))
+    _stdin(monkeypatch, _stdin_plan())
+
+    code = cli.main(["--estate", str(estate_path), "exec-transaction"])
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "declares no identity_role" in captured.err
+    assert captured.out == ""
+    assert not calls and not built
