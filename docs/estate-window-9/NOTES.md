@@ -123,3 +123,34 @@ One estate, one host build, one UI language. The `-Confirm:$false` seam is
 a Hyper-V PowerShell module behavior on THIS host's build (measured, not
 enumerated across builds); the kerberos check catches the clock trap, not
 every Kerberos failure mode.
+
+## Addendum (2026-09-17 evening): owner-approved snapshot grooming, verified
+
+The owner approved deleting the superseded 9/5 snapshot set. Executed and
+verified:
+
+- Deleted `pre-refresh-20260905` and `estate-current-20260905` from
+  LabMS01, LabCL01, LabDC01 (all `-Confirm:$false`; LabCA01/LabCAroot
+  deliberately untouched -- the offline-root provenance design, and CA01
+  is running). **Measured: `Remove-VMSnapshot` on a tree root does NOT
+  take its subtree** -- the child survives as a reparented root; the
+  deletion has to go leaf-first. CL01's disk-less 9/5 metadata deleted
+  cleanly (nothing to merge).
+- The deletions triggered VMMS-side chain collapses beyond the deleted
+  trees: the remaining baselines' differencing disks (the window-8 mint
+  avhdxs on MS01/DC01, 088253F2 on CL01) and CL01's 33 GB orphaned pair
+  merged into the base VHDXs; checkpoint configs re-pointed at the
+  bases; live disks now chain directly to the bases.
+  **104 GB reclaimed (388 -> 492 GB free).**
+- Because the collapse rewrote every remaining checkpoint's disk
+  structure, each baseline was re-verified by a REAL restore cycle
+  (restore -> Saved -> resume -> PSDirect answers -> guest-clean
+  shutdown): MS01 `domain-joined` OK; CL01 `user-logged-on` OK (the
+  session resumed Active as **`labauto1` -- the WEL autologon account,
+  measured here for the first time**); DC01 `domain-joined` OK, with the
+  restore-time skew measured at -174,841 s and the clock re-seeded from
+  host UTC before shutdown so the next boot starts sane.
+- Final state: trees are exactly the current baselines (MS01/DC01 =
+  `domain-joined`; CL01 = `domain-joined` + `user-logged-on`); all lab
+  guests Off; LabCA01 Running as found. `local/estate.toml` already
+  names `domain-joined` as the recovery checkpoint.
