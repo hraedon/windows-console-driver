@@ -15,7 +15,12 @@ Status: driver-development phase. The transaction state machine,
 transition-envelope engine, schema boundaries, and fake-desktop backend are
 implemented and tested. Multiple Server 2025 estate windows have qualified
 the guest helper's targeted UIA, screenshot, input, context, cleanup, and
-reproduction paths for the shipped GPMC flows. Helper death/restart, unusual
+reproduction paths for the shipped GPMC flows. The third console surface —
+certificate templates via `certtmpl.duplicate_template` (certtmpl.msc, the
+first non-GPO surface) — is authored and pending its qualification window
+(per-capability qualification status lives in
+[`docs/capability-qualification.md`](docs/capability-qualification.md)).
+Helper death/restart, unusual
 desktop states, and new surfaces remain capability-specific qualification
 work rather than assumed portability.
 

@@ -4,12 +4,14 @@ Two layers are pinned. The fact tree (gpo_observers.certtmpl) turns one
 collected line stream into the ``certtmpl.*`` vocabulary -- target
 certification, membership committed as digests (never name lists), and
 the guest/controller cross-check that refuses any container claim the
-recomputation cannot reproduce. The guest script
-(tools/guest_scripts/certtmpl_collect.ps1) is pinned structurally -- 5.1
-parse, pure ASCII, the fail-closed 512-object bound -- because no test
-here touches a live host or a real AD. The executor-side collector that
-routes the script over PowerShell Direct lands with the surface wiring,
-not in this prep change.
+recomputation cannot reproduce. The guest scripts
+(tools/guest_scripts/certtmpl_collect.ps1, certtmpl_launch.ps1,
+certtmpl_remove.ps1) are pinned structurally -- 5.1 parse, pure ASCII, the
+fail-closed 512-object bound -- because no test here touches a live host or
+a real AD. The executor-side collector (wcd.exec_transaction
+._CerttmplCollector) routes the shipped collect script through a scripted
+transport, and the cleanup wiring re-queries strict absence by the RECORDED
+template name (the wmi GUID-discipline analog).
 """
 
 from __future__ import annotations
@@ -21,9 +23,16 @@ import ps_scripts
 import pytest
 
 from gpo_observers.certtmpl import certtmpl_fact_tree
+from gpo_observers.facts import make_fact
+from wcd.exec_transaction import ExecTransactionError, _CerttmplCollector
+from wcd.runsheets import GestureExecutor, RunSheet, SheetContext, load_run_sheet
 
 TARGET = "zz-template-candidate"
 SCRIPT = ps_scripts.REPO_ROOT / "tools" / "guest_scripts" / "certtmpl_collect.ps1"
+LAUNCH_SCRIPT = ps_scripts.REPO_ROOT / "tools" / "guest_scripts" / "certtmpl_launch.ps1"
+REMOVE_SCRIPT = ps_scripts.REPO_ROOT / "tools" / "guest_scripts" / "certtmpl_remove.ps1"
+SHEET = ps_scripts.REPO_ROOT / "runsheets" / "certtmpl.duplicate_template.json"
+DOMAIN = "zzlab.invalid"
 
 VALIDITY_DN = (
     "CN=FourYears,CN=Validity Periods,CN=Public Key Services,CN=Configuration,"
@@ -378,3 +387,162 @@ def test_certtmpl_collect_refuses_oversized_containers_fail_closed() -> None:
     assert "-gt $objectBound" in text
     assert "exceeds bound" in text
     assert "Select-Object -First" not in text
+
+
+def test_categories_are_declared_not_unclassified() -> None:
+    # The surface wiring declares the whole certtmpl.* vocabulary in the
+    # category table (structural membership, content target attributes);
+    # an undeclared key would surface every change as a violation.
+    facts = certtmpl_fact_tree(_observation([TARGET]), TARGET)
+    for fact in facts.values():
+        assert fact.category != "unclassified", fact.key
+    assert make_fact("certtmpl.container.other_names_sha256", None).category == "structural"
+    assert make_fact("certtmpl.target.validity_period_units", None).category == "content"
+    assert make_fact("certtmpl.target.sddl_sha256", None).category == "content"
+
+
+# --- Executor-side collector (surface wiring) -----------------------------------
+
+
+class _ScriptedGuestTransport:
+    """Stand-in for SessionTransport: one canned ``key=value`` line stream."""
+
+    def __init__(self, lines: list[str]) -> None:
+        self._lines = lines
+        self.calls: list[dict[str, object]] = []
+
+    @property
+    def vm_name(self) -> str:
+        return "zz-vm"
+
+    def guest(
+        self, script: str, args: list[object] | None = None, *, timeout: float = 180.0
+    ) -> str:
+        assert "CN=Certificate Templates" in script, (
+            "certtmpl collector must query the forest templates container"
+        )
+        self.calls.append({"script": script, "args": list(args or [])})
+        return "\n".join(self._lines) + "\n"
+
+
+def test_collector_runs_the_shipped_collect_script_and_parses_lines() -> None:
+    transport = _ScriptedGuestTransport(_observation([TARGET]))
+    facts = _values(
+        _CerttmplCollector().collect(
+            object(),  # type: ignore[arg-type]
+            {"template_name": TARGET, "domain_dns": DOMAIN},
+            transport,  # type: ignore[arg-type]
+        )
+    )
+    assert facts["certtmpl.container.present"] is True
+    assert facts["certtmpl.container.object_count"] == 1
+    assert facts["certtmpl.target.present"] is True
+    assert facts["certtmpl.target.name"] == TARGET
+    assert facts["certtmpl.target.validity_period_units"] == 4
+    # The shipped artifact crosses the wire verbatim with the recorded
+    # params interpolated positionally -- no second inline copy of the script.
+    assert transport.calls[0]["script"] == SCRIPT.read_text(encoding="utf-8-sig")
+    assert transport.calls[0]["args"] == [TARGET, DOMAIN]
+
+
+def test_collector_refuses_the_guests_error_line() -> None:
+    transport = _ScriptedGuestTransport(
+        ["error=container object count 513 exceeds bound 512"]
+    )
+    with pytest.raises(ExecTransactionError, match="exceeds bound"):
+        _CerttmplCollector().collect(
+            object(),  # type: ignore[arg-type]
+            {"template_name": TARGET, "domain_dns": DOMAIN},
+            transport,  # type: ignore[arg-type]
+        )
+
+
+def test_collector_requires_both_params() -> None:
+    transport = _ScriptedGuestTransport(_observation([TARGET]))
+    with pytest.raises(ExecTransactionError, match="template_name and domain_dns"):
+        _CerttmplCollector().collect(
+            object(),  # type: ignore[arg-type]
+            {"template_name": TARGET},
+            transport,  # type: ignore[arg-type]
+        )
+
+
+# --- Cleanup wiring: recorded-name strict-absence re-query ----------------------
+
+
+class _GuestOnlyTransport:
+    """Stand-in for SessionTransport: answers guest scripts, records them."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def guest(
+        self, script: str, args: list[object] | None = None, *, timeout: float = 180.0
+    ) -> str:
+        self.calls.append({"script": script, "args": list(args or [])})
+        return "removed=zz\n"
+
+
+def test_certtmpl_cleanup_requery_names_the_recorded_template() -> None:
+    """The sheet's cleanup step routes certtmpl_remove over the transport with
+    the RECORDED template name as its only argument -- the wmi GUID-discipline
+    analog: the strict-absence re-query is keyed by the recorded identity,
+    never a wildcard that would count unrelated templates as residue."""
+    sheet = load_run_sheet(SHEET)
+    step = next(s for s in sheet.steps if s.params.get("script") == "certtmpl_remove")
+    transport = _GuestOnlyTransport()
+    executor = GestureExecutor(
+        transport,  # type: ignore[arg-type]
+        guest_scripts_dir=SCRIPT.parent,
+        host_scripts_dir=ps_scripts.REPO_ROOT / "tools" / "host_scripts",
+    )
+    ctx = SheetContext(inputs={"template_name": TARGET})
+    executor.execute(
+        RunSheet(name=f"{sheet.name}:cleanup", surface=sheet.surface, steps=(step,)), ctx
+    )
+    assert len(transport.calls) == 1
+    assert transport.calls[0]["script"] == REMOVE_SCRIPT.read_text(encoding="utf-8-sig")
+    assert transport.calls[0]["args"] == [TARGET]
+
+
+def test_certtmpl_remove_parses_under_windows_powershell_51() -> None:
+    ps_scripts.parse_check(REMOVE_SCRIPT)
+
+
+def test_certtmpl_remove_is_pure_ascii() -> None:
+    ps_scripts.assert_ascii_only(REMOVE_SCRIPT)
+
+
+def test_certtmpl_remove_deletes_then_requeries_by_the_name() -> None:
+    # Remove-ADObject under the configuration partition with no confirmation
+    # prompt, then a second query keyed on the SAME name filter: the strict
+    # absence evidence, reported as absent=/removed=/remove_incomplete=.
+    text = REMOVE_SCRIPT.read_text(encoding="ascii")
+    assert "configurationNamingContext" in text
+    assert "CN=Certificate Templates,CN=Public Key Services,CN=Services," in text
+    assert "Remove-ADObject" in text
+    assert "-Confirm:$false" in text
+    assert text.count("$_.cn -eq $Template") == 2
+    assert "absent=$Template" in text
+    assert "removed=$Template" in text
+    assert "remove_incomplete=$Template" in text
+
+
+def test_certtmpl_launch_parses_under_windows_powershell_51() -> None:
+    ps_scripts.parse_check(LAUNCH_SCRIPT)
+
+
+def test_certtmpl_launch_is_pure_ascii() -> None:
+    ps_scripts.assert_ascii_only(LAUNCH_SCRIPT)
+
+
+def test_certtmpl_launch_clones_the_helper_task_for_certtmpl_msc() -> None:
+    # The scheduled-task-XML domain-SID trick is load-bearing (gpmc_launch):
+    # clone the committed WCDHelper task's XML and swap only the Actions
+    # subtree, so certtmpl.msc runs elevated on the console desktop with no
+    # UAC mid-flight.
+    text = LAUNCH_SCRIPT.read_text(encoding="ascii")
+    assert "'WCDHelper'" in text
+    assert "Export-ScheduledTask" in text
+    assert "certtmpl.msc" in text
+    assert "WCDLaunchCertTmpl" in text

@@ -15,8 +15,9 @@ upgrade that record.
 | `gpmc.author_admin_template_user` | 2 | Qualified; side-specific path envelope, clean cleanup | `estate-window-4/records/r5u-v2-record.json` |
 | `gpmc.author_registry_security` | 2 | Qualified; fixed three-key experiment, six distinct screenshots, clean cleanup | `estate-window-4/records/r4-v2b-record.json` |
 | `gpmc.author_wmi_filter` | 1 | Qualified; exact msWMI-* representation incl. the measured Parm2 wire format, SOM-container blast radius frozen at +1, clean cleanup | `estate-window-7/records/w7-record.json` |
+| `certtmpl.duplicate_template` | 1 | Pending first qualification; surface prep authored 2026-09-17 (first non-GPO surface -- certtmpl.msc on a Server 2025 member console; dialog facts unobserved, validity-period arg form the open question the run must answer, the Parm2 arc again) | -- |
 
-All eight current capabilities now have clean lab qualification evidence at
+The eight GPO-surface capabilities all have clean lab qualification evidence at
 their current revision. The migration-table capability requalified at revision 2
 in estate window 6 (2026-09-05), which was the last row reading "pending" until
 the WMI-filter row below was authored and qualified in the same session
@@ -24,7 +25,11 @@ the WMI-filter row below was authored and qualified in the same session
 gesture runs in the GPMC main console rather than the GPME editor. Its
 revision-1 qualification is also the first obtained through seven recorded
 iterations (five indeterminate, one disproven, then verified) — the full
-disprove-and-refine arc the qualification process is designed around.
+disprove-and-refine arc the qualification process is designed around. The
+certtmpl row above is the pending one today, and the first surface outside the
+GPO family: its mutation lives in the forest configuration partition, where a
+guest checkpoint revert cannot reach it, so its recovery is logical
+(directory-side) rather than a checkpoint revert.
 
 Transaction-record v1 records the capability ID and run-sheet name, but not a
 capability revision or content digest. Until a future record schema adds an

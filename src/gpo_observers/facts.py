@@ -123,6 +123,25 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     ("wmifilter.target.parm1", "content", None),
     ("wmifilter.target.parm2", "content", None),
     ("wmifilter.target.id", "identity", None),
+    # Certificate templates (certtmpl surface prep): the forest Certificate
+    # Templates container membership (committed as digests, never name
+    # lists) and the duplicated target's certified AD representation. The
+    # security descriptor is content observed as length+sha256 only.
+    ("certtmpl.container.present", "structural", None),
+    ("certtmpl.container.object_count", "structural", None),
+    ("certtmpl.container.names_sha256", "structural", None),
+    ("certtmpl.container.other_names_sha256", "structural", None),
+    ("certtmpl.container.other_count", "structural", None),
+    ("certtmpl.container.unnamed_count", "structural", None),
+    ("certtmpl.target.present", "content", None),
+    ("certtmpl.target.name", "content", None),
+    ("certtmpl.target.validity_period", "content", None),
+    ("certtmpl.target.validity_period_units", "content", None),
+    ("certtmpl.target.schema_version", "content", None),
+    ("certtmpl.target.cert_name_flag", "content", None),
+    ("certtmpl.target.key_flag", "content", None),
+    ("certtmpl.target.sddl_len", "content", None),
+    ("certtmpl.target.sddl_sha256", "content", None),
     # Collection integrity of the two independent enumeration passes.
     ("sysvol.passes_match", "structural", None),
     # Filesystem timestamps, should a future observer collect them.

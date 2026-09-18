@@ -74,6 +74,10 @@ _GESTURE_ACTIONS = frozenset(
 _PHASES = frozenset({"setup", "gesture", "cleanup"})
 _INPUT_ACTIONS = frozenset({"click_element", "type_text", "key", "keys"})
 _UI_OPERATION_ACTIONS = _INPUT_ACTIONS
+# The per-surface UI operation channels: one per shipped console surface
+# (gpmc_ui for the GPMC family, certtmpl_ui for the certtmpl.msc surface).
+# A step in the operation-under-test role must declare its surface's channel.
+_UI_OPERATION_CHANNELS = frozenset({"gpmc_ui", "certtmpl_ui"})
 
 
 class RunSheetError(RuntimeError):
@@ -267,10 +271,11 @@ def validate_channel_contract(
             raise RunSheetError(
                 f"step {index} ({step.label}) uses helper_input, but the contract forbids it"
             )
-        if step.action in _UI_OPERATION_ACTIONS and "gpmc_ui" not in operation:
+        if step.action in _UI_OPERATION_ACTIONS and not (operation & _UI_OPERATION_CHANNELS):
             raise RunSheetError(
                 f"step {index} ({step.label}) performs the UI operation under test, "
-                "but the contract forbids gpmc_ui"
+                f"but the contract permits no UI operation channel "
+                f"({sorted(_UI_OPERATION_CHANNELS)})"
             )
 
 
