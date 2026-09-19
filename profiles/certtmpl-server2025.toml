@@ -48,6 +48,24 @@ notes = "validity amount and units-combo edits inside the Properties dialog; in-
 class = "commit_point"
 notes = "OK on the duplicate's Properties dialog writes the pKICertificateTemplate object to the forest configuration partition -- the commit boundary the envelope correlates with the certified AD representation; unlike every GPMC commit before it, a guest checkpoint revert CANNOT undo this write"
 
+
+# Phase-2 actions of the MEASURED two-dialog duplicate flow (window 10):
+# the chooser OK creates the template under 'Copy of <display name>'; the
+# rename and validity change then happen on the created row's property
+# sheet, whose OK is the second (and final) commit of the transaction.
+
+[actions.select_new_template]
+class = "orientation_only"
+notes = "type-ahead selection of the newly created 'Copy of' row in the virtualized results list (measured: creation lands as Copy of <source display name>); reads surface state only"
+
+[actions.open_new_template_properties]
+class = "reversible_pre_commit"
+notes = "Alt+Enter on the created row opens its property sheet directly (MMC standard accelerator; no context-menu walk); the sheet cancels cleanly before its OK"
+
+[actions.ok_new_template_properties]
+class = "commit_point"
+notes = "OK on the created template's property sheet applies the rename to the synthetic zz- name and the validity change -- the second commit boundary; the object already exists since the chooser OK, so this gesture mutates in place (rename + attribute writes)"
+
 # Selectors for the duplicate-template flow (certtmpl surface prep,
 # unobserved until the first run): titles/names follow Microsoft
 # documentation conventions, not estate capture, and are expected to be

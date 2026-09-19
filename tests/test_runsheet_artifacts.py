@@ -178,6 +178,9 @@ def test_gesture_script_needs_explicit_allowed_com_channel(tmp_path: Path) -> No
     try:
         validate_channel_contract(sheet, contract, require_programmatic_requery=False)
     except RunSheetError as exc:
-        assert "explicit gpmc_com channel" in str(exc)
+        # Window 10 widened the gate: an input_delivery channel also legalizes
+        # a gesture-phase script (the VM-bus keyboard is input delivery, not
+        # an operation under test). The message names both routes.
+        assert "explicit gpmc_com or input_delivery channel" in str(exc)
     else:
         raise AssertionError("unlabelled gesture script was accepted")

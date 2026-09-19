@@ -236,10 +236,21 @@ def validate_channel_contract(
 
         if step.action in {"guest", "host"}:
             declared = step.params.get("channel")
-            if declared != "gpmc_com" or declared not in operation:
+            # Two legal programmatic gesture channels: the historical
+            # gpmc_com operation channel, and an INPUT-DELIVERY channel the
+            # contract already declares (window 10 measured the case: a
+            # VM-bus keyboard script is input delivery -- the helper's
+            # SendInput truncates inside MMC context menus on this build
+            # -- not an operation under test, so it must not wear the
+            # operation channel to pass this gate).
+            if not (
+                declared == "gpmc_com" and declared in operation
+            ) and not (
+                isinstance(declared, str) and declared in input_delivery
+            ):
                 raise RunSheetError(
                     f"step {index} ({step.label}) runs a programmatic operation in the gesture "
-                    "phase without an allowed explicit gpmc_com channel"
+                    "phase without an allowed explicit gpmc_com or input_delivery channel"
                 )
             continue
 
