@@ -1,0 +1,181 @@
+{
+  "state": "indeterminate",
+  "verdict": "run-sheet aborted: step 8 (keys[set_template_name] name field: label-anchored click-focus + ctrl+a + type in ONE invocation (dialog focus resets across invocations; the field pre-fills Copy-of style, hence the select-all; field label and offset assumed)) failed: selector '^Template name' matched 0 element(s), wanted i",
+  "envelope_result": {},
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability certtmpl.duplicate_template prepared over GPO None"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability certtmpl.duplicate_template invocation started"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v2.json",
+    "schema_version": 2,
+    "capability": "certtmpl.duplicate_template",
+    "run_sheet": "certtmpl.duplicate_template",
+    "transaction_id": "a2488a2d-b92a-42b0-a406-d574ab7c5650",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_certtmpl_console] certtmpl.msc opens directly into the container view (title assumed from documentation conventions; no tree navigation before the first gesture)",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Certificate Templates Console",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "context[open_certtmpl_console] record the interactive context against the console window before anything touches it",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 2824,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 524420
+            },
+            "asserted_window": "Certificate Templates Console"
+          }
+        },
+        {
+          "index": 2,
+          "step": "shot baseline surface before selection",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-console-open.png"
+          }
+        },
+        {
+          "index": 3,
+          "step": "keys[select_source_template] window-anchored click focuses the virtualized results list, then type-ahead selects the source row in the SAME invocation (rows are UIA-invisible on MMC surfaces -- the wmi-sheet measured idiom; center-click placement assumed)",
+          "ok": true,
+          "detail": {
+            "injected_events": 25
+          }
+        },
+        {
+          "index": 4,
+          "step": "shot qualification checkpoint: the source row must be the selected one",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-source-selected.png"
+          }
+        },
+        {
+          "index": 5,
+          "step": "keys[open_duplicate_dialog] context menu -> Duplicate Template as ONE composite (Shift+F10 / DOWN / ENTER -- menus die between invocations, measured on GPMC); the single DOWN is the assumed walk depth, menu order unmeasured",
+          "ok": true,
+          "detail": {
+            "injected_events": 8
+          }
+        },
+        {
+          "index": 6,
+          "step": "wait_foreground[open_duplicate_dialog] the duplicate's Properties dialog (assumed to open directly; if the estate shows an intermediate schema-version selection dialog, qualification adds it here)",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Properties of New Template",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 7,
+          "step": "shot dialog baseline before edits",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-duplicate-dialog.png"
+          }
+        },
+        {
+          "index": 8,
+          "step": "keys[set_template_name] name field: label-anchored click-focus + ctrl+a + type in ONE invocation (dialog focus resets across invocations; the field pre-fills Copy-of style, hence the select-all; field label and offset assumed)",
+          "ok": false,
+          "error": "selector '^Template name' matched 0 element(s), wanted index 0; visible elements: [\"Window:'Properties of New Template'@(337, 77, 751, 644)\", \"Pane:'Compatibility'@(355, 173, 733, 596)\", \"Pane:'The template options available are based on the earliest operating system versions set in Compatibility Settings.'@(367, 186, 727, 225)\", \"Pane:'Show resulting changes'@(367, 238, 508, 254)\", \"Pane:'Compatibility Settings'@(367, 277, 607, 418)\", \"Pane:'Certification Authority'@(381, 305, 525, 321)\", \"Pane:'Windows Server 2003'@(381, 324, 596, 345)\", \"Pane:'Certificate recipient'@(381, 360, 525, 376)\", \"Pane:'Windows XP / Server 2003'@(381, 383, 596, 404)\", \"Pane:'These settings may not prevent earlier operating systems from using this template.'@(367, 511, 727, 552)\", \"Pane:'OK'@(419, 606, 494, 629)\", \"Pane:'Cancel'@(500, 606, 575, 629)\", \"Pane:'Apply'@(581, 606, 656, 629)\", \"Pane:'Help'@(662, 606, 737, 629)\", \"Pane:''@(351, 115, 737, 600)\"]"
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "absent=zz-wcd-certtmpl-w10"
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchCertTmpl"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:mvmhyperv01.ad.hraedon.com:LabMS01",
+      "recovery checkpoint 'domain-joined' present: True"
+    ],
+    "capability_revision": 1,
+    "capability_sha256": "34ae6afba55913e9c4ccb91749acbd9a67706af1bffbb12f1894cee595976d7d"
+  }
+}

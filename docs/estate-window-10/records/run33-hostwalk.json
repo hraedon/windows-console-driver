@@ -1,0 +1,248 @@
+{
+  "state": "indeterminate",
+  "verdict": "run-sheet aborted: step 15 (wait_foreground[open_new_template_properties] the created template's property sheet ('Copy of ... Properties'), measured to open on the General tab) failed: no window matching '^Properties' appeared within 45s",
+  "envelope_result": {},
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability certtmpl.duplicate_template prepared over GPO None"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability certtmpl.duplicate_template invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'ok_duplicate_dialog' (profile class 'commit_point')"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v2.json",
+    "schema_version": 2,
+    "capability": "certtmpl.duplicate_template",
+    "run_sheet": "certtmpl.duplicate_template",
+    "transaction_id": "7c73d28d-4565-4fab-bc6d-6a7c15ca288d",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_certtmpl_console] certtmpl.msc opens into the container view (title measured: 'Certificate Templates Console')",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Certificate Templates Console",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "context[open_certtmpl_console] record the interactive context against the console window before anything touches it",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 4680,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 5505136
+            },
+            "asserted_window": "Certificate Templates Console"
+          }
+        },
+        {
+          "index": 2,
+          "step": "shot baseline surface before selection",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-console-open.png"
+          }
+        },
+        {
+          "index": 3,
+          "step": "keys[select_source_template] window-anchored click focuses the virtualized results list, then type-ahead selects the source row in the SAME invocation (rows are UIA-invisible; measured idiom)",
+          "ok": true,
+          "detail": {
+            "injected_events": 25
+          }
+        },
+        {
+          "index": 4,
+          "step": "shot qualification checkpoint: the source row must be the selected one",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-source-selected.png"
+          }
+        },
+        {
+          "index": 5,
+          "step": "keys[open_duplicate_dialog] context menu -> Duplicate Template: Shift+F10 / DOWN / ENTER (measured 28/28: the menu opens with item 0 preselected; one DOWN lands on Duplicate Template)",
+          "ok": true,
+          "detail": {
+            "injected_events": 8
+          }
+        },
+        {
+          "index": 6,
+          "step": "wait_foreground[open_duplicate_dialog] MEASURED: 'Properties of New Template' -- a compatibility chooser, the only dialog before creation; opens on Compatibility (General does not exist yet)",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Properties of New Template",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 7,
+          "step": "shot chooser baseline",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-chooser.png"
+          }
+        },
+        {
+          "index": 8,
+          "step": "click_element[ok_duplicate_dialog] MEASURED COMMIT #1: OK on the chooser writes the template as 'Copy of <source display name>' to the configuration partition; no follow-on dialog opens",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              119,
+              540
+            ]
+          }
+        },
+        {
+          "index": 9,
+          "step": "wait_foreground[ok_duplicate_dialog] console re-surfaces after the commit",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Certificate Templates Console",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 10,
+          "step": "shot console after creation",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-after-create.png"
+          }
+        },
+        {
+          "index": 11,
+          "step": "keys[select_new_template] MEASURED: the fresh console enumerated BEFORE creation -- F5 refresh first (the new row is invisible without it), then window-click + 'Copy' type-ahead selects the created row",
+          "ok": true,
+          "detail": {
+            "injected_events": 16
+          }
+        },
+        {
+          "index": 12,
+          "step": "shot qualification checkpoint: the created row must be the selection",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-copy-selected.png"
+          }
+        },
+        {
+          "index": 13,
+          "step": "host[open_new_template_properties] MEASURED: the row context menu + Properties walk through the VM-bus keyboard (hyperv_input) -- helper SendInput truncates inside MMC context menus on this build (runs 22-30); the walk is Shift+F10 + DOWNx6 + ENTER (menu item order measured by host-side thumbnail)",
+          "ok": true,
+          "detail": {
+            "stdout": "propsheet_walk_sent=1"
+          }
+        },
+        {
+          "index": 14,
+          "step": "shot run-33 DIAG: state after the VM-bus keyboard walk",
+          "ok": true,
+          "detail": {
+            "saved": "C:\\projects\\windows-console-driver\\runs\\ct-post-hostwalk.png"
+          }
+        },
+        {
+          "index": 15,
+          "step": "wait_foreground[open_new_template_properties] the created template's property sheet ('Copy of ... Properties'), measured to open on the General tab",
+          "ok": false,
+          "error": "no window matching '^Properties' appeared within 45s"
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "absent=zz-wcd-certtmpl-w10"
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchCertTmpl"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:mvmhyperv01.ad.hraedon.com:LabMS01",
+      "recovery checkpoint 'domain-joined' present: True"
+    ],
+    "capability_revision": 1,
+    "capability_sha256": "99a7e71565ca8749e7f8945925b2d889ad980ea75d7cb7c6bd0cfde103551802"
+  }
+}
