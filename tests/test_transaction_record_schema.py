@@ -252,6 +252,9 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     # from 6 to 7; window 7 took it from 7 to 8).
     assert sum(version == 0 for version in versions.values()) == 8
     assert sum(version == 1 for version in versions.values()) == 8
+    # Window 10 banked the first two v2 records (capability-spec binding,
+    # PR #15): run1.json and run33-hostwalk.json, both state indeterminate.
+    assert sum(version == 2 for version in versions.values()) == 2
     assert all(path.read_bytes() == content for path, content in before.items())
     assert all(
         ("schema_version" not in json.loads(path.read_text())["provenance"])
@@ -260,7 +263,7 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     )
 
     validators = {}
-    for version in (0, 1):
+    for version in (0, 1, 2):
         schema = json.loads(
             (ROOT / "docs" / f"transaction-record-schema-v{version}.json").read_text(
                 encoding="utf-8"

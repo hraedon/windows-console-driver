@@ -103,14 +103,47 @@ route (commit 9d46fb7).
 
 ## Open item for the next window
 
-**The phase-2 property-sheet opener, in-transaction.** What is known: the
-sheet exists (ct-propsheet.png), F5 + type-ahead selection is reliable, and
-helper-keyboard walks truncate inside menus while VM-bus input survives
-helper-adjacent contexts only sometimes. Next steps, in order: (1) re-measure
-the row-menu item order with a preserved artifact (the host thumbnail loop
-in the window's operator scripts, C:\temp\lab, is the pattern); (2) make the
-host gesture script VERIFY the sheet via host-side thumbnail before
-returning (close the loop inside the script, no helper polling involved);
-(3) only then re-run the transaction flow. The WEL-hosted run stays deferred
-(it needs the qualified capability). gpo-studio's group-deny lane is
-unaffected and still ready in its own window.
+**The phase-2 property-sheet opener, in-transaction.** What is known: the sheet exists (ct-propsheet.png), F5 + type-ahead selection is reliable, and helper-keyboard walks truncate inside menus while VM-bus input survives helper-adjacent contexts only sometimes. Next steps, in order: (1) re-measure the row-menu item order with a preserved artifact (the host thumbnail loop in the window's operator scripts, C:\temp\lab, is the pattern); (2) make the host gesture script VERIFY the sheet via host-side thumbnail before returning (close the loop inside the script, no helper polling involved); (3) only then re-run the transaction flow. The WEL-hosted run stays deferred (it needs the qualified capability). gpo-studio's group-deny lane is unaffected and still ready in its own window.
+
+## Phase-2 continuation, 2026-09-19 (same day, operator session)
+
+The opener is now MEASURED and the walk is dead — full record in
+phase2-opener-20260919.json, captures in captures/phase2-20260919/; the committed gesture script is LIVE-VERIFIED 3/3 via the same powershell.exe -File path the engine uses (self-verifying, fail-closed).
+
+- **The menu walk is not a viable gesture channel on this build.** With the
+  row context menu open (it does open: Shift+F10 after a real results-row
+  click), VM-bus DOWN moved the highlight for exactly 3 presses then froze —
+  the same shape as the helper channel's truncation (runs 22-30) but at ~3
+  events instead of ~1. Open MMC menus eat synthetic keyboard input on both
+  channels. The walk was replaced, not fixed.
+- **The opener is ALT+ENTER.** With keyboard focus in the results list
+  (real row click at guest 500,340), type-ahead + ALT+ENTER opens the
+  selected row's property sheet directly on the General tab, no menu:
+  2/2 consecutive rounds, title read 'Workstation Authentication
+  Properties'. tools/host_scripts/certtmpl_open_propsheet.ps1 now encodes
+  this gesture and VERIFIES the sheet host-side (before/after thumbnail
+  diff, fail closed) per the step-2 plan above.
+- **Run 33's mechanism, measured.** MMC opens with keyboard focus on the
+  tree; the helper's window-anchored click + type-ahead moves the SELECTION
+  but not keyboard focus, so VM-bus Shift+F10 hit a tree-focused window and
+  no row menu ever opened. Only a real click on a results row puts keyboard
+  focus in the list. (Mouse semantics measured: SetAbsolutePosition takes
+  RAW PIXELS — the 0..32767 grid clamps to the screen corner; ClickButton
+  1=LEFT, 2=RIGHT, 0=no visible effect.)
+- **ct-propsheet.png corrected:** it is a taskbar capture, not the sheet;
+  the old '^Properties' wait was ambiguous against the phase-1 chooser. The
+  runsheet wait is now '^Copy of .*Properties$'.
+- **Estate access regression (owner-relevant):** mvmhyperv01 became
+  unreachable from the WCD workstation after ~06:00Z (same /24, ARP never
+  resolves; mvmcc02 and mvmhyperv02 reach it fine; the host and all five
+  lab VMs never moved). Operator work ran via the
+  mvmhyperv02 -> mvmhyperv01 double-hop; the ENGINE cannot run transactions
+  over that path, so the transaction re-run waits on a network repair.
+- **Session re-establishment:** the left-behind claude console session
+  vanished mid-session (cause unidentified). Measured: clean-restart
+  autologon FAILS (shutdown processing wipes DefaultUserName/DefaultDomain,
+  winlogon then tries a BLANK user, 4625/0xc0000064, and consumes the
+  count); HARD-cycle autologon WORKS (Stop-VM -TurnOff + Start-VM skips
+  the wipe; keys cleared immediately after). Display-off freezes the
+  framebuffer — powercfg awake settings must be re-applied after every
+  boot or thumbnails lie.

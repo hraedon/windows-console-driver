@@ -32,6 +32,16 @@ UNCLAIMED_RECORDS: dict[str, str] = {
         "indeterminate under current envelope semantics; no claim banked; "
         "see NOTES.md correction"
     ),
+    "run1.json": (
+        "window-10 phase-1 duplicate-arc record, state indeterminate "
+        "(phase-2 property-sheet opener unmeasured at run time); no claim "
+        "banked until the capability qualifies end-to-end"
+    ),
+    "run33-hostwalk.json": (
+        "window-10 phase-2 aborted run: the menu-walk gesture opened no "
+        "sheet (focus stayed on the tree pane; mechanism measured in the "
+        "phase-2 continuation the same day); diagnostic record only"
+    ),
 }
 
 _JSON_FILENAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.json")

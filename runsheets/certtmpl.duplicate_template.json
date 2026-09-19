@@ -160,22 +160,23 @@
       "profile_action": "open_new_template_properties",
       "script": "certtmpl_open_propsheet",
       "args": [
-        "{args.console_vm}"
+        "{args.console_vm}",
+        "Copy"
       ],
-      "label": "MEASURED: the row context menu + Properties walk through the VM-bus keyboard (hyperv_input) -- helper SendInput truncates inside MMC context menus on this build (runs 22-30); the walk is Shift+F10 + DOWNx6 + ENTER (menu item order measured by host-side thumbnail)",
+      "label": "MEASURED 2026-09-19: self-anchoring all-VM-bus gesture -- ESC pair, real results-row click at the measured list position (a window click + type-ahead moves the SELECTION but leaves keyboard focus on the tree -- the run-33 failure), type-ahead 'Copy', ALT+ENTER opens the selected row's property sheet directly (2/2 reproducible); the script verifies the sheet host-side by before/after thumbnail diff and fails closed if it did not open -- no menu walk (VM-bus DOWNs stop landing in open MMC menus after ~3 presses, measured), no helper polling",
       "channel": "hyperv_input"
     },
     {
       "action": "shot",
-      "name": "ct-post-hostwalk",
-      "label": "run-33 DIAG: state after the VM-bus keyboard walk"
+      "name": "ct-post-altenter",
+      "label": "state after the ALT+ENTER opener; the sheet must be visible before the edits"
     },
     {
       "action": "wait_foreground",
       "profile_action": "open_new_template_properties",
-      "title_regex": "^Properties",
+      "title_regex": "^Copy of .*Properties$",
       "timeout_ms": 45000,
-      "label": "the created template's property sheet ('Copy of ... Properties'), measured to open on the General tab"
+      "label": "the created template's property sheet ('Copy of ... Properties'), measured to open on the General tab -- anchored to the Copy-of title so it can never match the phase-1 chooser ('Properties of New Template'); the window-10 'ct-propsheet.png' one-time observation was later shown to be a taskbar capture, so this wait is the first real title verification"
     },
     {
       "action": "shot",
