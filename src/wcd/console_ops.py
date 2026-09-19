@@ -109,8 +109,13 @@ $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
 _WAKE_DISPLAY_SCRIPT = r"""
 # NumLock tap through the host-side Msvm_Keyboard. The VM name arrives as a
 # param() binding -- the automatic argument array is never interpolated into
-# a WQL filter -- consistent with _UNLOCK_SCRIPT below.
-param([string] $Vm)
+# a WQL filter -- consistent with _UNLOCK_SCRIPT below. The param is
+# UNtyped on purpose: a typed param rehydrated from a pwsh 7 controller
+# into the host's Windows PowerShell endpoint breaks downstream CIM
+# instance binding (Get-CimAssociatedInstance -InputObject fails with
+# "className out of range"; measured 2026-09-19 against mvmhyperv01 -- the
+# typed-param serialization family WEL PR #21 measured on the PSDirect hop).
+param($Vm)
 $ErrorActionPreference = 'Stop'
 $ns = 'root\virtualization\v2'
 $vm = Get-CimInstance -Namespace $ns -ClassName Msvm_ComputerSystem -Filter "ElementName='$Vm'"
@@ -127,7 +132,11 @@ _UNLOCK_SCRIPT = r"""
 # the host-side Msvm_Keyboard. The plain secret arrives as an in-memory
 # argument and is never written anywhere by this script; no thrown message
 # may ever carry it (an unmappable character is reported by INDEX only).
-param([string] $Vm, [string] $Plain)
+# Params are UNtyped on purpose: typed params rehydrated from a pwsh 7
+# controller into the host's Windows PowerShell endpoint break downstream
+# CIM instance binding in this runspace (measured 2026-09-19; the wake
+# script comment carries the full note).
+param($Vm, $Plain)
 $ErrorActionPreference = 'Stop'
 $ns = 'root\virtualization\v2'
 $vm = Get-CimInstance -Namespace $ns -ClassName Msvm_ComputerSystem -Filter "ElementName='$Vm'"

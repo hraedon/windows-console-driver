@@ -114,10 +114,16 @@ def test_wake_script_binds_vm_by_param_and_never_interpolates_args_into_wql() ->
     # $args is an array: interpolating it into a WQL filter only ever worked
     # for a one-element argument. The file's convention is param() bindings.
     assert "$args" not in wake
-    assert "param([string] $Vm)" in wake
+    # The param is deliberately UNtyped: typed params shipped from a pwsh 7
+    # controller into the host's Windows PowerShell endpoint break downstream
+    # CIM instance binding (measured 2026-09-19, mvmhyperv01 -- the wake/
+    # unlock keyboard association is the load-bearing path).
+    assert "param($Vm)" in wake
+    assert "param([" not in wake
     assert "ElementName='$Vm'" in wake
     # Same convention for the unlock script.
     assert "$args" not in console_ops._UNLOCK_SCRIPT
+    assert "param([" not in console_ops._UNLOCK_SCRIPT
     assert "ElementName='$Vm'" in console_ops._UNLOCK_SCRIPT
 
 
@@ -158,7 +164,10 @@ def test_no_throw_or_expandable_string_in_the_credential_path_carries_the_secret
 
 
 def _stubbed_unlock_script(tmp_path: Path) -> Path:
-    marker = "param([string] $Vm, [string] $Plain)"
+    # Matches the UNtyped param form the script now pins (typed params break
+    # CIM instance binding across the pwsh-7 -> host endpoint boundary;
+    # measured 2026-09-19).
+    marker = "param($Vm, $Plain)"
     assert marker in console_ops._UNLOCK_SCRIPT
     body = console_ops._UNLOCK_SCRIPT.replace(marker, "", 1)
     harness = marker + "\n" + _CIM_STUBS + body
