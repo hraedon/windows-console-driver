@@ -167,9 +167,10 @@ def _fixture_snapshot() -> dict[str, Fact]:
 
     # The certtmpl collector is transport-backed inside the executor too; its
     # vocabulary is pinned here in the post-state shape (the duplicated target
-    # present, one added object, membership committed as digests). Every
-    # pre./post. key the envelope references strips to one of these keys by
-    # construction.
+    # present beside its duplication source, one added object, membership
+    # committed as digests, validity carried as the measured negative-ticks
+    # blobs). Every pre./post. key the envelope references strips to one of
+    # these keys by construction.
     for key, value in {
         "certtmpl.container.present": True,
         "certtmpl.container.object_count": 2,
@@ -177,13 +178,19 @@ def _fixture_snapshot() -> dict[str, Fact]:
         "certtmpl.container.other_names_sha256": "b" * 64,
         "certtmpl.container.other_count": 1,
         "certtmpl.container.unnamed_count": 0,
+        "certtmpl.source.present": True,
+        "certtmpl.source.name": "Workstation",
+        "certtmpl.source.expiration_period": "004039872EE1FEFF",
+        "certtmpl.source.expiration_period_days": 365,
+        "certtmpl.source.overlap_period": "00C01BD77FFAFFFF",
+        "certtmpl.source.schema_version": 2,
+        "certtmpl.source.cert_name_flag": 94208,
+        "certtmpl.source.key_flag": 16842752,
         "certtmpl.target.present": True,
         "certtmpl.target.name": "zz-template-duplicate",
-        "certtmpl.target.validity_period": (
-            "CN=FourYears,CN=Validity Periods,CN=Public Key Services,"
-            "CN=Configuration,DC=zzlab,DC=invalid"
-        ),
-        "certtmpl.target.validity_period_units": 4,
+        "certtmpl.target.expiration_period": "00401EA4E865FAFF",
+        "certtmpl.target.expiration_period_days": 1825,
+        "certtmpl.target.overlap_period": "00C01BD77FFAFFFF",
         "certtmpl.target.schema_version": 2,
         "certtmpl.target.cert_name_flag": 94208,
         "certtmpl.target.key_flag": 16842752,

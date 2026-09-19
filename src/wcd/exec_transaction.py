@@ -430,17 +430,21 @@ class _CerttmplCollector:
     Guest side (``certtmpl_collect.ps1``) transports raw attribute values as
     ``key=value`` lines: one record per template object under
     ``CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration``
-    plus the container membership digests and the named target block. The
-    controller (:mod:`gpo_observers.certtmpl`) recomputes the counts and
-    digests from the records and refuses any disagreement.
+    plus the container membership digests and the named target and source
+    blocks (template_name is the duplicate's CN, source_template the built-in
+    it was duplicated from). The controller (:mod:`gpo_observers.certtmpl`)
+    recomputes the counts and digests from the records and refuses any
+    disagreement.
     """
 
     def collect(self, ref: GpoRef, params: Mapping[str, object], t: SessionTransport) -> FactSet:
         template_name = str(params.get("template_name", ""))
         domain_dns = str(params.get("domain_dns", ""))
-        if not template_name or not domain_dns:
+        source_template = str(params.get("source_template", ""))
+        if not template_name or not domain_dns or not source_template:
             raise ExecTransactionError(
-                "certtmpl observer needs template_name and domain_dns params"
+                "certtmpl observer needs template_name, domain_dns and "
+                "source_template params"
             )
         # Deliberate narrow path: the executor still passes the null-GUID
         # GpoRef (gpo_transaction false); this collector ignores it and works
@@ -448,11 +452,13 @@ class _CerttmplCollector:
         script = (_REPO_GUEST_SCRIPTS / "certtmpl_collect.ps1").read_text(
             encoding="utf-8-sig"
         )
-        stdout = t.guest(script, [template_name, domain_dns], timeout=120.0)
+        stdout = t.guest(
+            script, [template_name, domain_dns, source_template], timeout=120.0
+        )
         from gpo_observers.certtmpl import certtmpl_fact_tree
 
         try:
-            return certtmpl_fact_tree(stdout.splitlines(), template_name)
+            return certtmpl_fact_tree(stdout.splitlines(), template_name, source_template)
         except ValueError as exc:
             raise ExecTransactionError(f"certtmpl observation malformed: {exc}") from exc
 

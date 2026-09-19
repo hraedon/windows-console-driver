@@ -1,12 +1,26 @@
 # certtmpl.msc surface prep: enumerate the forest Certificate Templates
-# container and certify the named target template. Output contract:
-# container.* / per-object / target.* key=value lines on stdout, records
+# container and certify the named target template plus the named source
+# template it was duplicated from. Output contract: container.* /
+# per-object / target.* / source.* key=value lines on stdout, records
 # sorted by name (ordinal). Any failure -- including a container above the
 # object bound -- emits one error=<message> line and exits 2: fail closed,
 # never a partial or silently truncated observation. The guest only
 # transports; the controller (gpo_observers.certtmpl) recomputes the
 # counts and digests from the records and refuses disagreement.
-param([string]$Template, [string]$DomainDns)
+#
+# MEASURED ENCODING (live read-only pass against a Server 2025 forest,
+# 2026-09-19): template objects under CN=Certificate Templates,... are
+# class pKICertificateTemplate and carry NO msPKI-Validity-Period /
+# msPKI-Validity-PeriodUnits attributes (Get-ADObject rejects those
+# property names). Validity is stored as two 8-byte blobs,
+# pKIExpirationPeriod and pKIOverlapPeriod, each a little-endian signed
+# int64 of NEGATIVE 100-nanosecond ticks (a duration; a "year" is exactly
+# 365 days, so the 5*365d blob is byte-identical to what multiple real
+# templates carry). The blobs transport as UPPERCASE hex strings; the
+# controller decodes days with pure integer arithmetic
+# (-ticks) // 864000000000 because floats lose precision above ~9e15
+# ticks. Absent or null blobs transport as ''.
+param([string]$Template, [string]$DomainDns, [string]$Source)
 $ErrorActionPreference = 'Stop'
 
 $objectBound = 512
@@ -18,6 +32,15 @@ function Get-Prop($Obj, [string]$Name) {
     $p = $Obj.PSObject.Properties[$Name]
     if ($null -eq $p -or $null -eq $p.Value) { return '' }
     return ([string]$p.Value -replace '[\r\n]', ' ')
+}
+
+function Get-PropHex($Obj, [string]$Name) {
+    # An 8-byte duration blob transports as UPPERCASE hex (16 chars, no
+    # separators); an absent or null attribute transports as '' -- the
+    # same absence convention as Get-Prop.
+    $p = $Obj.PSObject.Properties[$Name]
+    if ($null -eq $p -or $null -eq $p.Value) { return '' }
+    return [BitConverter]::ToString([byte[]]$p.Value).Replace('-', '')
 }
 
 function Get-TextSha256 {
@@ -33,8 +56,8 @@ function Get-TextSha256 {
 }
 
 try {
-    if ($Template -eq '' -or $DomainDns -eq '') {
-        throw 'Template and DomainDns parameters are required'
+    if ($Template -eq '' -or $DomainDns -eq '' -or $Source -eq '') {
+        throw 'Template, DomainDns and Source parameters are required'
     }
 
     # Forest DN derived from the domain DNS name (single-domain-forest
@@ -59,9 +82,13 @@ try {
         # Bounded fetch. displayName rides along in the property set but is
         # deliberately NOT emitted: no fact key consumes it yet, and the
         # observer discipline is to transport only what a fact evaluates.
+        # The validity property names are the MEASURED set: the DN-form
+        # msPKI-Validity-Period / msPKI-Validity-PeriodUnits attributes do
+        # not exist on 2025-forest pKICertificateTemplate objects, so they
+        # are not requested (Get-ADObject would reject the property names).
         $objects = @(Get-ADObject -SearchBase $templateBase -SearchScope OneLevel `
             -LDAPFilter '(objectClass=*)' -ErrorAction Stop `
-            -Properties cn, displayName, msPKI-Validity-Period, msPKI-Validity-PeriodUnits, `
+            -Properties cn, displayName, pKIExpirationPeriod, pKIOverlapPeriod, `
                 msPKI-Template-Schema-Version, msPKI-Certificate-Name-Flag, `
                 msPKI-Private-Key-Flag, nTSecurityDescriptor)
     }
@@ -73,7 +100,6 @@ try {
 
     $byName = @{}
     $unnamedCount = 0
-    $targetCn = $null
     foreach ($o in $objects) {
         $cn = Get-Prop -Obj $o -Name 'cn'
         if ($cn -eq '') {
@@ -98,16 +124,40 @@ try {
         $sddl = $o.nTSecurityDescriptor.GetSecurityDescriptorSddlForm(
             [System.Security.AccessControl.AccessControlSections]::All)
         $byName[$cn] = @{
-            validity_period       = Get-Prop -Obj $o -Name 'msPKI-Validity-Period'
-            validity_period_units = Get-Prop -Obj $o -Name 'msPKI-Validity-PeriodUnits'
-            schema_version        = Get-Prop -Obj $o -Name 'msPKI-Template-Schema-Version'
-            cert_name_flag        = Get-Prop -Obj $o -Name 'msPKI-Certificate-Name-Flag'
-            key_flag              = Get-Prop -Obj $o -Name 'msPKI-Private-Key-Flag'
-            sddl_len              = [string]$sddl.Length
-            sddl_sha256           = Get-TextSha256 -Text $sddl
+            expiration_period  = Get-PropHex -Obj $o -Name 'pKIExpirationPeriod'
+            overlap_period     = Get-PropHex -Obj $o -Name 'pKIOverlapPeriod'
+            schema_version     = Get-Prop -Obj $o -Name 'msPKI-Template-Schema-Version'
+            cert_name_flag     = Get-Prop -Obj $o -Name 'msPKI-Certificate-Name-Flag'
+            key_flag           = Get-Prop -Obj $o -Name 'msPKI-Private-Key-Flag'
+            sddl_len           = [string]$sddl.Length
+            sddl_sha256        = Get-TextSha256 -Text $sddl
         }
-        if ($cn -eq $Template) { $targetCn = $cn }
     }
+
+    # Casefold (case-insensitive) matching, mirroring AD name semantics and
+    # the controller's refusal discipline: exactly one match echoes the
+    # block, zero matches echo present=0 with no detail lines, and more
+    # than one match refuses the whole observation. Checked before any
+    # record emission so a refusal never emits a half observation.
+    $templateFold = $Template.ToLowerInvariant()
+    $sourceFold = $Source.ToLowerInvariant()
+    $targetMatches = @()
+    $sourceMatches = @()
+    foreach ($n in $byName.Keys) {
+        $folded = $n.ToLowerInvariant()
+        if ($folded -eq $templateFold) { $targetMatches += $n }
+        if ($folded -eq $sourceFold) { $sourceMatches += $n }
+    }
+    if ($targetMatches.Count -gt 1) {
+        throw ('target name matches more than one template: ' + $Template)
+    }
+    if ($sourceMatches.Count -gt 1) {
+        throw ('source name matches more than one template: ' + $Source)
+    }
+    $targetCn = $null
+    $sourceCn = $null
+    if ($targetMatches.Count -eq 1) { $targetCn = $targetMatches[0] }
+    if ($sourceMatches.Count -eq 1) { $sourceCn = $sourceMatches[0] }
 
     # Unnamed records first (the empty name sorts first ordinally), then
     # the named records in ordinal name order.
@@ -118,8 +168,8 @@ try {
     foreach ($n in $names) {
         $r = $byName[$n]
         'name=' + $n
-        'validity_period=' + $r['validity_period']
-        'validity_period_units=' + $r['validity_period_units']
+        'expiration_period=' + $r['expiration_period']
+        'overlap_period=' + $r['overlap_period']
         'schema_version=' + $r['schema_version']
         'cert_name_flag=' + $r['cert_name_flag']
         'key_flag=' + $r['key_flag']
@@ -147,13 +197,33 @@ try {
         $t = $byName[$targetCn]
         'target.present=1'
         'target.name=' + $targetCn
-        'target.validity_period=' + $t['validity_period']
-        'target.validity_period_units=' + $t['validity_period_units']
+        'target.expiration_period=' + $t['expiration_period']
+        'target.overlap_period=' + $t['overlap_period']
         'target.schema_version=' + $t['schema_version']
         'target.cert_name_flag=' + $t['cert_name_flag']
         'target.key_flag=' + $t['key_flag']
         'target.sddl_len=' + $t['sddl_len']
         'target.sddl_sha256=' + $t['sddl_sha256']
+    }
+
+    # The source block transports the SAME attribute set as the target
+    # block (descriptor digest included) so the two blocks share one
+    # protocol shape; the controller validates both identically but emits
+    # facts only for the source attributes the fidelity claim needs --
+    # source.sddl_len / source.sddl_sha256 cross the wire, then stop there.
+    if ($null -eq $sourceCn) {
+        'source.present=0'
+    } else {
+        $s = $byName[$sourceCn]
+        'source.present=1'
+        'source.name=' + $sourceCn
+        'source.expiration_period=' + $s['expiration_period']
+        'source.overlap_period=' + $s['overlap_period']
+        'source.schema_version=' + $s['schema_version']
+        'source.cert_name_flag=' + $s['cert_name_flag']
+        'source.key_flag=' + $s['key_flag']
+        'source.sddl_len=' + $s['sddl_len']
+        'source.sddl_sha256=' + $s['sddl_sha256']
     }
     exit 0
 } catch {

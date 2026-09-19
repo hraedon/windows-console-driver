@@ -3,7 +3,7 @@
   "id": "certtmpl.duplicate_template",
   "surface": "certtmpl-server2025",
   "revision": 1,
-  "intent": "Duplicate one known built-in certificate template through the certtmpl.msc console under a unique synthetic name, changing exactly one predetermined property -- the validity period -- so the resulting AD object (attributes and security descriptor) can be independently certified against the capability arguments. Template PUBLICATION to a CA and certificate ISSUANCE are deliberately separate future capabilities with separate claims: this capability's claim ends at the template object existing in the directory with the certified shape, and nothing here publishes or issues anything. The template object lives in the forest configuration partition (CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration), so a guest checkpoint revert CANNOT undo this directory mutation -- unlike every SYSVOL/GPO capability before it -- and cleanup is directory-side only. The first non-GPO surface: no GPO is created, and nothing exists in AD before the gesture that this capability does not find already present.",
+  "intent": "Duplicate one known built-in certificate template through the certtmpl.msc console under a unique synthetic name, changing exactly one predetermined property -- the validity period -- so the resulting AD object (attributes and security descriptor) can be independently certified against the capability arguments. Template PUBLICATION to a CA and certificate ISSUANCE are deliberately separate future capabilities with separate claims: this capability's claim ends at the template object existing in the directory with the certified shape, and nothing here publishes or issues anything. The template object lives in the forest configuration partition (CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration), so a guest checkpoint revert CANNOT undo this directory mutation -- unlike every SYSVOL/GPO capability before it -- and cleanup is directory-side only. The first non-GPO surface: no GPO is created, and nothing exists in AD before the gesture that this capability does not find already present. The validity change is certified through the measured pKIExpirationPeriod encoding (schema-v2+ template objects carry no DN-form validity attributes on Server 2025).",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
@@ -55,7 +55,8 @@
         "name": "certtmpl",
         "params": {
           "template_name": "{args.template_name}",
-          "domain_dns": "{args.domain_dns}"
+          "domain_dns": "{args.domain_dns}",
+          "source_template": "{args.source_template}"
         }
       }
     ]
@@ -63,24 +64,48 @@
   "envelope": {
     "require": [
       {
+        "fact": "certtmpl.container.present",
+        "predicate": "post.certtmpl.container.present == True"
+      },
+      {
+        "fact": "certtmpl.source.present",
+        "predicate": "post['certtmpl.source.present'] == True"
+      },
+      {
         "fact": "certtmpl.target.present",
-        "predicate": "post.certtmpl.target.present == True"
+        "predicate": "post['certtmpl.target.present'] == True"
       },
       {
         "fact": "certtmpl.target.name",
         "predicate": "post['certtmpl.target.name'] == args['template_name']"
       },
       {
-        "fact": "certtmpl.target.validity_period_units",
-        "predicate": "post['certtmpl.target.validity_period_units'] == args['validity_units']"
+        "fact": "certtmpl.target.validity",
+        "predicate": "args['validity_period'] == 'Years' and post['certtmpl.target.expiration_period_days'] == args['validity_units'] * 365"
       },
       {
-        "fact": "certtmpl.target.validity_period",
-        "predicate": "post['certtmpl.target.validity_period'] == args['validity_period']"
+        "fact": "certtmpl.target.expiration_period",
+        "predicate": "post['certtmpl.target.expiration_period'] != ''"
       },
       {
-        "fact": "certtmpl.target.sddl_sha256",
-        "predicate": "post['certtmpl.target.sddl_sha256'] != ''"
+        "fact": "certtmpl.target.sddl",
+        "predicate": "post['certtmpl.target.sddl_len'] != '' and post['certtmpl.target.sddl_sha256'] != ''"
+      },
+      {
+        "fact": "certtmpl.target.schema_version",
+        "predicate": "post['certtmpl.target.schema_version'] == post['certtmpl.source.schema_version']"
+      },
+      {
+        "fact": "certtmpl.target.cert_name_flag",
+        "predicate": "post['certtmpl.target.cert_name_flag'] == post['certtmpl.source.cert_name_flag']"
+      },
+      {
+        "fact": "certtmpl.target.key_flag",
+        "predicate": "post['certtmpl.target.key_flag'] == post['certtmpl.source.key_flag']"
+      },
+      {
+        "fact": "certtmpl.target.overlap_period",
+        "predicate": "post['certtmpl.target.overlap_period'] == post['certtmpl.source.overlap_period']"
       }
     ],
     "allow": [],
@@ -90,13 +115,24 @@
         "predicate": "scope == pre['certtmpl.container.other_names_sha256']"
       },
       {
+        "scope": "certtmpl.container.other_count",
+        "predicate": "scope == pre['certtmpl.container.other_count']"
+      },
+      {
         "scope": "certtmpl.container.unnamed_count",
         "predicate": "scope == pre['certtmpl.container.unnamed_count']"
+      },
+      {
+        "scope": "certtmpl.source.expiration_period_days",
+        "predicate": "scope == pre['certtmpl.source.expiration_period_days']"
       }
     ],
     "derive": [
       {
         "relation": "post.certtmpl.container.object_count == pre.certtmpl.container.object_count + 1"
+      },
+      {
+        "relation": "post.certtmpl.container.names_sha256 != pre.certtmpl.container.names_sha256"
       }
     ],
     "convergence": {
@@ -108,11 +144,19 @@
   "structured_checks": [
     {
       "id": "blast_radius_is_the_container_membership",
-      "checks": "The forbid clause on other_names_sha256 pins the SOURCE template and every unrelated object unchanged AND that no extra objects were created: the target name is new (nothing pre-collects under it), so the pre-state's other-names set is the full pre-state name set, and digest equality over the post-state's other-names set means exactly the same unrelated names remain -- one object added, none renamed, none removed, none added beside it. The unnamed_count forbid and the +1 derive close the same bound for objects whose name could not be read."
+      "checks": "The forbid clause on other_names_sha256 pins the SOURCE template and every unrelated object unchanged AND that no extra objects were created: the target name is new (nothing pre-collects under it), so the pre-state's other-names set is the full pre-state name set, and digest equality over the post-state's other-names set means exactly the same unrelated names remain -- one object added, none renamed, none removed, none added beside it. The other_count and unnamed_count forbids and the +1 derive close the same bound for the counts and for objects whose name could not be read."
     },
     {
       "id": "security_descriptor_as_digest",
       "checks": "The security descriptor is observed as length plus sha256 (sddl_len / sddl_sha256), never as SDDL text: permissions are certified by digest stability of the duplicated template's descriptor, while qualifying the descriptor's CONTENT (which ACEs the duplicate inherits versus the source) is deliberately deferred to a future capability. The non-empty sddl_sha256 require clause is the presence claim for this revision."
+    },
+    {
+      "id": "validity_blob_encoding_measured",
+      "checks": "MEASURED 2026-09-19 (live read-only pass against a Server 2025 forest): template objects are class pKICertificateTemplate and carry NO msPKI-Validity-Period / msPKI-Validity-PeriodUnits -- Get-ADObject rejects those property names, so the DN-form validity the first draft assumed does not exist on this surface. Validity is stored as two 8-byte blobs, pKIExpirationPeriod (validity) and pKIOverlapPeriod (renewal overlap), each a little-endian signed int64 of NEGATIVE 100-nanosecond ticks. The guest transports each blob as 16 UPPERCASE hex characters; the controller decodes whole days as (-ticks) // 864000000000 with pure integer arithmetic (IEEE doubles lose integer precision above ~9e15 ticks, about 28 years' worth, so the certification never rests on a float precision boundary). A 'year' is EXACTLY 365 days: measured blobs 1 year = 004039872EE1FEFF (365 days), 5 years = 00401EA4E865FAFF (1825 days), 2 years = 0080720E5DC2FDFF (730 days), 1 week = 00C01BD77FFAFFFF (7 days), and the 5*365d reconstruction is byte-identical to what multiple real templates carry."
+    },
+    {
+      "id": "duplicate_fidelity_clauses",
+      "checks": "The four equality requires -- target.schema_version == source.schema_version, target.cert_name_flag == source.cert_name_flag, target.key_flag == source.key_flag, target.overlap_period == source.overlap_period -- are the duplicate-fidelity claim: everything except the validity must have been copied verbatim from the source, and the duplication source is itself observed (source.present required) so the comparison is against measured state, not assumption. The clauses do double duty: every fact key that changes pre->post must be textually predicted by a require clause's fact key or a post-side reference inside a require/derive predicate, else the delta engine records an unclassified-change violation; the fidelity equalities predict the changing target.* keys they compare, the validity require predicts certtmpl.target.expiration_period_days, the sddl require predicts target.sddl_len/sddl_sha256, and the names_sha256 derive predicts the container membership digest change (one name added, so the digest must move) while the object_count derive pins the count change to exactly +1."
     },
     {
       "id": "certtmpl_msc_estate_precondition",
@@ -120,11 +164,11 @@
     },
     {
       "id": "dialog_facts_unmeasured_until_first_qualification",
-      "checks": "Every dialog fact in the sheet is UNMEASURED until the first qualification run: the sheet encodes the measured MMC idioms from the GPMC surfaces (composite invocations because menus die between invocations; click-focus plus type in one invocation because dialog focus resets) and applies them to control names and menu orders taken from documentation conventions. The usual indeterminate-to-verified tuning arc is expected, and the validity-period arg form (see bindings) is the first open question the run must answer."
+      "checks": "Every dialog fact in the sheet is UNMEASURED until the first qualification run: the sheet encodes the measured MMC idioms from the GPMC surfaces (composite invocations because menus die between invocations; click-focus plus type in one invocation because dialog focus resets) and applies them to control names and menu orders taken from documentation conventions. The usual indeterminate-to-verified tuning arc is expected. The validity-arg FORM is no longer an open question: the AD-side encoding was measured live (2026-09-19, see validity_blob_encoding_measured and bindings) and folded into the artifacts; what remains unmeasured is only the dialog mechanics of typing the new validity into the duplicate dialog."
     }
   ],
   "bindings": {
-    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. source_template names the built-in template duplicated (a built-in name such as Computer is an estate-provided identifier, not a synthetic creation, so the zz- rule does not apply to it); template_name is the zz- synthetic CN of the duplicate and is what cleanup re-queries by. validity_units is the integer AD stores in msPKI-Validity-PeriodUnits and is asserted verbatim. validity_period is asserted verbatim against the transported msPKI-Validity-Period while being what the sheet's units-combo type-ahead types; AD stores that attribute in DN form (CN=Years,CN=Validity Periods,... per the observer's transported vocabulary), so the first measured run decides which form the arg must carry -- the same open question the window-7 Parm2 composition answered for WMI filters, resolved by revising the arg's documented form rather than the predicate.",
+    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. source_template names the built-in template duplicated -- a real built-in name from the forest's default set such as Workstation (schema version 2, expiration 1 year); the draft's assumed 'Computer' does not exist in a 2025 forest's default set (measured 2026-09-19), so the source is always an estate-provided identifier, not a synthetic creation, and the zz- rule does not apply to it. template_name is the zz- synthetic CN of the duplicate and is what cleanup re-queries by. validity_period is the console combo's unit LABEL -- the sheet's type-ahead selects 'Years' at rev 1. validity_units is the integer amount typed into the edit. The AD side is certified through pKIExpirationPeriod decoded to whole days (measured negative-ticks encoding, 365 days to a year -- measured 2026-09-19), so the envelope asserts days == validity_units * 365 exactly; the 'Years'-only guard is deliberate fail-closed scope, because only the measured unit is certified (365 days exactly) and every other combo label (Months/Weeks/Days/Hours) is unmeasured and must fail the envelope rather than be approximated by a day count nobody measured.",
     "fact_vocabulary": "certtmpl.* facts come from the certtmpl observer (guest transports the forest Certificate Templates container as raw key=value lines over PSDirect; controller-side fact tree in gpo_observers.certtmpl recomputes counts and membership digests from the records and refuses disagreement). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
   },
   "cleanup": {

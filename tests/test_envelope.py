@@ -23,8 +23,10 @@ All timing uses an injectable clock whose ``sleep`` advances it: no test waits.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 
@@ -42,6 +44,9 @@ from wcd.envelope import (
     evaluate,
     parse_envelope,
 )
+from wcd.exec_transaction import _bind_args_into_envelope
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass
@@ -810,3 +815,77 @@ def test_characterization_is_single_line_by_seam_contract() -> None:
     assert "\n" not in result.characterization
     assert "\r" not in result.characterization
     assert "covered" in result.characterization
+
+
+# --- Capability arg binding: the certtmpl measured validity clause ------------
+
+
+def _bound_validity_clause(
+    bound: dict[str, object], fact: str = "certtmpl.target.validity"
+) -> dict[str, object]:
+    """Fetch one bound require clause as a plain dict (typed narrowing)."""
+    require = bound["require"]
+    assert isinstance(require, list)
+    for entry in require:
+        assert isinstance(entry, dict)
+        if entry.get("fact") == fact:
+            return entry
+    raise AssertionError(f"bound envelope lacks the {fact!r} clause")
+
+
+def test_certtmpl_validity_clause_binds_args_and_fails_closed_outside_years() -> None:
+    """The measured validity require, evaluated exactly as the executor would.
+
+    ``_bind_args_into_envelope`` substitutes ``args['...']`` references as
+    JSON literals, so the shipped clause (capabilities/
+    certtmpl.duplicate_template.json) reads
+    ``"<label>" == 'Years' and post[...expiration_period_days] == <units> * 365``
+    after binding. With validity_units=5 / validity_period='Years' a
+    measured five-year blob (1825 days) satisfies it; any other combo label
+    ('Weeks') FAILS CLOSED even when the day count itself would be measured
+    -- only the certified unit passes, unmeasured labels are refused rather
+    than approximated.
+    """
+    capability = json.loads(
+        (REPO_ROOT / "capabilities" / "certtmpl.duplicate_template.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    args: dict[str, object] = {
+        "source_template": "Workstation",
+        "template_name": "zz-template-duplicate",
+        "validity_units": 5,
+        "validity_period": "Years",
+        "domain_dns": "zzlab.invalid",
+    }
+    bound = _bind_args_into_envelope(capability["envelope"], args)
+    clause = _bound_validity_clause(bound)
+    # The args are JSON literals now: 'Years' on both sides of the guard,
+    # 5 * 365 on the days comparison.
+    predicate = clause["predicate"]
+    assert isinstance(predicate, str)
+    assert '"Years" == \'Years\'' in predicate
+    assert "== 5 * 365" in predicate
+
+    pre = {"certtmpl.target.expiration_period_days": ""}
+    post = {"certtmpl.target.expiration_period_days": 1825}
+    categories = {"certtmpl.target.expiration_period_days": "content"}
+    envelope = parse_envelope(
+        {"require": [clause], "allow": [], "forbid": [], "derive": []}
+    )
+    assert assert_envelope(envelope, pre, post, categories).status == "satisfied"
+
+    weeks_args = {**args, "validity_period": "Weeks", "validity_units": 1}
+    weeks_clause = _bound_validity_clause(
+        _bind_args_into_envelope(capability["envelope"], weeks_args)
+    )
+    weeks_envelope = parse_envelope(
+        {"require": [weeks_clause], "allow": [], "forbid": [], "derive": []}
+    )
+    # Seven days IS the measured one-week blob, but the label is unmeasured:
+    # the guard refuses it rather than approximating a week as 1/52 of a year.
+    result = assert_envelope(
+        weeks_envelope, {}, {"certtmpl.target.expiration_period_days": 7}, categories
+    )
+    assert result.status == "disproven"
+    assert any("certtmpl.target.validity" in entry for entry in result.violated)

@@ -125,8 +125,9 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     ("wmifilter.target.id", "identity", None),
     # Certificate templates (certtmpl surface prep): the forest Certificate
     # Templates container membership (committed as digests, never name
-    # lists) and the duplicated target's certified AD representation. The
-    # security descriptor is content observed as length+sha256 only.
+    # lists), the duplication source's context, and the duplicated target's
+    # certified AD representation. The security descriptor is content
+    # observed as length+sha256 only.
     ("certtmpl.container.present", "structural", None),
     ("certtmpl.container.object_count", "structural", None),
     ("certtmpl.container.names_sha256", "structural", None),
@@ -135,13 +136,18 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     ("certtmpl.container.unnamed_count", "structural", None),
     ("certtmpl.target.present", "content", None),
     ("certtmpl.target.name", "content", None),
-    ("certtmpl.target.validity_period", "content", None),
-    ("certtmpl.target.validity_period_units", "content", None),
+    ("certtmpl.target.expiration_period", "content", None),
+    ("certtmpl.target.expiration_period_days", "content", None),
+    ("certtmpl.target.overlap_period", "content", None),
     ("certtmpl.target.schema_version", "content", None),
     ("certtmpl.target.cert_name_flag", "content", None),
     ("certtmpl.target.key_flag", "content", None),
     ("certtmpl.target.sddl_len", "content", None),
     ("certtmpl.target.sddl_sha256", "content", None),
+    # The duplication source is measured context, not the mutation: the
+    # source object must hold still across the transaction, so one wildcard
+    # row declares the whole prefix structural.
+    ("certtmpl.source.*", "structural", None),
     # Collection integrity of the two independent enumeration passes.
     ("sysvol.passes_match", "structural", None),
     # Filesystem timestamps, should a future observer collect them.

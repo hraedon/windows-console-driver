@@ -257,7 +257,8 @@
             "relpath": {"$ref": "#/$defs/non-empty-string"},
             "filter_name": {"$ref": "#/$defs/non-empty-string"},
             "template_name": {"$ref": "#/$defs/non-empty-string"},
-            "domain_dns": {"$ref": "#/$defs/non-empty-string"}
+            "domain_dns": {"$ref": "#/$defs/non-empty-string"},
+            "source_template": {"$ref": "#/$defs/non-empty-string"}
           }
         }
       },
@@ -330,7 +331,7 @@
           "then": {
             "properties": {
               "params": {
-                "required": ["template_name", "domain_dns"],
+                "required": ["template_name", "domain_dns", "source_template"],
                 "not": {"required": ["path", "relpath", "filter_name"]}
               }
             }
