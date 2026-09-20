@@ -34,10 +34,14 @@ REMOVE_SCRIPT = ps_scripts.REPO_ROOT / "tools" / "guest_scripts" / "certtmpl_rem
 SHEET = ps_scripts.REPO_ROOT / "runsheets" / "certtmpl.duplicate_template.json"
 DOMAIN = "zzlab.invalid"
 
-VALIDITY_DN = (
-    "CN=FourYears,CN=Validity Periods,CN=Public Key Services,CN=Configuration,"
-    "DC=zzlab,DC=invalid"
-)
+# Duration attributes as the guest transports them: uppercase hex over the
+# eight little-endian bytes of a NEGATIVE FILETIME interval. EXPIRATION_HEX
+# is the real shape measured on a Server 2025 built-in template (365 days);
+# OVERLAP_HEX is six weeks in the same encoding.
+EXPIRATION_100NS = 365 * 86400 * 10**7
+OVERLAP_100NS = 42 * 86400 * 10**7
+EXPIRATION_HEX = (-EXPIRATION_100NS).to_bytes(8, "little", signed=True).hex().upper()
+OVERLAP_HEX = (-OVERLAP_100NS).to_bytes(8, "little", signed=True).hex().upper()
 SDDL = (
     "O:SYD:(A;;CC;;;S-1-5-21-1111111111-2222222222-3333333333-1101)(A;;DC;;;BA)"
 )
@@ -53,8 +57,8 @@ FACT_KEYS = frozenset(
         "certtmpl.container.unnamed_count",
         "certtmpl.target.present",
         "certtmpl.target.name",
-        "certtmpl.target.validity_period",
-        "certtmpl.target.validity_period_units",
+        "certtmpl.target.expiration_100ns",
+        "certtmpl.target.overlap_100ns",
         "certtmpl.target.schema_version",
         "certtmpl.target.cert_name_flag",
         "certtmpl.target.key_flag",
@@ -79,8 +83,8 @@ def _values(facts: dict[str, Any]) -> dict[str, Any]:
 
 
 _DEFAULT_ATTRS: dict[str, str] = {
-    "validity_period": VALIDITY_DN,
-    "validity_period_units": "4",
+    "expiration_period": EXPIRATION_HEX,
+    "overlap_period": OVERLAP_HEX,
     "schema_version": "2",
     "cert_name_flag": "94208",
     "key_flag": "16842752",
@@ -91,8 +95,8 @@ _DEFAULT_ATTRS: dict[str, str] = {
 
 def _attr_lines(attrs: dict[str, str]) -> list[str]:
     return [
-        "validity_period=" + attrs["validity_period"],
-        "validity_period_units=" + attrs["validity_period_units"],
+        "expiration_period=" + attrs["expiration_period"],
+        "overlap_period=" + attrs["overlap_period"],
         "schema_version=" + attrs["schema_version"],
         "cert_name_flag=" + attrs["cert_name_flag"],
         "key_flag=" + attrs["key_flag"],
@@ -169,8 +173,8 @@ def test_target_certified_and_membership_committed_as_digests() -> None:
     assert facts["certtmpl.container.unnamed_count"] == 0
     assert facts["certtmpl.target.present"] is True
     assert facts["certtmpl.target.name"] == TARGET
-    assert facts["certtmpl.target.validity_period"] == VALIDITY_DN
-    assert facts["certtmpl.target.validity_period_units"] == 4
+    assert facts["certtmpl.target.expiration_100ns"] == EXPIRATION_100NS
+    assert facts["certtmpl.target.overlap_100ns"] == OVERLAP_100NS
     assert facts["certtmpl.target.schema_version"] == 2
     assert facts["certtmpl.target.cert_name_flag"] == 94208
     assert facts["certtmpl.target.key_flag"] == 16842752
@@ -230,9 +234,14 @@ def test_membership_digest_ignores_target_attribute_edits() -> None:
         certtmpl_fact_tree(
             _observation(
                 [TARGET, "Computer"],
-                overrides={TARGET: {"validity_period": "CN=OneYear,CN=Validity Periods,"
-                                          "CN=Public Key Services,CN=Configuration,"
-                                          "DC=zzlab,DC=invalid"}},
+                overrides={
+                    TARGET: {
+                        "expiration_period": (-(3 * EXPIRATION_100NS))
+                        .to_bytes(8, "little", signed=True)
+                        .hex()
+                        .upper()
+                    }
+                },
             ),
             TARGET,
         )
@@ -244,7 +253,7 @@ def test_membership_digest_ignores_target_attribute_edits() -> None:
         "certtmpl.container.other_count",
     ):
         assert plain[key] == edited[key], key
-    assert edited["certtmpl.target.validity_period"].startswith("CN=OneYear")
+    assert edited["certtmpl.target.expiration_100ns"] == 3 * EXPIRATION_100NS
 
 
 def test_unnamed_objects_are_counted_not_guessed() -> None:
@@ -357,6 +366,49 @@ def _tamper(lines: list[str], old: str, new: str) -> list[str]:
             "incomplete key set",
             id="record-missing-attribute",
         ),
+        # Duration transported at the wrong width: eight bytes or nothing.
+        pytest.param(
+            _observation([TARGET], overrides={TARGET: {"expiration_period": "FFFE"}}),
+            "16 uppercase hex",
+            id="duration-wrong-width",
+        ),
+        # A malformed duration on a record that is NOT the target: every
+        # transported record is validated, not just the one being certified,
+        # because a stream the observer cannot read whole is not a stream it
+        # can report membership from.
+        pytest.param(
+            _observation(
+                [TARGET, "Computer"], overrides={"Computer": {"expiration_period": "FFFE"}}
+            ),
+            "16 uppercase hex",
+            id="duration-wrong-width-other-record",
+        ),
+        # Duration transported in lowercase: the encoding is pinned, not sniffed.
+        pytest.param(
+            _observation(
+                [TARGET], overrides={TARGET: {"overlap_period": OVERLAP_HEX.lower()}}
+            ),
+            "16 uppercase hex",
+            id="duration-lowercase",
+        ),
+        # A POSITIVE interval is not the representation this decode was
+        # measured against, and reading it as a duration would invent one.
+        pytest.param(
+            _observation(
+                [TARGET],
+                overrides={
+                    TARGET: {
+                        "expiration_period": EXPIRATION_100NS.to_bytes(
+                            8, "little", signed=True
+                        )
+                        .hex()
+                        .upper()
+                    }
+                },
+            ),
+            "negative relative interval",
+            id="duration-not-negative",
+        ),
         # The guest's fail-closed error line (oversized container et al.).
         pytest.param(["error=container object count 513 exceeds bound 512"],
                      "reported an error", id="guest-error-line"),
@@ -378,6 +430,24 @@ def test_certtmpl_collect_is_pure_ascii() -> None:
     ps_scripts.assert_ascii_only(SCRIPT)
 
 
+def test_certtmpl_collect_names_the_attributes_the_schema_actually_has() -> None:
+    """The validity attributes are pKIExpirationPeriod/pKIOverlapPeriod.
+
+    Measured against the estate on 2026-09-20: asking Get-ADObject for
+    ``msPKI-Validity-Period`` raises "One or more properties are invalid",
+    so the whole observation fails closed -- at oracle time, inside a
+    qualification window, after the gesture has already mutated the
+    directory. The attribute names are therefore pinned here, where the
+    test costs nothing, along with the octet-string transport that goes
+    with them.
+    """
+    text = SCRIPT.read_text(encoding="utf-8-sig")
+    assert "pKIExpirationPeriod" in text
+    assert "pKIOverlapPeriod" in text
+    assert "msPKI-Validity" not in text
+    assert "BitConverter" in text, "duration bytes transport as hex, never as a cast"
+
+
 def test_certtmpl_collect_refuses_oversized_containers_fail_closed() -> None:
     # The bound is 512 and the refusal is an error line, never a silent
     # truncation: the text-level guard pins the shape the observer's
@@ -397,7 +467,7 @@ def test_categories_are_declared_not_unclassified() -> None:
     for fact in facts.values():
         assert fact.category != "unclassified", fact.key
     assert make_fact("certtmpl.container.other_names_sha256", None).category == "structural"
-    assert make_fact("certtmpl.target.validity_period_units", None).category == "content"
+    assert make_fact("certtmpl.target.expiration_100ns", None).category == "content"
     assert make_fact("certtmpl.target.sddl_sha256", None).category == "content"
 
 
@@ -438,7 +508,7 @@ def test_collector_runs_the_shipped_collect_script_and_parses_lines() -> None:
     assert facts["certtmpl.container.object_count"] == 1
     assert facts["certtmpl.target.present"] is True
     assert facts["certtmpl.target.name"] == TARGET
-    assert facts["certtmpl.target.validity_period_units"] == 4
+    assert facts["certtmpl.target.expiration_100ns"] == EXPIRATION_100NS
     # The shipped artifact crosses the wire verbatim with the recorded
     # params interpolated positionally -- no second inline copy of the script.
     assert transport.calls[0]["script"] == SCRIPT.read_text(encoding="utf-8-sig")

@@ -179,11 +179,10 @@ def _fixture_snapshot() -> dict[str, Fact]:
         "certtmpl.container.unnamed_count": 0,
         "certtmpl.target.present": True,
         "certtmpl.target.name": "zz-template-duplicate",
-        "certtmpl.target.validity_period": (
-            "CN=FourYears,CN=Validity Periods,CN=Public Key Services,"
-            "CN=Configuration,DC=zzlab,DC=invalid"
-        ),
-        "certtmpl.target.validity_period_units": 4,
+        # The measured representation: one negative FILETIME interval, no
+        # units attribute anywhere in the schema (see gpo_observers.certtmpl).
+        "certtmpl.target.expiration_100ns": 4 * 365 * 86400 * 10**7,
+        "certtmpl.target.overlap_100ns": 42 * 86400 * 10**7,
         "certtmpl.target.schema_version": 2,
         "certtmpl.target.cert_name_flag": 94208,
         "certtmpl.target.key_flag": 16842752,
