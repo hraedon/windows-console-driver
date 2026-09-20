@@ -32,6 +32,11 @@ UNCLAIMED_RECORDS: dict[str, str] = {
         "indeterminate under current envelope semantics; no claim banked; "
         "see NOTES.md correction"
     ),
+    "w10-r1-record.json": (
+        "indeterminate, aborted three steps short of its commit point; it "
+        "certifies nothing about certificate templates and is banked only as "
+        "the surface evidence that sent window 10 into recon"
+    ),
 }
 
 _JSON_FILENAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.json")
