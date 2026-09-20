@@ -24,6 +24,18 @@ $argEl.InnerText = 'gpmc.msc'
 $actions.RemoveAll()
 [void]$actions.AppendChild($exec)
 
+# MEASURED 2026-09-20 (certtmpl qualification window): the cloned XML also
+# carries WCDHelper's Settings, whose ExecutionTimeLimit is PT5M -- sized for
+# a helper invocation that answers in seconds. Task Scheduler applies it to
+# the console this task launches, so mmc.exe was terminated five minutes
+# after launch (LastTaskResult 267014 = SCHED_S_TASK_TERMINATED), mid-flow,
+# with nothing in the surface's own behaviour to explain it. The console
+# outlives its launcher on purpose; cleanup's mmc_kill is what ends it, so
+# the clone is given an hour -- bounded, not unlimited, and far outside any
+# transaction.
+$settings = $doc.Task.Settings
+if ($null -ne $settings.ExecutionTimeLimit) { $settings.ExecutionTimeLimit = 'PT1H' }
+
 Register-ScheduledTask -TaskName 'WCDLaunchGPMC' -Xml $doc.OuterXml -Force | Out-Null
 Start-ScheduledTask -TaskName 'WCDLaunchGPMC'
 "launched=1"

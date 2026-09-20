@@ -88,9 +88,9 @@
     {
       "action": "wait_foreground",
       "profile_action": "open_duplicate_dialog",
-      "title_regex": "Properties",
+      "title_regex": "Properties of New Template",
       "timeout_ms": 30000,
-      "label": "the duplicate's Properties dialog (assumed to open directly; if the estate shows an intermediate schema-version selection dialog, qualification adds it here)"
+      "label": "the duplicate's property sheet. MEASURED 2026-09-20: duplicating a V1 template on Server 2025 opens this sheet directly -- there is no intermediate schema-version dialog -- and it opens on the COMPATIBILITY page, not General"
     },
     {
       "action": "shot",
@@ -98,14 +98,23 @@
       "label": "dialog baseline before edits"
     },
     {
+      "action": "click_element",
+      "profile_action": "select_general_tab",
+      "name_regex": "^Compatibility$",
+      "offset_x": -94,
+      "offset_y": -221,
+      "settle_ms": 1500,
+      "label": "select the General page. The tab strip is an unnamed SysTabControl32 (automation id 12320) and its tab items are not in the UIA tree at all, so the click is anchored to the named PAGE pane in the same dialog and offset to the tab measured off the framebuffer -- a same-window offset, so it survives the dialog moving. Ctrl+Tab was measured NOT to change the page here, with the dialog foreground and a click landed in it first. Verification that it worked is structural: the page pane is renamed to the selected tab, so every step after this resolves against elements that only exist on General."
+    },
+    {
       "action": "keys",
       "profile_action": "set_template_name",
       "steps": [
         {
           "click_element": {
-            "name_regex": "^Template name",
-            "offset_x": 80,
-            "offset_y": 0
+            "name_regex": "^Template display name:",
+            "offset_x": 122,
+            "offset_y": 21
           }
         },
         {
@@ -122,7 +131,34 @@
           "text": "{args.template_name}"
         }
       ],
-      "label": "name field: label-anchored click-focus + ctrl+a + type in ONE invocation (dialog focus resets across invocations; the field pre-fills Copy-of style, hence the select-all; field label and offset assumed)"
+      "label": "display name first, in ONE invocation: label-anchored click-focus (the edit's UIA name is its CONTENT -- 'Copy of Computer' -- so a content selector would bind to the source template), ctrl+a because the field pre-fills, then type. Display name goes FIRST because the console auto-fills the template name from it until that field is edited by hand; setting the CN first and the display name second would have the console overwrite the CN this capability certifies."
+    },
+    {
+      "action": "keys",
+      "profile_action": "set_template_name",
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Template name:",
+            "offset_x": 140,
+            "offset_y": 21
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 65,
+              "modifiers": [
+                "ctrl"
+              ]
+            }
+          ]
+        },
+        {
+          "text": "{args.template_name}"
+        }
+      ],
+      "label": "then the template name itself -- this is the CN the observer certifies and cleanup re-queries by, so it is set explicitly rather than left to the auto-fill"
     },
     {
       "action": "shot",
@@ -135,9 +171,9 @@
       "steps": [
         {
           "click_element": {
-            "name_regex": "Validity period",
-            "offset_x": 60,
-            "offset_y": 0
+            "name_regex": "^Validity period:",
+            "offset_x": -19,
+            "offset_y": 22
           }
         },
         {
@@ -155,16 +191,16 @@
         },
         {
           "click_element": {
-            "name_regex": "Validity period",
-            "offset_x": 220,
-            "offset_y": 0
+            "name_regex": "^Validity period:",
+            "offset_x": 40,
+            "offset_y": 22
           }
         },
         {
           "text": "{args.validity_period}"
         }
       ],
-      "label": "validity row in ONE invocation: amount edit click-focus + ctrl+a + type, then units combo click-focus + type-ahead (closed-combo type-ahead is the R3 measured idiom; row label and both offsets assumed)"
+      "label": "validity row in ONE invocation, both controls anchored to the same label: the amount edit sits below-left of it and the units combo below-right (measured rects, 2026-09-20). The click lands in the combo's text area, not its arrow, so the list never opens and the type-ahead selects a closed combo -- the R3 measured idiom. Renewal period is the same shape one row right and is deliberately untouched."
     },
     {
       "action": "shot",
