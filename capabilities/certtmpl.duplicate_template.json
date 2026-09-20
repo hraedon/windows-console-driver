@@ -15,11 +15,21 @@
       "domain_dns"
     ],
     "properties": {
-      "source_template": { "type": "string" },
-      "template_name": { "type": "string" },
-      "validity_units": { "type": "integer" },
-      "validity_period": { "type": "string" },
-      "domain_dns": { "type": "string" }
+      "source_template": {
+        "type": "string"
+      },
+      "template_name": {
+        "type": "string"
+      },
+      "validity_units": {
+        "type": "integer"
+      },
+      "validity_period": {
+        "type": "string"
+      },
+      "domain_dns": {
+        "type": "string"
+      }
     }
   },
   "channel_contract": {
@@ -71,12 +81,28 @@
         "predicate": "post['certtmpl.target.name'] == args['template_name']"
       },
       {
-        "fact": "certtmpl.target.validity_period_units",
-        "predicate": "post['certtmpl.target.validity_period_units'] == args['validity_units']"
+        "fact": "certtmpl.target.expiration_100ns",
+        "predicate": "post['certtmpl.target.expiration_100ns'] == args['validity_units'] * 365 * 864000000000"
       },
       {
-        "fact": "certtmpl.target.validity_period",
-        "predicate": "post['certtmpl.target.validity_period'] == args['validity_period']"
+        "fact": "certtmpl.target.overlap_100ns",
+        "predicate": "post['certtmpl.target.overlap_100ns'] != ''"
+      },
+      {
+        "fact": "certtmpl.target.schema_version",
+        "predicate": "post['certtmpl.target.schema_version'] != ''"
+      },
+      {
+        "fact": "certtmpl.target.cert_name_flag",
+        "predicate": "post['certtmpl.target.cert_name_flag'] != ''"
+      },
+      {
+        "fact": "certtmpl.target.key_flag",
+        "predicate": "post['certtmpl.target.key_flag'] != ''"
+      },
+      {
+        "fact": "certtmpl.target.sddl_len",
+        "predicate": "post['certtmpl.target.sddl_len'] != ''"
       },
       {
         "fact": "certtmpl.target.sddl_sha256",
@@ -97,6 +123,9 @@
     "derive": [
       {
         "relation": "post.certtmpl.container.object_count == pre.certtmpl.container.object_count + 1"
+      },
+      {
+        "relation": "post['certtmpl.container.names_sha256'] != pre['certtmpl.container.names_sha256']"
       }
     ],
     "convergence": {
@@ -112,19 +141,19 @@
     },
     {
       "id": "security_descriptor_as_digest",
-      "checks": "The security descriptor is observed as length plus sha256 (sddl_len / sddl_sha256), never as SDDL text: permissions are certified by digest stability of the duplicated template's descriptor, while qualifying the descriptor's CONTENT (which ACEs the duplicate inherits versus the source) is deliberately deferred to a future capability. The non-empty sddl_sha256 require clause is the presence claim for this revision."
+      "checks": "The security descriptor is observed as length plus sha256 (sddl_len / sddl_sha256), never as SDDL text: permissions are certified by digest stability of the duplicated template's descriptor, while qualifying the descriptor's CONTENT (which ACEs the duplicate inherits versus the source) is deliberately deferred to a future capability. The non-empty sddl_sha256 require clause is the presence claim for this revision. The remaining target facts (overlap period, schema version, name and key flags, descriptor length) carry presence-only require clauses at this revision: they are values the console chooses, not values this capability's arguments predict, and an unpredicted change to a fact the observer emits is a disproof rather than a silent pass -- so they are claimed as observed, and qualifying their exact values is deferred to a later revision with its own measurement."
     },
     {
       "id": "certtmpl_msc_estate_precondition",
-      "checks": "certtmpl.msc (the AD CS RSAT console) must be present on the console guest for this surface to run at all. Verify this FIRST in the qualification window; if it is absent, that is a provisioning gap to fix in the next baseline generation, not something to repair mid-window."
+      "checks": "certtmpl.msc (the AD CS RSAT console) must be present on the console guest for this surface to run at all. Verify this FIRST in the qualification window; if it is absent, that is a provisioning gap to fix in the next baseline generation, not something to repair mid-window. Verified present on the console guest 2026-09-20 (RSAT-ADCS installed, certtmpl.msc on disk, 33 templates in the container, one enrollment-services object), so this precondition is satisfied going into the first qualification window rather than assumed."
     },
     {
       "id": "dialog_facts_unmeasured_until_first_qualification",
-      "checks": "Every dialog fact in the sheet is UNMEASURED until the first qualification run: the sheet encodes the measured MMC idioms from the GPMC surfaces (composite invocations because menus die between invocations; click-focus plus type in one invocation because dialog focus resets) and applies them to control names and menu orders taken from documentation conventions. The usual indeterminate-to-verified tuning arc is expected, and the validity-period arg form (see bindings) is the first open question the run must answer."
+      "checks": "Every dialog fact in the sheet is UNMEASURED until the first qualification run: the sheet encodes the measured MMC idioms from the GPMC surfaces (composite invocations because menus die between invocations; click-focus plus type in one invocation because dialog focus resets) and applies them to control names and menu orders taken from documentation conventions. The usual indeterminate-to-verified tuning arc is expected. The arg-form question the capability was authored around is now answered off-window by direct measurement of the directory (see bindings), so what the run must still answer is the DIALOG: whether duplicating a V1 template opens an intermediate compatibility/schema-version step, what the validity row's controls are called, and where the commit lands."
     }
   ],
   "bindings": {
-    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. source_template names the built-in template duplicated (a built-in name such as Computer is an estate-provided identifier, not a synthetic creation, so the zz- rule does not apply to it); template_name is the zz- synthetic CN of the duplicate and is what cleanup re-queries by. validity_units is the integer AD stores in msPKI-Validity-PeriodUnits and is asserted verbatim. validity_period is asserted verbatim against the transported msPKI-Validity-Period while being what the sheet's units-combo type-ahead types; AD stores that attribute in DN form (CN=Years,CN=Validity Periods,... per the observer's transported vocabulary), so the first measured run decides which form the arg must carry -- the same open question the window-7 Parm2 composition answered for WMI filters, resolved by revising the arg's documented form rather than the predicate.",
+    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation. source_template names the built-in template duplicated, by the CONSOLE's display name (a built-in name such as Computer is an estate-provided identifier, not a synthetic creation, so the zz- rule does not apply to it) -- note the directory CN can differ from that display name (measured: displayName 'Computer' lives on CN=Machine), and the sheet types the display name because the results list renders display names. template_name is the zz- synthetic CN of the duplicate, what the dialog's Template name field carries, and what cleanup re-queries by. validity_units and validity_period are the UI form of one property: the integer typed into the validity amount box and the units word ('Years') the closed combo type-ahead selects. THE DIRECTORY HAS NO UNITS. Measured 2026-09-20 on the estate: validity is a single octet-string duration (pKIExpirationPeriod, an 8-byte little-endian negative FILETIME interval) and the units choice is only how the console renders it; the attributes an earlier revision named (msPKI-Validity-Period / msPKI-Validity-PeriodUnits) exist in no Server 2025 schema. The expiration require clause is therefore a PREDICTION UNDER TEST rather than a measured fact: it reads 'Years' as 365 days per unit, which is the convention the built-in Machine template evidences (its 1-year period decodes to exactly 365 days). If the console's own arithmetic differs, the first run disproves that clause with the measured magnitude in the delta, and the clause is revised to the measured truth -- the window-7 Parm2 arc, applied to a duration.",
     "fact_vocabulary": "certtmpl.* facts come from the certtmpl observer (guest transports the forest Certificate Templates container as raw key=value lines over PSDirect; controller-side fact tree in gpo_observers.certtmpl recomputes counts and membership digests from the records and refuses disagreement). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
   },
   "cleanup": {

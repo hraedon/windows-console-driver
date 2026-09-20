@@ -20,6 +20,20 @@ function Get-Prop($Obj, [string]$Name) {
     return ([string]$p.Value -replace '[\r\n]', ' ')
 }
 
+function Get-HexProp($Obj, [string]$Name) {
+    # Duration attributes (pKIExpirationPeriod, pKIOverlapPeriod) are
+    # octet strings: an 8-byte little-endian signed FILETIME interval,
+    # stored NEGATIVE because it is a relative time. The guest transports
+    # the bytes as uppercase hex and interprets nothing -- the controller
+    # decodes the duration and refuses a value it cannot read. Absent
+    # transports as '' like every other attribute.
+    $p = $Obj.PSObject.Properties[$Name]
+    if ($null -eq $p -or $null -eq $p.Value) { return '' }
+    $bytes = [byte[]]$p.Value
+    if ($bytes.Length -eq 0) { return '' }
+    return ([System.BitConverter]::ToString($bytes)).Replace('-', '')
+}
+
 function Get-TextSha256 {
     param([string]$Text)
     $sha = [System.Security.Cryptography.SHA256]::Create()
@@ -61,7 +75,7 @@ try {
         # observer discipline is to transport only what a fact evaluates.
         $objects = @(Get-ADObject -SearchBase $templateBase -SearchScope OneLevel `
             -LDAPFilter '(objectClass=*)' -ErrorAction Stop `
-            -Properties cn, displayName, msPKI-Validity-Period, msPKI-Validity-PeriodUnits, `
+            -Properties cn, displayName, pKIExpirationPeriod, pKIOverlapPeriod, `
                 msPKI-Template-Schema-Version, msPKI-Certificate-Name-Flag, `
                 msPKI-Private-Key-Flag, nTSecurityDescriptor)
     }
@@ -98,8 +112,8 @@ try {
         $sddl = $o.nTSecurityDescriptor.GetSecurityDescriptorSddlForm(
             [System.Security.AccessControl.AccessControlSections]::All)
         $byName[$cn] = @{
-            validity_period       = Get-Prop -Obj $o -Name 'msPKI-Validity-Period'
-            validity_period_units = Get-Prop -Obj $o -Name 'msPKI-Validity-PeriodUnits'
+            expiration_period     = Get-HexProp -Obj $o -Name 'pKIExpirationPeriod'
+            overlap_period        = Get-HexProp -Obj $o -Name 'pKIOverlapPeriod'
             schema_version        = Get-Prop -Obj $o -Name 'msPKI-Template-Schema-Version'
             cert_name_flag        = Get-Prop -Obj $o -Name 'msPKI-Certificate-Name-Flag'
             key_flag              = Get-Prop -Obj $o -Name 'msPKI-Private-Key-Flag'
@@ -118,8 +132,8 @@ try {
     foreach ($n in $names) {
         $r = $byName[$n]
         'name=' + $n
-        'validity_period=' + $r['validity_period']
-        'validity_period_units=' + $r['validity_period_units']
+        'expiration_period=' + $r['expiration_period']
+        'overlap_period=' + $r['overlap_period']
         'schema_version=' + $r['schema_version']
         'cert_name_flag=' + $r['cert_name_flag']
         'key_flag=' + $r['key_flag']
@@ -147,8 +161,8 @@ try {
         $t = $byName[$targetCn]
         'target.present=1'
         'target.name=' + $targetCn
-        'target.validity_period=' + $t['validity_period']
-        'target.validity_period_units=' + $t['validity_period_units']
+        'target.expiration_period=' + $t['expiration_period']
+        'target.overlap_period=' + $t['overlap_period']
         'target.schema_version=' + $t['schema_version']
         'target.cert_name_flag=' + $t['cert_name_flag']
         'target.key_flag=' + $t['key_flag']
