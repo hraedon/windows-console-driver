@@ -1,14 +1,28 @@
 # Driver profile: certtmpl-server2025
 #
-# Status: UNQUALIFIED DRAFT. The third console surface and the first non-GPO
-# one: the Certificate Templates console (certtmpl.msc, AD CS RSAT). No estate
-# run has observed any dialog on this surface -- every action class and
-# selector below is the conservative reading of the measured GPMC idioms
-# applied to documentation-convention control names, and the qualification
-# window is expected to tune them through the usual indeterminate-to-verified
-# arc. Estate precondition: certtmpl.msc must be present on the console guest
-# (verify first in the qualification window; a gap is fixed in the next
-# baseline generation, not mid-window).
+# Status: UNQUALIFIED, but no longer unobserved. The third console surface and
+# the first non-GPO one: the Certificate Templates console (certtmpl.msc, AD
+# CS RSAT). The dialogs below were dumped live on 2026-09-20 during the first
+# qualification window, and the selectors now say what the surface says rather
+# than what documentation conventions suggested. Qualification (a verified
+# transaction with clean cleanup) is still outstanding.
+#
+# What the live dumps settled, all of it load-bearing for the selectors:
+#   - the console window is titled "Certificate Templates Console";
+#   - duplicating a V1 template opens "Properties of New Template" DIRECTLY
+#     (no intermediate schema-version dialog on Server 2025) and lands on the
+#     COMPATIBILITY page, not General;
+#   - the tab strip is an unnamed SysTabControl32 (automation id 12320) whose
+#     tab items are absent from the UIA tree, and Ctrl+Tab does not move the
+#     page even with the dialog foreground -- so the page is reached by a
+#     click anchored to the named page pane;
+#   - the page pane is RENAMED to the selected tab, which is how a page
+#     switch is verified structurally rather than by screenshot;
+#   - every edit and combo is named by its CONTENT ("Copy of Computer", "1",
+#     "years"), never by its label, so all field selectors are label-anchored
+#     with measured offsets.
+# Estate precondition: certtmpl.msc must be present on the console guest
+# (verified present 2026-09-20).
 
 [profile]
 surface = "certtmpl-server2025"
@@ -20,9 +34,9 @@ os_build_family = "26100"
 # partition. Everything before it (selection, dialog edits) cancels cleanly.
 first_commit_point = "ok_duplicate_dialog"
 
-# Action classifications (contract section 6). All unqualified: no estate run
-# has observed these dialogs yet, so the classes are the conservative
-# readings and the window iterates on measured deltas.
+# Action classifications (contract section 6). The dialogs are observed now;
+# the CLASSES are still unqualified, because only a transaction that commits
+# and cleans up proves where the mutating boundary really is.
 
 [actions.open_certtmpl_console]
 class = "orientation_only"
@@ -34,49 +48,65 @@ notes = "type-ahead selection of the source row in the virtualized results list;
 
 [actions.open_duplicate_dialog]
 class = "reversible_pre_commit"
-notes = "context menu walked to Duplicate Template in ONE composite invocation (menus die between invocations -- measured on the GPMC surface); the resulting Properties dialog cancels cleanly before its OK (unmeasured dialog; an intermediate schema-version selection dialog, if the estate shows one, gets added here by qualification)"
+notes = "context menu walked to Duplicate Template in ONE composite invocation (menus die between invocations -- measured on the GPMC surface); measured 2026-09-20: this opens 'Properties of New Template' directly, with no intermediate schema-version dialog, and the sheet cancels cleanly before its OK"
+
+[actions.select_general_tab]
+class = "orientation_only"
+notes = "clicks the General tab of the duplicate's property sheet; changes which page is visible and nothing else, so it is a navigation read rather than an edit (measured: the tab strip is an unnamed SysTabControl32 with no UIA tab items, and Ctrl+Tab does not move the page)"
 
 [actions.set_template_name]
 class = "reversible_pre_commit"
-notes = "typing the synthetic template name into the Properties dialog's name field; in-memory/surface state only before the dialog OK (unmeasured dialog)"
+notes = "typing the synthetic name into the General page's display-name and template-name edits (display name first: the console auto-fills the template name from it until that field is edited by hand); in-memory/surface state only before the dialog OK"
 
 [actions.set_validity_period]
 class = "reversible_pre_commit"
-notes = "validity amount and units-combo edits inside the Properties dialog; in-memory/surface state only before the dialog OK (unmeasured dialog)"
+notes = "validity amount edit and units combo on the General page, both label-anchored by measured offset; in-memory/surface state only before the dialog OK. The directory stores ONE duration (pKIExpirationPeriod) and no units, so these two controls together produce a single observed fact"
 
 [actions.ok_duplicate_dialog]
 class = "commit_point"
 notes = "OK on the duplicate's Properties dialog writes the pKICertificateTemplate object to the forest configuration partition -- the commit boundary the envelope correlates with the certified AD representation; unlike every GPMC commit before it, a guest checkpoint revert CANNOT undo this write"
 
-# Selectors for the duplicate-template flow (certtmpl surface prep,
-# unobserved until the first run): titles/names follow Microsoft
-# documentation conventions, not estate capture, and are expected to be
-# corrected by the qualification run the way the wmi selectors were.
+# Selectors for the duplicate-template flow, taken from live UIA dumps of the
+# console and the property sheet (2026-09-20). Where a control has no usable
+# name of its own, the selector names its LABEL and the sheet carries the
+# measured offset; the label text is what binds UI language.
 
 [selectors.certtmpl_console_window]
 title_regex = "^Certificate Templates"
 
 [selectors.template_results_list]
-# Assumed: the results pane is a virtualized list with no reliable element
-# name; the sheet focuses it with a window-anchored click, not this selector.
+# Measured: the results pane has no element of its own in the dump; the sheet
+# focuses it with a window-anchored click, not this selector.
 name_regex = "Certificate Templates"
 
 [selectors.duplicate_menu_item]
 name_regex = "Duplicate Template"
 
 [selectors.duplicate_properties_dialog]
-title_regex = "Properties"
+title_regex = "Properties of New Template"
+
+# MEASURED: the page pane carries the selected tab's name, so this selector
+# is both the anchor for the tab click and the structural proof it landed.
+[selectors.compatibility_page_pane]
+name_regex = "^Compatibility$"
+
+[selectors.template_display_name_field]
+name_regex = "^Template display name:"
 
 [selectors.template_name_field]
-name_regex = "^Template name"
+name_regex = "^Template name:"
 
 [selectors.validity_period_row]
-name_regex = "Validity period"
+name_regex = "^Validity period:"
 
 # Selector dependencies: what the compatibility predicate checks, per rung.
 # Title/name selectors bind UI language strongly; the dialogs additionally
-# ride a whole-dialog fingerprint banked at qualification time. No coordinate
-# selectors are declared; DPI would bind only if any are added.
+# ride a whole-dialog fingerprint banked at qualification time. Unlike the
+# GPMC profiles, this surface DOES depend on geometry: three of its controls
+# are reached by an offset from a named anchor, because the tab items have no
+# UIA presence and the edits are named by their content. Those offsets are
+# measured in the dialog's own coordinates, so they survive the dialog moving
+# but not a change of DPI, font scaling, or dialog layout.
 
 [[selector_dependencies]]
 selector = "certtmpl_console_window"
@@ -104,13 +134,43 @@ dependency = "dialog_fingerprint"
 strength = "strong"
 
 [[selector_dependencies]]
+selector = "compatibility_page_pane"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "compatibility_page_pane"
+dependency = "dpi"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "template_display_name_field"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "template_display_name_field"
+dependency = "dpi"
+strength = "strong"
+
+[[selector_dependencies]]
 selector = "template_name_field"
 dependency = "ui_language"
 strength = "strong"
 
 [[selector_dependencies]]
+selector = "template_name_field"
+dependency = "dpi"
+strength = "strong"
+
+[[selector_dependencies]]
 selector = "validity_period_row"
 dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "validity_period_row"
+dependency = "dpi"
 strength = "strong"
 
 # WI-L5: the one runtime-enforced selector dependency is the banked

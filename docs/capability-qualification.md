@@ -15,7 +15,7 @@ upgrade that record.
 | `gpmc.author_admin_template_user` | 2 | Qualified; side-specific path envelope, clean cleanup | `estate-window-4/records/r5u-v2-record.json` |
 | `gpmc.author_registry_security` | 2 | Qualified; fixed three-key experiment, six distinct screenshots, clean cleanup | `estate-window-4/records/r4-v2b-record.json` |
 | `gpmc.author_wmi_filter` | 1 | Qualified; exact msWMI-* representation incl. the measured Parm2 wire format, SOM-container blast radius frozen at +1, clean cleanup | `estate-window-7/records/w7-record.json` |
-| `certtmpl.duplicate_template` | 1 | Pending first qualification; surface prep authored 2026-09-17 (first non-GPO surface -- certtmpl.msc on a Server 2025 member console; dialog facts unobserved, validity-period arg form the open question the run must answer, the Parm2 arc again) | -- |
+| `certtmpl.duplicate_template` | 1 | Qualified; exact validity duration, blast radius frozen at one added object, clean cleanup with independent strict-absence confirmation | `estate-window-10/records/w10-r2-record.json` (the pre-commit abort that preceded it is at `estate-window-10/records/w10-r1-record.json`) |
 
 The eight GPO-surface capabilities all have clean lab qualification evidence at
 their current revision. The migration-table capability requalified at revision 2

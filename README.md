@@ -17,7 +17,8 @@ implemented and tested. Multiple Server 2025 estate windows have qualified
 the guest helper's targeted UIA, screenshot, input, context, cleanup, and
 reproduction paths for the shipped GPMC flows. The third console surface —
 certificate templates via `certtmpl.duplicate_template` (certtmpl.msc, the
-first non-GPO surface) — is authored and pending its qualification window
+first non-GPO surface, and the first whose mutation lands where a checkpoint
+revert cannot reach it) — qualified in estate window 10 on 2026-09-20
 (per-capability qualification status lives in
 [`docs/capability-qualification.md`](docs/capability-qualification.md)).
 Helper death/restart, unusual
