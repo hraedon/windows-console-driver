@@ -75,6 +75,16 @@ section 1). If you are writing shell history, you are skipping one of them:
   can answer nothing for a long window (measured 25-60 minutes in the first
   window). Classify as `booting_blackout` and wait; never retry hot.
 
+## A worked example of the pre-window half
+
+[`surface-sketch-certsrv-officer-rights.md`](surface-sketch-certsrv-officer-rights.md)
+is steps 1 and 2 below carried out for a surface nobody has driven: why the
+capability exists at all (measured against what the command line can already
+do), what makes it structurally unlike the qualified ones, the five artifacts
+sketched, and — the part that matters most — an explicit ranked list of what is
+still assumed. Written deliberately while an estate was available, because the
+cheap facts are cheap only while it is up.
+
 ## Onboarding checklist (per new surface)
 
 1. **Recon** (one session, driver-development mode, checkpoint verified):

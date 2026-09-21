@@ -21,6 +21,12 @@ first non-GPO surface, and the first whose mutation lands where a checkpoint
 revert cannot reach it) — qualified in estate window 10 on 2026-09-20
 (per-capability qualification status lives in
 [`docs/capability-qualification.md`](docs/capability-qualification.md)).
+
+AD CS has one other administration act with no command-line path —
+restricting a certificate manager, the "officer rights" the console creates as
+an undocumented serialized value. It is not driven: it is sketched, with its
+estate facts measured, at
+[`docs/surface-sketch-certsrv-officer-rights.md`](docs/surface-sketch-certsrv-officer-rights.md).
 Helper death/restart, unusual
 desktop states, and new surfaces remain capability-specific qualification
 work rather than assumed portability.
