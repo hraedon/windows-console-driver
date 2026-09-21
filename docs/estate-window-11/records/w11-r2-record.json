@@ -1,0 +1,501 @@
+{
+  "state": "verified",
+  "verdict": "transaction reached verified",
+  "envelope_result": {
+    "status": "satisfied",
+    "satisfied": [
+      "require[0] fact='certsrv.officerrights.present'",
+      "require[1] fact='certsrv.officerrights.kind'",
+      "require[2] fact='certsrv.officerrights.bytes'",
+      "require[3] fact='certsrv.officerrights.sha256'",
+      "require[4] fact='certsrv.officerrights.decoded_present'",
+      "require[5] fact='certsrv.officerrights.certutil_rc'",
+      "require[6] fact='certsrv.officerrights.decoded_rows'",
+      "require[7] fact='certsrv.officerrights.decoded_sha256'",
+      "derive[0]",
+      "derive[1]",
+      "derive[2]",
+      "forbid[0] scope='certsrv.security.sha256'",
+      "forbid[1] scope='certsrv.security.bytes'",
+      "forbid[2] scope='certsrv.published.names_sha256'",
+      "forbid[3] scope='certsrv.published.count'"
+    ],
+    "violated": [],
+    "unresolved": [],
+    "unclassified": [],
+    "characterization": "satisfied: 15 clause(s) held; 10 delta entries all covered; covered changed: certsrv.config.value_count (category 'structural'); covered changed: certsrv.config.value_names_sha256 (category 'structural'); covered changed: certsrv.officerrights.bytes (category 'content'); covered changed: certsrv.officerrights.certutil_rc (category 'content'); covered changed: certsrv.officerrights.decoded_present (category 'content'); covered changed: certsrv.officerrights.decoded_rows (category 'content'); covered changed:",
+    "delta": [
+      {
+        "key": "certsrv.config.value_count",
+        "kind": "changed",
+        "before": 50,
+        "after": 51
+      },
+      {
+        "key": "certsrv.config.value_names_sha256",
+        "kind": "changed",
+        "before": "99e7865d85807820de20d3d7709b4c1804f3d9bcab6283a0c24f867122fc359d",
+        "after": "01a2154714179184026dae9dd28a2e2f60ea37cc7c73c7197cf7a76cf40a4739"
+      },
+      {
+        "key": "certsrv.officerrights.bytes",
+        "kind": "changed",
+        "before": 0,
+        "after": 188
+      },
+      {
+        "key": "certsrv.officerrights.certutil_rc",
+        "kind": "changed",
+        "before": -2147024894,
+        "after": 0
+      },
+      {
+        "key": "certsrv.officerrights.decoded_present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "certsrv.officerrights.decoded_rows",
+        "kind": "changed",
+        "before": 0,
+        "after": 4
+      },
+      {
+        "key": "certsrv.officerrights.decoded_sha256",
+        "kind": "changed",
+        "before": "",
+        "after": "afc1777ab5659acd06225a82aa73e7041966b1cbfd32656646354c8beaab1315"
+      },
+      {
+        "key": "certsrv.officerrights.kind",
+        "kind": "changed",
+        "before": "",
+        "after": "Binary"
+      },
+      {
+        "key": "certsrv.officerrights.present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "certsrv.officerrights.sha256",
+        "kind": "changed",
+        "before": "",
+        "after": "e4f0ec1691057e4472fbe78d0e07a79fd9a8877bba95ed15662f751a9ee1a8b2"
+      }
+    ]
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability certsrv.restrict_certificate_manager prepared over GPO None"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability certsrv.restrict_certificate_manager invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'ok_ca_property_sheet' (profile class 'commit_point')"
+    },
+    {
+      "sequence": 4,
+      "from_state": "commit_attempted",
+      "to_state": "verified",
+      "reason": "converged after 2 polls, 2 reproductions"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v2.json",
+    "schema_version": 2,
+    "capability": "certsrv.restrict_certificate_manager",
+    "run_sheet": "certsrv.restrict_certificate_manager",
+    "transaction_id": "7efe4c46-7519-486f-8c9b-fa6331a43fe5",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_certsrv_console] MEASURED 2026-09-21: certsrv.msc does not open a frame first. It raises this modal -- 'Cannot manage Active Directory Certificate Services. The system cannot find the file specified. 0x80070002' -- because the snap-in resolves the LOCAL CertSvc configuration and this guest is not a CA. Four command-line target forms were measured and none avoids it, so the modal is part of every launch on this surface rather than a fault to diagnose",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Microsoft Active Directory Certificate Services",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "click_element[dismiss_local_ca_error] dismiss the console's complaint about itself; the frame behind it is already built, still targeted at (Local)",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              365,
+              149
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "step": "wait_foreground[open_certsrv_console] the untargeted frame. Asserting (Local) here is deliberate: it is the pre-state the retarget has to move, so a run that somehow started already targeted is caught before the gesture rather than credited with it",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "certsrv - [Certification Authority (Local)]",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 3,
+          "step": "context[open_certsrv_console]",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 1580,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 10289674
+            },
+            "asserted_window": "certsrv - [Certification Authority (Local)]"
+          }
+        },
+        {
+          "index": 4,
+          "step": "shot baseline surface before anything is retargeted",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-console-untargeted.png"
+          }
+        },
+        {
+          "index": 5,
+          "step": "keys[retarget_console] root node context menu -> Retarget Certification Authority, in ONE composite. The walk is POSITIONAL (1 x DOWN, ENTER: Retarget is item 1 of Retarget/View/Export List/Help, read off a screenshot at authoring time) because MEASURED 2026-09-21: menu mnemonics do not take on this surface, injected either as WM_CHAR or as a VK chord. delay_ms 600 is measured too -- at 250 the keystroke arrived before the menu had rendered and went to the tree as type-ahead",
+          "ok": true,
+          "detail": {
+            "injected_events": 15
+          }
+        },
+        {
+          "index": 6,
+          "step": "wait_foreground[retarget_console] the Select Computer wizard page. Its title is the bare snap-in name, which is why the selector is anchored to start and end",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Certification Authority",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 7,
+          "step": "keys[retarget_console] radio and host in ONE invocation: dialog focus resets across invocations, so the click that selects 'Another computer' and the typing that fills the edit beside it cannot be split. The edit has no name of its own until it has content, so it is reached by TAB from the radio rather than by selector",
+          "ok": true,
+          "detail": {
+            "injected_events": 53
+          }
+        },
+        {
+          "index": 8,
+          "step": "shot qualification checkpoint: the wizard must read the ca_host argument",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-retarget-filled.png"
+          }
+        },
+        {
+          "index": 9,
+          "step": "click_element[retarget_console]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              307,
+              334
+            ]
+          }
+        },
+        {
+          "index": 10,
+          "step": "wait_foreground[retarget_console] the retarget's structural proof: the frame title carries the target, so this selector resolves only if the console is now managing the CA the plan named -- and only that one. A wizard that silently kept (Local) fails here, before the sheet is ever opened",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "certsrv - [Certification Authority (LabCA01.ad.labdomain.dev)]",
+            "surfaced": false
+          }
+        },
+        {
+          "index": 11,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-console-targeted.png"
+          }
+        },
+        {
+          "index": 12,
+          "step": "wait_element[select_ca_node] wait for the CA's results-pane ROW, not merely for the retargeted frame. MEASURED in run 1: the frame title gains the CA host the instant Retarget commits, while the console sits '(Not Responding)' enumerating the REMOTE CA with an empty results pane -- so the title proves the retarget's intent, never its readiness. Run 1 aborted here (before its commit point) because the selector was resolved against a pane that had not been filled yet. A fixed settle is the wrong instrument: the right delay is whatever the other machine takes today",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "attempts": 2,
+            "waited_s": 34.6,
+            "name": "Lab Issuing CA 01"
+          }
+        },
+        {
+          "index": 13,
+          "step": "keys[select_ca_node] the CA's RESULTS-pane row -> Properties (3 x DOWN, ENTER: All Tasks/Refresh/Properties/Help). MEASURED 2026-09-21 and the single most surprising fact on this surface: the same CA in the SCOPE TREE offers no Properties item at all -- its menu is All Tasks/View/Export List/Help and the Action menu agrees -- so the results-pane twin is not a convenience here, it is the only path to the sheet. Results rows on this surface ARE named UIA ListItems, unlike the certtmpl container's virtualized rows, so the row is addressed by name",
+          "ok": true,
+          "detail": {
+            "injected_events": 17
+          }
+        },
+        {
+          "index": 14,
+          "step": "wait_foreground[open_ca_property_sheet] '<ca name> Properties'. MEASURED: it opens on GENERAL",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Lab Issuing CA 01 Properties",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 15,
+          "step": "shot the sheet as opened -- the state the tab offset below is measured from",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-property-sheet-general.png"
+          }
+        },
+        {
+          "index": 16,
+          "step": "click_element[select_certificate_managers_tab] select the Certificate Managers page. The tab strip is an unnamed SysTabControl32 with no tab items in the UIA tree, so the click is anchored to the named PAGE pane and offset to the tab, measured off the framebuffer. NEW ON THIS SURFACE: the strip is THREE ROWS and selecting a tab moves its row to the bottom, so this offset is valid from the sheet's opening state ONLY -- the sheet switches pages exactly once",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              316,
+              50
+            ]
+          }
+        },
+        {
+          "index": 17,
+          "step": "shot qualification checkpoint: the page pane must now be named 'Certificate Managers'",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-certificate-managers-page.png"
+          }
+        },
+        {
+          "index": 18,
+          "step": "click_element[set_restrict_mode] this selector is the page switch's structural proof as well as the gesture: it exists only on the Certificate Managers page, so it cannot resolve if the tab click missed. MEASURED: the radio alone restricts nothing -- it enables the page, and every manager starts at <All> templates with Everyone:Allow",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              126,
+              135
+            ]
+          }
+        },
+        {
+          "index": 19,
+          "step": "shot the populated page: the manager list is rendered from the CA's security descriptor",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-restrict-enabled.png"
+          }
+        },
+        {
+          "index": 20,
+          "step": "keys[select_manager] select the manager row by click-focus plus type-ahead in ONE invocation. The list rows are UIA-invisible (the list is an unnamed Pane), so the click is anchored to the label above it with a measured offset onto the first row. THIS IS THE SHEET'S PRINCIPAL UNKNOWN: whether the listbox does incremental search across a principal string containing a backslash was not measured in recon, and if it does not, the first run's delta says so and the step becomes a positional walk instead",
+          "ok": true,
+          "detail": {
+            "injected_events": 37
+          }
+        },
+        {
+          "index": 21,
+          "step": "keys[edit_template_restriction] select the <All> row in the selected manager's template list -- the default, unrestricted state. Same label-anchored offset idiom as the manager list above",
+          "ok": true,
+          "detail": {
+            "injected_events": 3
+          }
+        },
+        {
+          "index": 22,
+          "step": "click_element[edit_template_restriction] remove <All>: the restriction is the ABSENCE of the wildcard plus the presence of the named template, so this half is as load-bearing as the Add. index 0 is the Certificate Templates Remove; the Permissions one sits below it in the dump's positional order and belongs to a revision this capability does not reach",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              350,
+              320
+            ]
+          }
+        },
+        {
+          "index": 23,
+          "step": "click_element[edit_template_restriction]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              350,
+              291
+            ]
+          }
+        },
+        {
+          "index": 24,
+          "step": "wait_foreground[edit_template_restriction] MEASURED: the console reuses its publication chooser here, title and all. It lists <All> plus the forest's templates by display name",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Enable Certificate Templates",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 25,
+          "step": "keys[edit_template_restriction] click-focus the chooser's virtualized list and type-ahead the template in ONE invocation -- the certtmpl idiom for MMC lists whose rows are UIA-invisible. The anchor is ugly on purpose: the list pane's UIA name is the help LINK's text bleeding into it ('Certificate Template Concepts'), which is what the surface actually reports, so the selector says that rather than a tidier name that would not resolve",
+          "ok": true,
+          "detail": {
+            "injected_events": 21
+          }
+        },
+        {
+          "index": 26,
+          "step": "shot qualification checkpoint: the chooser must have the template_name argument selected",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-template-chosen.png"
+          }
+        },
+        {
+          "index": 27,
+          "step": "click_element[edit_template_restriction] OK on the CHOOSER: adds the template to the sheet's in-memory restriction. Not a commit -- the sheet's own Cancel still discards everything, which the recon pass proved by driving exactly this far and cancelling out with OfficerRights still absent",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              455,
+              351
+            ]
+          }
+        },
+        {
+          "index": 28,
+          "step": "shot the page immediately before the commit",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-restriction-built.png"
+          }
+        },
+        {
+          "index": 29,
+          "step": "click_element[ok_ca_property_sheet] OK on the property sheet = the declared commit point. This is what serializes the restriction into the CA guest's registry as CertSvc\\Configuration\\<ca name>\\OfficerRights, a value that did not exist beforehand. The settle is longer than the certtmpl sheet's because the write travels to a DIFFERENT MACHINE and the CA has to adopt it; whether that is instant, slow, or needs a service restart is a first-run measurement, and the observer's two read channels are what will say which",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              119,
+              517
+            ]
+          }
+        },
+        {
+          "index": 30,
+          "step": "wait_foreground[ok_ca_property_sheet] re-surface the console as the sheet target after the dialog closes; the CA-side appearance of the value is the oracle's business, not this sheet's",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "certsrv - [Certification Authority (LabCA01.ad.labdomain.dev)]",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 31,
+          "step": "shot",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/cs-after-commit.png"
+          }
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "present_before=True\nremoved=True\nabsent_registry=True\nabsent_certutil=True\ncertutil_rc=-2147024894\nresidual="
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchCertSrv"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:mvmhyperv01.ad.hraedon.com:LabMS01",
+      "recovery checkpoint 'domain-joined' present: True"
+    ],
+    "capability_revision": 1,
+    "capability_sha256": "c1df0cc3e16725e9e2ae17d5b50adcb5c6f074c9e8cdb6a8dbb0d1e8bbc08ce7"
+  }
+}

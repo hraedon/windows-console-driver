@@ -60,6 +60,7 @@ _GESTURE_ACTIONS = frozenset(
         "guest",
         "host",
         "wait_foreground",
+        "wait_element",
         "context",
         "dump",
         "click_element",
@@ -75,9 +76,10 @@ _PHASES = frozenset({"setup", "gesture", "cleanup"})
 _INPUT_ACTIONS = frozenset({"click_element", "type_text", "key", "keys"})
 _UI_OPERATION_ACTIONS = _INPUT_ACTIONS
 # The per-surface UI operation channels: one per shipped console surface
-# (gpmc_ui for the GPMC family, certtmpl_ui for the certtmpl.msc surface).
-# A step in the operation-under-test role must declare its surface's channel.
-_UI_OPERATION_CHANNELS = frozenset({"gpmc_ui", "certtmpl_ui"})
+# (gpmc_ui for the GPMC family, certtmpl_ui for the certtmpl.msc surface,
+# certsrv_ui for the certsrv.msc one). A step in the operation-under-test
+# role must declare its surface's channel.
+_UI_OPERATION_CHANNELS = frozenset({"gpmc_ui", "certtmpl_ui", "certsrv_ui"})
 
 
 class RunSheetError(RuntimeError):
@@ -244,7 +246,7 @@ def validate_channel_contract(
             continue
 
         required_orientation: set[str] = set()
-        if step.action == "wait_foreground" or step.action == "context":
+        if step.action in ("wait_foreground", "wait_element") or step.action == "context":
             required_orientation.add("hwnd")
         elif step.action == "dump":
             required_orientation.update(("uia", "hwnd"))
@@ -443,6 +445,8 @@ class GestureExecutor:
             return self._run_script(self._host_scripts, params, ctx, remote="host")
         if step.action == "wait_foreground":
             return self._wait_foreground(params, ctx)
+        if step.action == "wait_element":
+            return self._wait_element(params, ctx)
         if step.action == "context":
             return self._context(params, ctx)
         if step.action == "dump":
@@ -604,6 +608,68 @@ class GestureExecutor:
             ctx.last_dump_hwnd = hwnd
             self._last_cached_focus = hwnd
         return {"matched": True, "title": window.get("title"), "surfaced": surfaced}
+
+    def _wait_element(self, params: dict[str, object], ctx: SheetContext) -> dict[str, object]:
+        """Wait for a named ELEMENT to appear inside the sheet's target window.
+
+        The counterpart to :meth:`_wait_foreground`, and the window-11 surface
+        is the first to need it. ``wait_foreground`` answers "does the window
+        exist"; on a console that administers a REMOTE service, the window
+        exists — and is correctly titled — long before its content arrives.
+        The certsrv frame's title gains the CA host the instant Retarget
+        commits, while the console sits ``(Not Responding)`` enumerating the
+        remote CA and its results pane is still empty. A sheet that read the
+        title as readiness would resolve a selector against a pane that has
+        not been filled yet, and would do it intermittently, because whether
+        it wins is a race with another machine.
+
+        A fixed settle is the wrong instrument for that: the right delay is
+        whatever the remote answer takes today. So this polls the element,
+        and a dump that fails while the window is busy is a reason to keep
+        waiting rather than to fail — an unresponsive window cannot report
+        its contents, which is not the same as reporting that they are
+        absent.
+        """
+        import time as _time
+
+        pattern = params.get("name_regex")
+        if not isinstance(pattern, str) or not pattern:
+            raise RunSheetError("wait_element needs name_regex")
+        timeout_ms = params.get("timeout_ms", 60000)
+        deadline_s = (timeout_ms if isinstance(timeout_ms, (int, float)) else 60000) / 1000.0
+        poll_ms = params.get("poll_ms", 3000)
+        poll_s = (poll_ms if isinstance(poll_ms, (int, float)) else 3000) / 1000.0
+        dump_params: dict[str, object] = {
+            "depth": params.get("dump_depth", 12),
+            "window_regex": params.get("window_regex"),
+            "window_class": params.get("window_class"),
+        }
+        resolve_params: dict[str, object] = {
+            key: params[key] for key in ("name_regex", "control_type", "index") if key in params
+        }
+        start = _time.monotonic()
+        attempts = 0
+        last_error = ""
+        while True:
+            attempts += 1
+            try:
+                self._dump(dump_params, ctx)
+                element = self._resolve(ctx, resolve_params)
+            except RunSheetError as exc:
+                last_error = str(exc)
+            else:
+                return {
+                    "matched": True,
+                    "attempts": attempts,
+                    "waited_s": round(_time.monotonic() - start, 1),
+                    "name": element.name,
+                }
+            if _time.monotonic() - start >= deadline_s:
+                raise RunSheetError(
+                    f"no element matching {pattern!r} appeared within {deadline_s:.0f}s "
+                    f"({attempts} attempts); last: {last_error[:400]}"
+                )
+            _time.sleep(poll_s)
 
     def _live_target(self, ctx: SheetContext) -> int | None:
         """The sheet's current window, popping dead dialog hwnds.

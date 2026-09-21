@@ -457,6 +457,39 @@ class _CerttmplCollector:
             raise ExecTransactionError(f"certtmpl observation malformed: {exc}") from exc
 
 
+class _OfficerRightsCollector:
+    """The certsrv-surface oracle: the CA's certificate-manager restriction.
+
+    The first collector in this package that reads a machine OTHER than the
+    one the gesture drove. The guest half
+    (``officerrights_collect.ps1``) runs on the console guest and reads the CA
+    guest's ``CertSvc\\Configuration\\<ca name>`` key through the remote
+    registry -- measured 2026-09-21 to carry raw REG_BINARY, so no second
+    PSDirect channel into the CA is needed -- and asks the CA's own RPC
+    surface for the same value through ``certutil -getreg``. The controller
+    (:mod:`gpo_observers.officerrights`) refuses a disagreement between the
+    two rather than averaging it, and refuses an observation whose reported
+    CA does not match the plan's: on this surface a correctly-resolved read
+    of the wrong machine is exactly the confusion the check exists to catch.
+    """
+
+    def collect(self, ref: GpoRef, params: Mapping[str, object], t: SessionTransport) -> FactSet:
+        ca_host = str(params.get("ca_host", ""))
+        ca_name = str(params.get("ca_name", ""))
+        if not ca_host or not ca_name:
+            raise ExecTransactionError("officerrights observer needs ca_host and ca_name params")
+        script = (_REPO_GUEST_SCRIPTS / "officerrights_collect.ps1").read_text(
+            encoding="utf-8-sig"
+        )
+        stdout = t.guest(script, [ca_host, ca_name], timeout=120.0)
+        from gpo_observers.officerrights import officerrights_fact_tree
+
+        try:
+            return officerrights_fact_tree(stdout.splitlines(), ca_host, ca_name)
+        except ValueError as exc:
+            raise ExecTransactionError(f"officerrights observation malformed: {exc}") from exc
+
+
 @dataclass(frozen=True, slots=True)
 class _ObserverEntry:
     name: str
@@ -519,6 +552,8 @@ def _named_collector(
         return _WmiFilterCollector().collect
     if name == "certtmpl":
         return _CerttmplCollector().collect
+    if name == "officerrights":
+        return _OfficerRightsCollector().collect
     if name == "gpttmpl_inf":
         from gpo_observers.gpttmpl_inf import gpttmpl_fact_tree
 

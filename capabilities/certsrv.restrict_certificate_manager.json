@@ -1,0 +1,183 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "certsrv.restrict_certificate_manager",
+  "surface": "certsrv-server2025",
+  "revision": 1,
+  "intent": "Restrict one EXISTING certificate manager on an enterprise CA to a single named certificate template, through the certsrv.msc console, so that the resulting configuration value can be independently certified. The second AD CS administration act with no command-line path, and the reason this capability exists: role assignment (certutil -getreg/-setreg CA\\Security) and template publication (Add-/Get-/Remove-CATemplate) are both CLI-reachable and were measured to be so on 2026-09-21, but CA\\OfficerRights does not exist to be read until a console creates it (certutil -getreg answers 0x80070002 ERROR_FILE_NOT_FOUND) and its layout is undocumented. The console is therefore the sanctioned author, and the claim ends where the evidence does: the configuration value EXISTS, is non-empty, and the CA's own RPC surface decodes it. This capability does not claim to know what the bytes mean, does not claim which manager the console encoded, and does not claim that the restriction is ENFORCED -- a behavioural oracle (leave a request pending, attempt approval as the restricted officer, observe the refusal) is a revision-2 candidate with its own setup cost, and until it is run the enforcement claim is not made. Structurally unlike every capability before it in three ways: the actuation guest is NOT the mutation target (the console runs on the console guest and reaches the CA remotely, ICertRequest2 alive 94 ms); no checkpoint revert can reach the mutation, because it lands in the CA's own registry rather than in SYSVOL or in this guest; and the pre-state is ABSENCE, so recovery is removal of the value the gesture created rather than restoration of a prior one.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "ca_host",
+      "ca_name",
+      "manager_principal",
+      "template_name"
+    ],
+    "properties": {
+      "ca_host": {
+        "type": "string"
+      },
+      "ca_name": {
+        "type": "string"
+      },
+      "manager_principal": {
+        "type": "string"
+      },
+      "template_name": {
+        "type": "string"
+      }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "certsrv_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell",
+      "programmatic_requery"
+    ]
+  },
+  "first_commit_point": "ok_ca_property_sheet",
+  "run_sheet": "certsrv.restrict_certificate_manager",
+  "gpo_transaction": false,
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "officerrights",
+        "params": {
+          "ca_host": "{args.ca_host}",
+          "ca_name": "{args.ca_name}"
+        }
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "certsrv.officerrights.present",
+        "predicate": "post['certsrv.officerrights.present'] == True"
+      },
+      {
+        "fact": "certsrv.officerrights.kind",
+        "predicate": "post['certsrv.officerrights.kind'] == 'Binary'"
+      },
+      {
+        "fact": "certsrv.officerrights.bytes",
+        "predicate": "post['certsrv.officerrights.bytes'] > 0"
+      },
+      {
+        "fact": "certsrv.officerrights.sha256",
+        "predicate": "post['certsrv.officerrights.sha256'] != ''"
+      },
+      {
+        "fact": "certsrv.officerrights.decoded_present",
+        "predicate": "post['certsrv.officerrights.decoded_present'] == True"
+      },
+      {
+        "fact": "certsrv.officerrights.certutil_rc",
+        "predicate": "post['certsrv.officerrights.certutil_rc'] == 0"
+      },
+      {
+        "fact": "certsrv.officerrights.decoded_rows",
+        "predicate": "post['certsrv.officerrights.decoded_rows'] > 0"
+      },
+      {
+        "fact": "certsrv.officerrights.decoded_sha256",
+        "predicate": "post['certsrv.officerrights.decoded_sha256'] != ''"
+      }
+    ],
+    "allow": [],
+    "forbid": [
+      {
+        "scope": "certsrv.security.sha256",
+        "predicate": "scope == pre['certsrv.security.sha256']"
+      },
+      {
+        "scope": "certsrv.security.bytes",
+        "predicate": "scope == pre['certsrv.security.bytes']"
+      },
+      {
+        "scope": "certsrv.published.names_sha256",
+        "predicate": "scope == pre['certsrv.published.names_sha256']"
+      },
+      {
+        "scope": "certsrv.published.count",
+        "predicate": "scope == pre['certsrv.published.count']"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "pre['certsrv.officerrights.present'] == False"
+      },
+      {
+        "relation": "post['certsrv.config.value_count'] == pre['certsrv.config.value_count'] + 1"
+      },
+      {
+        "relation": "post['certsrv.config.value_names_sha256'] != pre['certsrv.config.value_names_sha256']"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 60,
+      "poll_seconds": 5,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "the_oracle_reads_a_different_machine_than_the_gesture_drove",
+      "checks": "Every capability to date actuated and observed the same guest. Here the record's machine binding names the CONSOLE guest and the observer reads the CA guest, so a reviewer must be able to tell which is which from the record alone. Three things make that possible and they are all load-bearing: the observer emits certsrv.ca.host (the machine it read) and certsrv.ca.observed_from (the machine it ran on) as identity facts; the fact tree REFUSES an observation whose ca.host disagrees with the plan's ca_host argument, so a correctly-resolved read of the wrong machine cannot be mistaken for evidence; and the channels remain independent in the way that matters -- the gesture travels the console's UIA input surface, the oracle travels PSDirect plus a remote-registry RPC and, separately, certutil's own RPC to the CA. Measured 2026-09-21: OpenRemoteBaseKey from the console guest reads the CA's CertSvc configuration key including raw REG_BINARY, so no second PSDirect channel into the CA guest is needed."
+    },
+    {
+      "id": "absence_is_proven_positively",
+      "checks": "The pre-state of this capability is a value that DOES NOT EXIST. An observer that inferred absence from a read that failed could not distinguish 'not there' from 'could not look' -- the failure mode where a check reporting nothing found cannot tell success from being aimed wrong. So presence is decided from the configuration key's VALUE-NAME LIST, and the derive clause pins pre.present == False explicitly rather than leaving the pre-state implied. The same list is digested (config.value_names_sha256) and counted, so the derive clauses bound the blast radius to exactly one value appearing: any OTHER value created or destroyed by the console breaks the +1 count relation even if OfficerRights itself looks right."
+    },
+    {
+      "id": "two_stacks_must_agree_that_the_value_is_live",
+      "checks": "The registry read gives the opaque digest; certutil -getreg asks the CA's own RPC surface and decodes the value into named rows. The observer refuses a state where the registry holds a value the CA will not decode, and vice versa -- a value written but not adopted by the running service would present exactly that way, and averaging the two would hide it. This also carries the capability's answer to a question the sketch could not settle off-window: whether CertSvc needs a service restart for a restriction to take effect. If it does, the require clause on decoded_present fails on the first run with the registry clause passing, and that pair of results IS the measurement. The clause is written as the expectation (no restart needed); if the estate disagrees, the measured truth is encoded, never the envelope loosened."
+    },
+    {
+      "id": "what_this_revision_deliberately_does_not_claim",
+      "checks": "Three things. (1) WHICH manager was restricted: the value is opaque and this revision digests it rather than parsing it, so the claim is that a restriction exists, not whose it is. manager_principal is an argument because the gesture must select a row, not because the envelope certifies the selection. (2) That the restriction is ENFORCED: only a behavioural probe can say that, and it needs a template held for manager approval plus a submitted request -- revision 2. (3) The SUBJECT restriction (the Permissions list on the same page): measured 2026-09-21 to be the only control on this page that opens the standard Windows object picker, a control family this repository has never driven. Revision 1 restricts by template only and therefore never opens it. That was not a cost-saving accident: the sketch that preceded this capability ranked the object picker as the single most likely place a first run would stall, and the page's actual shape made it avoidable."
+    },
+    {
+      "id": "managers_are_not_created_here",
+      "checks": "The Certificate Managers page's own label says the manager list is 'configured on the Security tab', and the three principals it rendered on 2026-09-21 (BUILTIN\\Administrators, LAB\\Domain Admins, LAB\\Enterprise Admins) are exactly the Allow Certificate Manager grants that certutil decoded from CA\\Security through a different channel. So the page selects an EXISTING manager and cannot create one -- which is why the security-descriptor forbid clause is a real check rather than a formality: if a run ever moves CA\\Security, either the page is doing more than it claims or the sheet has wandered onto the Security tab, and both are disproofs."
+    },
+    {
+      "id": "dialog_facts_are_measured_but_the_commit_is_not",
+      "checks": "Unlike certtmpl at the same stage, every selector in this sheet was dumped live before authoring (window-11 recon, 2026-09-21): the launch-time error modal, the absence of any command-line target, the Retarget wizard, the results-pane-versus-scope-tree menu split, the property sheet's three-row tab strip, and the Certificate Managers page's full control set. What the recon did NOT do is cross the commit point -- it drove the whole flow to the template chooser and cancelled out, verified afterwards by OfficerRights still absent and the Security digest unmoved. So the sheet's pre-commit half is measured and its commit is a prediction: what OK writes, how long the CA takes to adopt it, and whether the console raises anything between OK and the sheet closing are all first-run questions."
+    },
+    {
+      "id": "one_page_switch_per_sheet_opening",
+      "checks": "The property sheet's tab strip is three rows and selecting a tab MOVES ITS ROW to the bottom of the strip -- measured. The offset the sheet uses to reach Certificate Managers is therefore valid only from the sheet's opening state, and a run-sheet that switched pages twice with two static offsets would land the second click somewhere unpredictable. The sheet switches once. The page-pane rename (General -> Certificate Managers) is the structural proof it landed, exactly as on the certtmpl sheet."
+    }
+  ],
+  "bindings": {
+    "args": "ca_host is the CA guest's DNS name -- the machine the OBSERVER reads and the machine the console is retargeted to, not the machine the gesture runs on. ca_name is the CA's common name as AD publishes it under CN=Enrollment Services, which is also the CertSvc\\Configuration subkey name and the second half of the certutil -config string '<ca_host>\\<ca_name>'. manager_principal names the row the sheet selects in the Certificate Managers list; it must ALREADY hold the Allow Certificate Manager grant in CA\\Security, because this page cannot create managers. template_name is the certificate template the manager is restricted to, by the display name the 'Enable Certificate Templates' chooser renders (the same display-name-versus-CN distinction the certtmpl capability documents). Note that unlike every previous capability's arguments, none of these name a synthetic object this capability creates: the zz- rule does not apply, because the only thing created is an unnamed configuration value.",
+    "fact_vocabulary": "certsrv.* facts come from the officerrights observer (guest transports the CA's CertSvc configuration key, read remotely from the console guest, as raw key=value lines over PSDirect; controller-side fact tree in gpo_observers.officerrights decodes, cross-checks the two read channels, and refuses disagreement). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
+  },
+  "cleanup": {
+    "strategy": "remove_officerrights",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "logical_cleanup",
+    "demonstration": "officerrights_remove deletes the OfficerRights value from the CA guest's CertSvc configuration key -- restoring the pre-state, which is the value's ABSENCE -- and re-queries strict absence by name through BOTH read channels: the value-name list (registry) and certutil -getreg (the CA's own RPC surface). Checking both is not belt-and-braces: if the registry says gone and certutil still decodes it, the running service is holding a cached copy and the restart question this capability could not settle off-window is answered, with the residual recorded rather than silently tolerated. No checkpoint revert can reach this mutation -- not the console guest's, which is the wrong machine, and not the CA guest's, which would be a far heavier instrument than the change deserves -- so recovery here is logical only. The estate baseline checkpoint's existence is still asserted at prepare, for the console surface itself."
+  }
+}

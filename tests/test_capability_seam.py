@@ -191,6 +191,36 @@ def _fixture_snapshot() -> dict[str, Fact]:
     }.items():
         fact = make_fact(key, value)
         snapshot[fact.key] = fact
+
+    # The officerrights collector is transport-backed too, and its vocabulary
+    # is pinned here in the POST-state shape: the restriction value present,
+    # decodable by the CA, with the security descriptor and the published
+    # template list untouched. The pre-state this capability derives against
+    # is the same keys with present False -- which is why every one of them
+    # appears here even though half read as absence beforehand: a key the
+    # envelope references must exist in the snapshot in both states, or the
+    # forbid and derive clauses would be unresolvable rather than false.
+    for key, value in {
+        "certsrv.ca.host": "LabCA01.example.test",
+        "certsrv.ca.name": "zz Issuing CA",
+        "certsrv.ca.observed_from": "LabMS01",
+        "certsrv.config.value_count": 50,
+        "certsrv.config.value_names_sha256": "d" * 64,
+        "certsrv.officerrights.present": True,
+        "certsrv.officerrights.kind": "Binary",
+        "certsrv.officerrights.bytes": 96,
+        "certsrv.officerrights.sha256": "e" * 64,
+        "certsrv.officerrights.decoded_present": True,
+        "certsrv.officerrights.decoded_rows": 2,
+        "certsrv.officerrights.decoded_sha256": "f" * 64,
+        "certsrv.officerrights.certutil_rc": 0,
+        "certsrv.security.bytes": 320,
+        "certsrv.security.sha256": "0" * 64,
+        "certsrv.published.count": 9,
+        "certsrv.published.names_sha256": "1" * 64,
+    }.items():
+        fact = make_fact(key, value)
+        snapshot[fact.key] = fact
     return snapshot
 
 
