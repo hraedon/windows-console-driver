@@ -137,9 +137,10 @@ title_regex = "^Microsoft Active Directory Certificate Services$"
 title_regex = "^certsrv - \\[Certification Authority \\(Local\\)\\]"
 
 # The frame title is the retarget oracle: this resolves only once the console
-# is managing the named CA host.
+# is managing a NAMED CA host. The lookahead excludes the untargeted (Local)
+# frame, whose title would otherwise also match this prefix.
 [selectors.certsrv_frame_targeted]
-title_regex = "^certsrv - \\[Certification Authority \\("
+title_regex = "^certsrv - \\[Certification Authority \\((?!Local\\\\))"
 
 [selectors.scope_tree]
 name_regex = "^Console Embedded Scope$"
@@ -189,8 +190,10 @@ title_regex = "^Enable Certificate Templates$"
 # This surface depends on geometry more heavily than certtmpl does, and on one
 # axis none of the earlier profiles have: the REMOTE CA's identity. A frame
 # title that names the wrong host is a correctly-resolved selector pointed at
-# the wrong machine, so the targeted-frame selector carries the CA host as a
-# provenance dependency and the run-sheet asserts it after Finish.
+# the wrong machine. The dependency vocabulary has no CA-identity rung, so
+# that guard lives in the run-sheet: the sheet's targeted-frame selector
+# interpolates {args.ca_host} into the title regex and so fails on any other
+# host's frame.
 
 [[selector_dependencies]]
 selector = "local_ca_error_modal"
@@ -297,8 +300,14 @@ selector = "enable_templates_dialog"
 dependency = "dialog_fingerprint"
 strength = "strong"
 
-# WI-L5: as with certtmpl at the same stage, this surface banks NO prepared
-# desktop digest yet -- the certsrv desktop has never been captured, so the
-# profile is grandfathered off the fingerprint gate (fingerprint_for returns
-# None -> no pre-setup refusal) until the first qualification window banks the
-# measured digest. The gate then turns on for every later run on this surface.
+# WI-L5: the one runtime-enforced selector dependency is the banked
+# prepared-context uia_digest. The qualification window measured it (the
+# prepare-phase context capture in the banked record), and the row below
+# banks that digest, so the gate is ON for every later run on this surface:
+# a mismatch refuses before setup. Dialog-level fingerprints remain
+# deliberately unbanked until a window captures them.
+
+[[surface_fingerprints]]
+selector = "prepared_context"
+uia_digest = "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
+banked_from = "docs/estate-window-11/records/w11-r2-record.json"

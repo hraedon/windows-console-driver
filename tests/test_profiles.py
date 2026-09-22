@@ -381,16 +381,25 @@ def test_the_shipped_profile_banks_the_measured_prepared_context() -> None:
     assert digest == "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
 
 
-def test_shipped_certtmpl_profile_is_grandfathered_off_the_fingerprint_gate() -> None:
-    """WI-L5's other half: a surface with NO banked prepared-context digest is
-    not gated (``fingerprint_for`` returns None -> the executor's pre-setup
-    refusal never fires). The certtmpl surface ships unbanked until its first
-    qualification window measures the digest; this test pins that deliberate
-    state so an accidental bank (or a dropped profile) cannot pass silently."""
+def test_shipped_certtmpl_profile_banks_the_measured_prepared_context_digest() -> None:
+    """WI-L5's promise, kept: the profile promised to bank the prepared-context
+    digest at the first qualification window, and window 10 measured it (the
+    prepare-phase context capture in the banked record). This pins the banked
+    digest to the record the qualification verified under, so the gate stays
+    ON and a dropped or edited row cannot pass silently."""
+    import json
+
     profile = load_profile(REPO_ROOT / "profiles" / "certtmpl-server2025.toml")
     assert profile.surface == "certtmpl-server2025"
-    assert profile.surface_fingerprints == {}
-    assert profile.fingerprint_for("prepared_context") is None
+    row = profile.surface_fingerprints["prepared_context"]
+    record = json.loads(
+        (REPO_ROOT / row.banked_from).read_text(encoding="utf-8")
+    )
+    captured = record["provenance"]["steps"][0][1]["detail"]["foreground"]["uia_digest"]
+    assert row.uia_digest == captured == (
+        "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
+    )
+    assert profile.fingerprint_for("prepared_context") == row.uia_digest
     assert profile.classification("ok_duplicate_dialog") == "commit_point"
     assert profile.first_commit_point == "ok_duplicate_dialog"
     assert profile.classification("select_source_template") == "orientation_only"

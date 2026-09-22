@@ -198,3 +198,42 @@ def test_control_type_filter_is_honoured(tmp_path: Any) -> None:
             timeout_ms=30,
             poll_ms=10,
         )
+
+
+def test_non_positive_cadence_is_a_runsheet_error_not_a_bare_valueerror(
+    tmp_path: Any,
+) -> None:
+    """A negative poll_ms used to reach time.sleep() and raise ValueError,
+    escaping the journal wrapping (and the gesture phase's RunSheetError
+    handling) -- losing the partial step journal. Refusal must be a
+    RunSheetError like every other malformed step."""
+    for bad in (-5, 0, "soon", None):
+        transport = _StubTransport([[_ROOT, _ROW]])
+        with pytest.raises(RunSheetError) as excinfo:
+            _run(
+                _executor(transport, tmp_path),
+                name_regex="^zz Issuing CA 01$",
+                poll_ms=bad,  # type: ignore[arg-type]
+                timeout_ms=30000,
+            )
+        assert "poll_ms" in str(excinfo.value), bad
+        assert transport.dump_calls == 0, bad
+
+
+def test_no_target_window_refuses_rather_than_polling_the_foreground(
+    tmp_path: Any,
+) -> None:
+    """Without a live target and without a window selector, the underlying
+    dump falls back to the FOREGROUND -- which mid-sheet is the helper's own
+    console. The wait would then poll the wrong window until timeout, so the
+    step refuses up front exactly like keys and shot do."""
+    step = Step(
+        action="wait_element",
+        profile_action=None,
+        params={"name_regex": "^zz Issuing CA 01$", "timeout_ms": 5000},
+    )
+    executor = _executor(_StubTransport([[_ROOT, _ROW]]), tmp_path)
+    ctx = SheetContext(inputs={})  # no last_dump_hwnd: no live target
+    with pytest.raises(RunSheetError) as excinfo:
+        executor.execute(RunSheet(name="t", surface="certsrv", steps=(step,)), ctx)
+    assert "no target window" in str(excinfo.value)

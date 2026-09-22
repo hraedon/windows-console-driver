@@ -246,7 +246,13 @@ def validate_channel_contract(
             continue
 
         required_orientation: set[str] = set()
-        if step.action in ("wait_foreground", "wait_element") or step.action == "context":
+        if step.action == "wait_element":
+            # wait_element polls a UIA dump every cycle (via _dump), so it
+            # consumes the uia channel exactly like a dump step; requiring
+            # only hwnd let a capability declare orientation ["hwnd"] while
+            # reading UIA at runtime.
+            required_orientation.update(("uia", "hwnd"))
+        elif step.action in ("wait_foreground", "context"):
             required_orientation.add("hwnd")
         elif step.action == "dump":
             required_orientation.update(("uia", "hwnd"))
@@ -636,13 +642,36 @@ class GestureExecutor:
         if not isinstance(pattern, str) or not pattern:
             raise RunSheetError("wait_element needs name_regex")
         timeout_ms = params.get("timeout_ms", 60000)
-        deadline_s = (timeout_ms if isinstance(timeout_ms, (int, float)) else 60000) / 1000.0
         poll_ms = params.get("poll_ms", 3000)
-        poll_s = (poll_ms if isinstance(poll_ms, (int, float)) else 3000) / 1000.0
+        # Reject non-positive or non-numeric cadences HERE, as RunSheetError:
+        # a negative poll reaches time.sleep() and raises a bare ValueError
+        # that escapes the journal-wrapping below and loses the partial step.
+        validated: dict[str, float] = {}
+        for cadence_name, cadence in (("timeout_ms", timeout_ms), ("poll_ms", poll_ms)):
+            if (
+                not isinstance(cadence, (int, float))
+                or isinstance(cadence, bool)
+                or cadence <= 0
+            ):
+                raise RunSheetError(f"wait_element {cadence_name} must be a positive number")
+            validated[cadence_name] = float(cadence)
+        window_regex = params.get("window_regex")
+        window_class = params.get("window_class")
+        if (
+            self._live_target(ctx) is None
+            and not (isinstance(window_regex, str) and window_regex)
+            and not (isinstance(window_class, str) and window_class)
+        ):
+            # Without a target the dump falls back to the FOREGROUND, which
+            # mid-sheet is the helper's own console -- the wait would poll the
+            # wrong window until timeout. Refuse like keys/shot do.
+            raise RunSheetError("wait_element step has no target window")
+        deadline_s = validated["timeout_ms"] / 1000.0
+        poll_s = validated["poll_ms"] / 1000.0
         dump_params: dict[str, object] = {
             "depth": params.get("dump_depth", 12),
-            "window_regex": params.get("window_regex"),
-            "window_class": params.get("window_class"),
+            "window_regex": window_regex,
+            "window_class": window_class,
         }
         resolve_params: dict[str, object] = {
             key: params[key] for key in ("name_regex", "control_type", "index") if key in params
@@ -740,6 +769,24 @@ class GestureExecutor:
                 steps.append(entry)
         request: dict[str, object] = {"action": "keys", "steps": steps}
         request["focus_hwnd"] = focus
+        delay_ms = params.get("delay_ms")
+        if delay_ms is not None:
+            # The helper validates 0..2000 and applies 150 when the field is
+            # absent. Before this forwarding existed the declared value was
+            # silently dropped -- sheets whose labels lean on a measured
+            # inter-step delay (window 11's menu walks: 600 measured, 250
+            # lands the keystroke as type-ahead) actually ran at the 150
+            # default. Out-of-range fails the whole invocation in-guest, so
+            # refuse it here where the step is identifiable.
+            if (
+                not isinstance(delay_ms, int)
+                or isinstance(delay_ms, bool)
+                or not 0 <= delay_ms <= 2000
+            ):
+                raise RunSheetError(
+                    f"keys delay_ms must be an integer 0..2000, got {delay_ms!r}"
+                )
+            request["delay_ms"] = delay_ms
         result = self._t.helper(request, timeout=self._helper_timeout)
         if result.outcome != "ok":
             raise RunSheetError(f"keys failed: {result.error}")

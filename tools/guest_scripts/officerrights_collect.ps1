@@ -106,6 +106,10 @@ try {
     # trailer removed) so a semantic change is visible without transporting
     # principal names.
     $config = "$CaHost\$CaName"
+    # 2>&1 is safe here MEASURED on this build: certutil writes its failure
+    # text to stdout even on error. A native-command write to real stderr under
+    # EAP=Stop is terminating in PS 5.1 -- if that mode ever appears it surfaces
+    # as a fail-closed collector refusal, not a false observation.
     $raw = (& certutil.exe -config $config -getreg 'CA\OfficerRights' 2>&1 | Out-String)
     Write-Line 'officerrights.certutil_rc' $LASTEXITCODE
     if ($LASTEXITCODE -eq 0) {

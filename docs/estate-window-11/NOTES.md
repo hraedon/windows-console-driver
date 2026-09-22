@@ -289,3 +289,19 @@ digests the opaque value rather than parsing it, the envelope would not catch
 it. That is the one place where a green run would not mean what it appears to
 mean, which is exactly why it is written down here before the run rather than
 explained afterwards.
+
+## Correction, 2026-09-22 (pre-merge review)
+
+The wrong-CA guard is narrower than three claim sites stated. The observer's
+`ca.host` fact is the argument the collector was INVOKED with, echoed back —
+so the controller's comparison (reported CA vs the plan's) catches a garbled
+or misrouted read, not a plan that itself names the wrong CA: such a plan
+drives gesture and oracle alike with the same argument. The guard against a
+wrong-CA plan is the run-sheet's targeted-frame selector, which interpolates
+`{args.ca_host}` into the frame title and so fails on any other machine's
+frame. The docstring, claim-registry row, and this note now carry the
+accurate statement; the capability file's `structured_checks` wording is left
+byte-identical because the banked records bind its digest — a revision-2
+observer could derive the read host independently (for example from the
+remote machine's own `ComputerName` registry value) and close the gap for
+real.

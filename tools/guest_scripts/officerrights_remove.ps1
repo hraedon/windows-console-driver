@@ -54,6 +54,8 @@ try {
     Write-Line 'absent_registry' $absentRegistry
 
     # Channel 2: the CA's own RPC surface.
+    # See officerrights_collect.ps1: certutil's error text goes to stdout on
+    # this build; real stderr under EAP=Stop would throw (fail-closed).
     & certutil.exe -config "$CaHost\$CaName" -getreg 'CA\OfficerRights' 2>&1 | Out-Null
     $absentCertutil = ($LASTEXITCODE -ne 0)
     Write-Line 'absent_certutil' $absentCertutil

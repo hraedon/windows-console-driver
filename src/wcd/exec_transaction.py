@@ -469,8 +469,13 @@ class _OfficerRightsCollector:
     surface for the same value through ``certutil -getreg``. The controller
     (:mod:`gpo_observers.officerrights`) refuses a disagreement between the
     two rather than averaging it, and refuses an observation whose reported
-    CA does not match the plan's: on this surface a correctly-resolved read
-    of the wrong machine is exactly the confusion the check exists to catch.
+    CA does not match the plan's. Stated at its true strength (corrected
+    2026-09-22): the collector reports ``ca.host`` as the argument it was
+    invoked with, so this comparison catches a garbled or misrouted read --
+    the plan's CA name arriving wrong at the guest -- while a plan that
+    itself names the wrong CA drives gesture and oracle alike and is NOT
+    caught here; that guard is the run-sheet's targeted-frame title, which
+    interpolates the plan's CA host and fails on any other machine's frame.
     """
 
     def collect(self, ref: GpoRef, params: Mapping[str, object], t: SessionTransport) -> FactSet:
