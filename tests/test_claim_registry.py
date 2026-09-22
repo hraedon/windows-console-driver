@@ -37,6 +37,13 @@ UNCLAIMED_RECORDS: dict[str, str] = {
         "certifies nothing about certificate templates and is banked only as "
         "the surface evidence that sent window 10 into recon"
     ),
+    "w11-r1-record.json": (
+        "indeterminate, aborted at step 12 of 36 with nothing written; it "
+        "certifies nothing about certificate managers and is banked for the "
+        "one thing it measured -- that the certsrv frame's title gains the CA "
+        "host before the console has finished enumerating the remote CA, "
+        "which is what the wait_element primitive exists to survive"
+    ),
 }
 
 _JSON_FILENAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.json")

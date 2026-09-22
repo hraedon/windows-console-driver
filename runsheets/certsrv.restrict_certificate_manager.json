@@ -1,0 +1,404 @@
+{
+  "name": "certsrv.restrict_certificate_manager",
+  "surface": "certsrv-server2025",
+  "steps": [
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "certsrv_launch"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_certsrv_console",
+      "title_regex": "^Microsoft Active Directory Certificate Services$",
+      "class": "#32770",
+      "timeout_ms": 90000,
+      "label": "MEASURED 2026-09-21: certsrv.msc does not open a frame first. It raises this modal -- 'Cannot manage Active Directory Certificate Services. The system cannot find the file specified. 0x80070002' -- because the snap-in resolves the LOCAL CertSvc configuration and this guest is not a CA. Four command-line target forms were measured and none avoids it, so the modal is part of every launch on this surface rather than a fault to diagnose"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "dismiss_local_ca_error",
+      "name_regex": "^OK$",
+      "settle_ms": 1000,
+      "label": "dismiss the console's complaint about itself; the frame behind it is already built, still targeted at (Local)"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_certsrv_console",
+      "title_regex": "^certsrv - \\[Certification Authority \\(Local\\)\\]",
+      "class": "MMCMainFrame",
+      "timeout_ms": 60000,
+      "label": "the untargeted frame. Asserting (Local) here is deliberate: it is the pre-state the retarget has to move, so a run that somehow started already targeted is caught before the gesture rather than credited with it"
+    },
+    {
+      "action": "context",
+      "profile_action": "open_certsrv_console",
+      "assert_window_regex": "^certsrv - \\[Certification Authority"
+    },
+    {
+      "action": "shot",
+      "name": "cs-console-untargeted",
+      "label": "baseline surface before anything is retargeted"
+    },
+    {
+      "action": "keys",
+      "profile_action": "retarget_console",
+      "delay_ms": 600,
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 27,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "click_element": {
+            "name_regex": "^Console Embedded Scope$",
+            "control_type": "Tree"
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 36,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 121,
+              "modifiers": [
+                "shift"
+              ]
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "label": "root node context menu -> Retarget Certification Authority, in ONE composite. The walk is POSITIONAL (1 x DOWN, ENTER: Retarget is item 1 of Retarget/View/Export List/Help, read off a screenshot at authoring time) because MEASURED 2026-09-21: menu mnemonics do not take on this surface, injected either as WM_CHAR or as a VK chord. delay_ms 600 is measured too -- at 250 the keystroke arrived before the menu had rendered and went to the tree as type-ahead"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "retarget_console",
+      "title_regex": "^Certification Authority$",
+      "class": "#32770",
+      "timeout_ms": 30000,
+      "label": "the Select Computer wizard page. Its title is the bare snap-in name, which is why the selector is anchored to start and end"
+    },
+    {
+      "action": "keys",
+      "profile_action": "retarget_console",
+      "delay_ms": 120,
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Another computer:$"
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 9,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "text": "{args.ca_host}"
+        }
+      ],
+      "label": "radio and host in ONE invocation: dialog focus resets across invocations, so the click that selects 'Another computer' and the typing that fills the edit beside it cannot be split. The edit has no name of its own until it has content, so it is reached by TAB from the radio rather than by selector"
+    },
+    {
+      "action": "shot",
+      "name": "cs-retarget-filled",
+      "label": "qualification checkpoint: the wizard must read the ca_host argument"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "retarget_console",
+      "name_regex": "^Finish$",
+      "settle_ms": 2000
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "retarget_console",
+      "title_regex": "^certsrv - \\[Certification Authority \\({args.ca_host}\\)\\]",
+      "class": "MMCMainFrame",
+      "timeout_ms": 60000,
+      "label": "the retarget's structural proof: the frame title carries the target, so this selector resolves only if the console is now managing the CA the plan named -- and only that one. A wizard that silently kept (Local) fails here, before the sheet is ever opened"
+    },
+    {
+      "action": "shot",
+      "name": "cs-console-targeted"
+    },
+    {
+      "action": "wait_element",
+      "profile_action": "select_ca_node",
+      "name_regex": "^{args.ca_name}$",
+      "control_type": "ListItem",
+      "timeout_ms": 180000,
+      "poll_ms": 5000,
+      "label": "wait for the CA's results-pane ROW, not merely for the retargeted frame. MEASURED in run 1: the frame title gains the CA host the instant Retarget commits, while the console sits '(Not Responding)' enumerating the REMOTE CA with an empty results pane -- so the title proves the retarget's intent, never its readiness. Run 1 aborted here (before its commit point) because the selector was resolved against a pane that had not been filled yet. A fixed settle is the wrong instrument: the right delay is whatever the other machine takes today"
+    },
+    {
+      "action": "keys",
+      "profile_action": "select_ca_node",
+      "delay_ms": 600,
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 27,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "click_element": {
+            "name_regex": "^{args.ca_name}$",
+            "control_type": "ListItem"
+          }
+        },
+        {
+          "vks": [
+            {
+              "vk": 121,
+              "modifiers": [
+                "shift"
+              ]
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 13,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "label": "the CA's RESULTS-pane row -> Properties (3 x DOWN, ENTER: All Tasks/Refresh/Properties/Help). MEASURED 2026-09-21 and the single most surprising fact on this surface: the same CA in the SCOPE TREE offers no Properties item at all -- its menu is All Tasks/View/Export List/Help and the Action menu agrees -- so the results-pane twin is not a convenience here, it is the only path to the sheet. Results rows on this surface ARE named UIA ListItems, unlike the certtmpl container's virtualized rows, so the row is addressed by name"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_ca_property_sheet",
+      "title_regex": " Properties$",
+      "class": "#32770",
+      "timeout_ms": 45000,
+      "label": "'<ca name> Properties'. MEASURED: it opens on GENERAL"
+    },
+    {
+      "action": "shot",
+      "name": "cs-property-sheet-general",
+      "label": "the sheet as opened -- the state the tab offset below is measured from"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "select_certificate_managers_tab",
+      "name_regex": "^General$",
+      "offset_x": 109,
+      "offset_y": -246,
+      "settle_ms": 1500,
+      "label": "select the Certificate Managers page. The tab strip is an unnamed SysTabControl32 with no tab items in the UIA tree, so the click is anchored to the named PAGE pane and offset to the tab, measured off the framebuffer. NEW ON THIS SURFACE: the strip is THREE ROWS and selecting a tab moves its row to the bottom, so this offset is valid from the sheet's opening state ONLY -- the sheet switches pages exactly once"
+    },
+    {
+      "action": "shot",
+      "name": "cs-certificate-managers-page",
+      "label": "qualification checkpoint: the page pane must now be named 'Certificate Managers'"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "set_restrict_mode",
+      "name_regex": "^Restrict certificate managers$",
+      "settle_ms": 1500,
+      "label": "this selector is the page switch's structural proof as well as the gesture: it exists only on the Certificate Managers page, so it cannot resolve if the tab click missed. MEASURED: the radio alone restricts nothing -- it enables the page, and every manager starts at <All> templates with Everyone:Allow"
+    },
+    {
+      "action": "shot",
+      "name": "cs-restrict-enabled",
+      "label": "the populated page: the manager list is rendered from the CA's security descriptor"
+    },
+    {
+      "action": "keys",
+      "profile_action": "select_manager",
+      "delay_ms": 150,
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Certificate Managers:",
+            "offset_x": -42,
+            "offset_y": 18
+          }
+        },
+        {
+          "text": "{args.manager_principal}"
+        }
+      ],
+      "label": "select the manager row by click-focus plus type-ahead in ONE invocation. The list rows are UIA-invisible (the list is an unnamed Pane), so the click is anchored to the label above it with a measured offset onto the first row. THIS IS THE SHEET'S PRINCIPAL UNKNOWN: whether the listbox does incremental search across a principal string containing a backslash was not measured in recon, and if it does not, the first run's delta says so and the step becomes a positional walk instead"
+    },
+    {
+      "action": "keys",
+      "profile_action": "edit_template_restriction",
+      "delay_ms": 150,
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Certificate Templates:$",
+            "offset_x": -42,
+            "offset_y": 20
+          }
+        }
+      ],
+      "label": "select the <All> row in the selected manager's template list -- the default, unrestricted state. Same label-anchored offset idiom as the manager list above"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "edit_template_restriction",
+      "name_regex": "^Remove$",
+      "index": 0,
+      "settle_ms": 1000,
+      "label": "remove <All>: the restriction is the ABSENCE of the wildcard plus the presence of the named template, so this half is as load-bearing as the Add. index 0 is the Certificate Templates Remove; the Permissions one sits below it in the dump's positional order and belongs to a revision this capability does not reach"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "edit_template_restriction",
+      "name_regex": "^Add\\.\\.\\.$",
+      "index": 0,
+      "settle_ms": 1500
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "edit_template_restriction",
+      "title_regex": "^Enable Certificate Templates$",
+      "class": "#32770",
+      "timeout_ms": 30000,
+      "label": "MEASURED: the console reuses its publication chooser here, title and all. It lists <All> plus the forest's templates by display name"
+    },
+    {
+      "action": "keys",
+      "profile_action": "edit_template_restriction",
+      "delay_ms": 150,
+      "steps": [
+        {
+          "click_element": {
+            "name_regex": "^Certificate Template Concepts$",
+            "offset_x": -230,
+            "offset_y": -80
+          }
+        },
+        {
+          "text": "{args.template_name}"
+        }
+      ],
+      "label": "click-focus the chooser's virtualized list and type-ahead the template in ONE invocation -- the certtmpl idiom for MMC lists whose rows are UIA-invisible. The anchor is ugly on purpose: the list pane's UIA name is the help LINK's text bleeding into it ('Certificate Template Concepts'), which is what the surface actually reports, so the selector says that rather than a tidier name that would not resolve"
+    },
+    {
+      "action": "shot",
+      "name": "cs-template-chosen",
+      "label": "qualification checkpoint: the chooser must have the template_name argument selected"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "edit_template_restriction",
+      "name_regex": "^OK$",
+      "settle_ms": 1500,
+      "label": "OK on the CHOOSER: adds the template to the sheet's in-memory restriction. Not a commit -- the sheet's own Cancel still discards everything, which the recon pass proved by driving exactly this far and cancelling out with OfficerRights still absent"
+    },
+    {
+      "action": "shot",
+      "name": "cs-restriction-built",
+      "label": "the page immediately before the commit"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "ok_ca_property_sheet",
+      "name_regex": "^OK$",
+      "settle_ms": 3000,
+      "label": "OK on the property sheet = the declared commit point. This is what serializes the restriction into the CA guest's registry as CertSvc\\Configuration\\<ca name>\\OfficerRights, a value that did not exist beforehand. The settle is longer than the certtmpl sheet's because the write travels to a DIFFERENT MACHINE and the CA has to adopt it; whether that is instant, slow, or needs a service restart is a first-run measurement, and the observer's two read channels are what will say which"
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "ok_ca_property_sheet",
+      "title_regex": "^certsrv - \\[Certification Authority",
+      "class": "MMCMainFrame",
+      "timeout_ms": 60000,
+      "label": "re-surface the console as the sheet target after the dialog closes; the CA-side appearance of the value is the oracle's business, not this sheet's"
+    },
+    {
+      "action": "shot",
+      "name": "cs-after-commit"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "officerrights_remove",
+      "args": [
+        "{args.ca_host}",
+        "{args.ca_name}"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "task_unregister",
+      "args": [
+        "WCDLaunchCertSrv"
+      ]
+    }
+  ]
+}

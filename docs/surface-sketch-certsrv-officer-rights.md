@@ -1,5 +1,20 @@
 # Surface sketch: restricted certificate managers (certsrv.msc)
 
+> **SUPERSEDED IN PART, 2026-09-21 — read
+> [`estate-window-11/NOTES.md`](estate-window-11/NOTES.md) first.** The park
+> this sketch was written for did not happen: the estate was still up, so the
+> window opened the same day and converted most of what is below into
+> measurement. Two of its conclusions were wrong in ways worth keeping
+> visible rather than editing away — `certsrv.msc` does not open "empty and
+> needing a Retarget", it raises a modal error about the LOCAL CA and has no
+> command-line target at all; and the object picker ranked here as the top
+> risk turned out to sit on a path the capability does not need to take,
+> because the Certificate Managers page does not add managers. The sketch is
+> kept as written, because a record of what an unmeasured surface looked like
+> from the outside is worth more than a tidied one — and because the thing it
+> got right is the thing it was for: the window started at step 3 of the
+> onboarding checklist instead of step 0.
+
 The pre-window half of `surface-onboarding.md`, done for a surface nobody has
 driven yet, while the estate was still up. Written 2026-09-21 as the lab goes
 into a park, so that a cold start begins at step 3 of the onboarding checklist

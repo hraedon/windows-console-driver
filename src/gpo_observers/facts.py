@@ -142,6 +142,33 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     ("certtmpl.target.key_flag", "content", None),
     ("certtmpl.target.sddl_len", "content", None),
     ("certtmpl.target.sddl_sha256", "content", None),
+    # Certificate-manager restrictions (certsrv surface): the CA's own
+    # CertSvc configuration, read remotely from the console guest. The
+    # OfficerRights value is opaque and undocumented, so it is content
+    # observed as presence+length+sha256 only, plus the digest of what the
+    # CA's RPC surface decodes it into -- two stacks, kept separate. The
+    # identity keys name the machine the oracle READ, which on this surface
+    # is not the machine the gesture ran on.
+    ("certsrv.ca.host", "identity", None),
+    ("certsrv.ca.name", "identity", None),
+    ("certsrv.ca.observed_from", "identity", None),
+    ("certsrv.config.value_count", "structural", None),
+    ("certsrv.config.value_names_sha256", "structural", None),
+    ("certsrv.officerrights.present", "content", None),
+    ("certsrv.officerrights.kind", "content", None),
+    ("certsrv.officerrights.bytes", "content", None),
+    ("certsrv.officerrights.sha256", "content", None),
+    ("certsrv.officerrights.decoded_present", "content", None),
+    ("certsrv.officerrights.decoded_rows", "content", None),
+    ("certsrv.officerrights.decoded_sha256", "content", None),
+    # certutil's rc for the OfficerRights read. It moves from a failure code
+    # to 0 as a CONSEQUENCE of the value being created, so it is content the
+    # envelope must predict, not a volatile detail it may ignore.
+    ("certsrv.officerrights.certutil_rc", "content", None),
+    ("certsrv.security.bytes", "structural", None),
+    ("certsrv.security.sha256", "structural", None),
+    ("certsrv.published.count", "structural", None),
+    ("certsrv.published.names_sha256", "structural", None),
     # Collection integrity of the two independent enumeration passes.
     ("sysvol.passes_match", "structural", None),
     # Filesystem timestamps, should a future observer collect them.

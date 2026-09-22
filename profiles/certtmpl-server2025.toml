@@ -174,8 +174,13 @@ dependency = "dpi"
 strength = "strong"
 
 # WI-L5: the one runtime-enforced selector dependency is the banked
-# prepared-context uia_digest. This surface deliberately banks NONE yet: the
-# certtmpl desktop has never been captured, so the profile is grandfathered
-# off the fingerprint gate (fingerprint_for returns None -> no pre-setup
-# refusal) until the first qualification window banks the measured digest.
-# The gate then turns on for every later run on this surface.
+# prepared-context uia_digest. The qualification window measured it (the
+# prepare-phase context capture in the banked record), and the row below
+# banks that digest, so the gate is ON for every later run on this surface:
+# a mismatch refuses before setup. Dialog-level fingerprints remain
+# deliberately unbanked until a window captures them.
+
+[[surface_fingerprints]]
+selector = "prepared_context"
+uia_digest = "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
+banked_from = "docs/estate-window-10/records/w10-r2-record.json"

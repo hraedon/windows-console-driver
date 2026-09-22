@@ -60,6 +60,7 @@ _GESTURE_ACTIONS = frozenset(
         "guest",
         "host",
         "wait_foreground",
+        "wait_element",
         "context",
         "dump",
         "click_element",
@@ -75,9 +76,10 @@ _PHASES = frozenset({"setup", "gesture", "cleanup"})
 _INPUT_ACTIONS = frozenset({"click_element", "type_text", "key", "keys"})
 _UI_OPERATION_ACTIONS = _INPUT_ACTIONS
 # The per-surface UI operation channels: one per shipped console surface
-# (gpmc_ui for the GPMC family, certtmpl_ui for the certtmpl.msc surface).
-# A step in the operation-under-test role must declare its surface's channel.
-_UI_OPERATION_CHANNELS = frozenset({"gpmc_ui", "certtmpl_ui"})
+# (gpmc_ui for the GPMC family, certtmpl_ui for the certtmpl.msc surface,
+# certsrv_ui for the certsrv.msc one). A step in the operation-under-test
+# role must declare its surface's channel.
+_UI_OPERATION_CHANNELS = frozenset({"gpmc_ui", "certtmpl_ui", "certsrv_ui"})
 
 
 class RunSheetError(RuntimeError):
@@ -244,7 +246,13 @@ def validate_channel_contract(
             continue
 
         required_orientation: set[str] = set()
-        if step.action == "wait_foreground" or step.action == "context":
+        if step.action == "wait_element":
+            # wait_element polls a UIA dump every cycle (via _dump), so it
+            # consumes the uia channel exactly like a dump step; requiring
+            # only hwnd let a capability declare orientation ["hwnd"] while
+            # reading UIA at runtime.
+            required_orientation.update(("uia", "hwnd"))
+        elif step.action in ("wait_foreground", "context"):
             required_orientation.add("hwnd")
         elif step.action == "dump":
             required_orientation.update(("uia", "hwnd"))
@@ -443,6 +451,8 @@ class GestureExecutor:
             return self._run_script(self._host_scripts, params, ctx, remote="host")
         if step.action == "wait_foreground":
             return self._wait_foreground(params, ctx)
+        if step.action == "wait_element":
+            return self._wait_element(params, ctx)
         if step.action == "context":
             return self._context(params, ctx)
         if step.action == "dump":
@@ -605,6 +615,91 @@ class GestureExecutor:
             self._last_cached_focus = hwnd
         return {"matched": True, "title": window.get("title"), "surfaced": surfaced}
 
+    def _wait_element(self, params: dict[str, object], ctx: SheetContext) -> dict[str, object]:
+        """Wait for a named ELEMENT to appear inside the sheet's target window.
+
+        The counterpart to :meth:`_wait_foreground`, and the window-11 surface
+        is the first to need it. ``wait_foreground`` answers "does the window
+        exist"; on a console that administers a REMOTE service, the window
+        exists — and is correctly titled — long before its content arrives.
+        The certsrv frame's title gains the CA host the instant Retarget
+        commits, while the console sits ``(Not Responding)`` enumerating the
+        remote CA and its results pane is still empty. A sheet that read the
+        title as readiness would resolve a selector against a pane that has
+        not been filled yet, and would do it intermittently, because whether
+        it wins is a race with another machine.
+
+        A fixed settle is the wrong instrument for that: the right delay is
+        whatever the remote answer takes today. So this polls the element,
+        and a dump that fails while the window is busy is a reason to keep
+        waiting rather than to fail — an unresponsive window cannot report
+        its contents, which is not the same as reporting that they are
+        absent.
+        """
+        import time as _time
+
+        pattern = params.get("name_regex")
+        if not isinstance(pattern, str) or not pattern:
+            raise RunSheetError("wait_element needs name_regex")
+        timeout_ms = params.get("timeout_ms", 60000)
+        poll_ms = params.get("poll_ms", 3000)
+        # Reject non-positive or non-numeric cadences HERE, as RunSheetError:
+        # a negative poll reaches time.sleep() and raises a bare ValueError
+        # that escapes the journal-wrapping below and loses the partial step.
+        validated: dict[str, float] = {}
+        for cadence_name, cadence in (("timeout_ms", timeout_ms), ("poll_ms", poll_ms)):
+            if (
+                not isinstance(cadence, (int, float))
+                or isinstance(cadence, bool)
+                or cadence <= 0
+            ):
+                raise RunSheetError(f"wait_element {cadence_name} must be a positive number")
+            validated[cadence_name] = float(cadence)
+        window_regex = params.get("window_regex")
+        window_class = params.get("window_class")
+        if (
+            self._live_target(ctx) is None
+            and not (isinstance(window_regex, str) and window_regex)
+            and not (isinstance(window_class, str) and window_class)
+        ):
+            # Without a target the dump falls back to the FOREGROUND, which
+            # mid-sheet is the helper's own console -- the wait would poll the
+            # wrong window until timeout. Refuse like keys/shot do.
+            raise RunSheetError("wait_element step has no target window")
+        deadline_s = validated["timeout_ms"] / 1000.0
+        poll_s = validated["poll_ms"] / 1000.0
+        dump_params: dict[str, object] = {
+            "depth": params.get("dump_depth", 12),
+            "window_regex": window_regex,
+            "window_class": window_class,
+        }
+        resolve_params: dict[str, object] = {
+            key: params[key] for key in ("name_regex", "control_type", "index") if key in params
+        }
+        start = _time.monotonic()
+        attempts = 0
+        last_error = ""
+        while True:
+            attempts += 1
+            try:
+                self._dump(dump_params, ctx)
+                element = self._resolve(ctx, resolve_params)
+            except RunSheetError as exc:
+                last_error = str(exc)
+            else:
+                return {
+                    "matched": True,
+                    "attempts": attempts,
+                    "waited_s": round(_time.monotonic() - start, 1),
+                    "name": element.name,
+                }
+            if _time.monotonic() - start >= deadline_s:
+                raise RunSheetError(
+                    f"no element matching {pattern!r} appeared within {deadline_s:.0f}s "
+                    f"({attempts} attempts); last: {last_error[:400]}"
+                )
+            _time.sleep(poll_s)
+
     def _live_target(self, ctx: SheetContext) -> int | None:
         """The sheet's current window, popping dead dialog hwnds.
 
@@ -674,6 +769,24 @@ class GestureExecutor:
                 steps.append(entry)
         request: dict[str, object] = {"action": "keys", "steps": steps}
         request["focus_hwnd"] = focus
+        delay_ms = params.get("delay_ms")
+        if delay_ms is not None:
+            # The helper validates 0..2000 and applies 150 when the field is
+            # absent. Before this forwarding existed the declared value was
+            # silently dropped -- sheets whose labels lean on a measured
+            # inter-step delay (window 11's menu walks: 600 measured, 250
+            # lands the keystroke as type-ahead) actually ran at the 150
+            # default. Out-of-range fails the whole invocation in-guest, so
+            # refuse it here where the step is identifiable.
+            if (
+                not isinstance(delay_ms, int)
+                or isinstance(delay_ms, bool)
+                or not 0 <= delay_ms <= 2000
+            ):
+                raise RunSheetError(
+                    f"keys delay_ms must be an integer 0..2000, got {delay_ms!r}"
+                )
+            request["delay_ms"] = delay_ms
         result = self._t.helper(request, timeout=self._helper_timeout)
         if result.outcome != "ok":
             raise RunSheetError(f"keys failed: {result.error}")

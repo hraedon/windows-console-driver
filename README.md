@@ -24,8 +24,11 @@ revert cannot reach it) — qualified in estate window 10 on 2026-09-20
 
 AD CS has one other administration act with no command-line path —
 restricting a certificate manager, the "officer rights" the console creates as
-an undocumented serialized value. It is not driven: it is sketched, with its
-estate facts measured, at
+an undocumented serialized value. The fourth console surface drives it:
+`certsrv.restrict_certificate_manager` (certsrv.msc) qualified in estate
+window 11 on 2026-09-21, certifying the restriction value through two
+independent read channels. The sketch it was authored from — written from a
+measured recon pass before anything was written — is preserved at
 [`docs/surface-sketch-certsrv-officer-rights.md`](docs/surface-sketch-certsrv-officer-rights.md).
 Helper death/restart, unusual
 desktop states, and new surfaces remain capability-specific qualification

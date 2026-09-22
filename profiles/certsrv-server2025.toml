@@ -1,0 +1,313 @@
+# Driver profile: certsrv-server2025
+#
+# Status: UNQUALIFIED, but not unobserved. The fourth console surface and the
+# second AD CS one: the Certification Authority console (certsrv.msc, AD CS
+# RSAT). Everything below was dumped live on 2026-09-21 in the window-11 recon
+# pass, on the same estate the certtmpl surface was qualified against.
+#
+# This surface differs from every earlier one in a way the selectors have to
+# carry: THE CONSOLE ADMINISTERS A REMOTE SERVICE. The gesture runs on the
+# console guest; the mutation lands in the CA guest's registry. Nothing about
+# the profile is local.
+#
+# What the live pass settled, all of it load-bearing:
+#
+#   - certsrv.msc launched with NO argument does not open a console frame. It
+#     opens a modal #32770 titled "Microsoft Active Directory Certificate
+#     Services" reading "Cannot manage Active Directory Certificate Services.
+#     The system cannot find the file specified. 0x80070002", because the
+#     snap-in resolves the LOCAL CertSvc configuration and the console guest
+#     is not a CA. The frame exists behind it and is reached by dismissing it.
+#   - NO command-line form targets the snap-in. Four were measured and all
+#     four produced the identical local-CA error, with the frame still titled
+#     "Certification Authority (Local)":
+#         certsrv.msc
+#         certsrv.msc "<host>"
+#         certsrv.msc /computer="<host>"
+#         certsrv.msc /computer "<host>"
+#     The target is therefore set by the Retarget gesture, in-console, and is
+#     part of every run-sheet on this surface rather than part of its launch.
+#   - The frame title CARRIES THE TARGET and the selected node:
+#         certsrv - [Certification Authority (Local)]
+#         certsrv - [Certification Authority (<ca host>)]
+#         certsrv - [Certification Authority (<ca host>)\<ca name>]
+#     so a title selector is the structural proof that the retarget landed and
+#     that the node selection landed -- the same trick as the certtmpl page
+#     pane, on a different control.
+#   - THE SCOPE TREE CARRIES A REDUCED VERB SET. Right-clicking the CA in the
+#     scope tree offers only All Tasks / View / Export List / Help -- no
+#     Refresh and NO PROPERTIES, and the Action menu agrees. The same CA's
+#     row in the RESULTS pane offers All Tasks / Refresh / Properties / Help.
+#     This sharpens the repo's existing "the results pane is addressable"
+#     idiom into something stronger: on this surface the two are not two ways
+#     to reach one node, they are two different menus, and only one of them
+#     can open the property sheet.
+#   - Results-pane rows here ARE named UIA ListItems (`Lab Issuing CA 01`),
+#     unlike the certtmpl container's virtualized rows. They are selected by
+#     name, not by type-ahead.
+#   - CONTEXT MENUS SURVIVE the next helper invocation when addressed by
+#     window class (#32768) -- measured, and contrary to the general popup
+#     rule the GPMC surface established. Their ITEMS are UIA-invisible (one
+#     unnamed Pane), so a menu is read off a screenshot once, at authoring
+#     time, and driven blind thereafter.
+#   - MENU ITEMS DO NOT RESPOND TO MNEMONICS injected as WM_CHAR or as a VK
+#     chord. Both were measured against "Properties" (mnemonic P) and neither
+#     selected it; the arrow walk (N x DOWN, ENTER) did. Every menu selection
+#     on this surface is therefore positional, and the position is recorded
+#     with the screenshot it was read from.
+#   - The property sheet is "<ca name> Properties" and opens on GENERAL. Its
+#     tab strip is the same UIA-invisible SysTabControl32 as the certtmpl
+#     sheet, so pages are reached by a click anchored to the named PAGE pane
+#     and offset to the tab, and the page pane renames to the selected tab.
+#     NEW HERE: the strip is THREE ROWS, and selecting a tab MOVES ITS ROW to
+#     the bottom of the strip. The offsets below are valid from the sheet's
+#     opening state only -- one page switch per sheet opening.
+#   - On the Certificate Managers page the manager list is populated from the
+#     CA's security descriptor and is labelled "(configured on the Security
+#     tab)": managers are NOT added here. The page's two Add... buttons add a
+#     certificate TEMPLATE and a permission SUBJECT to the selected manager's
+#     restriction. The template one opens "Enable Certificate Templates", a
+#     plain list dialog. The standard Windows object picker appears only on
+#     the Permissions path, which revision 1 of the capability does not use.
+#
+# Estate precondition: certsrv.msc and RSAT-ADCS-Mgmt present on the console
+# guest, and the CA reachable from it (`certutil -config <ca> -ping` answered
+# "ICertRequest2 interface is alive (94ms)" on 2026-09-21).
+
+[profile]
+surface = "certsrv-server2025"
+description = "Certification Authority console (certsrv.msc, AD CS RSAT), driven against a REMOTE CA"
+os_family = "Windows Server 2025"
+os_build_family = "26100"
+# The sheet's OK is the boundary that serializes the restriction into the CA's
+# registry. Everything before it -- retarget, node selection, opening the
+# sheet, the radio, the list edits -- is discarded by Cancel, verified by the
+# recon pass: it drove the whole flow to the chooser and cancelled out, and
+# OfficerRights was still absent with the Security digest unmoved afterwards.
+first_commit_point = "ok_ca_property_sheet"
+
+[actions.open_certsrv_console]
+class = "orientation_only"
+notes = "launches/attaches the certsrv.msc console (pre-elevated at the setup boundary via the cloned WCDHelper task, ExecutionTimeLimit overridden to PT1H). Measured: this ALWAYS raises the local-CA error modal first, because the snap-in has no command-line target"
+
+[actions.dismiss_local_ca_error]
+class = "orientation_only"
+notes = "OK on the 'Microsoft Active Directory Certificate Services' modal. Dismissing an error the console raised about ITSELF changes no state on either guest; the frame behind it is already built, still targeted at (Local)"
+
+[actions.retarget_console]
+class = "reversible_pre_commit"
+notes = "scope-tree root context menu -> Retarget Certification Authority -> 'Another computer' + the CA host -> Finish. Changes which CA this CONSOLE INSTANCE manages and nothing on either guest; the console is killed in cleanup, so it is discarded rather than undone. Verified structurally by the frame title gaining the CA host"
+
+[actions.select_ca_node]
+class = "orientation_only"
+notes = "selects the CA's row in the RESULTS pane (a named ListItem). Reads surface state only. Measured: this is the ONLY path to the property sheet -- the scope-tree twin's menu has no Properties item at all"
+
+[actions.open_ca_property_sheet]
+class = "reversible_pre_commit"
+notes = "results-row context menu walked to Properties in ONE composite invocation, positionally (3 x DOWN, ENTER), because mnemonics do not take on this surface. The sheet cancels cleanly before its OK"
+
+[actions.select_certificate_managers_tab]
+class = "orientation_only"
+notes = "clicks the Certificate Managers tab of the CA property sheet; changes which page is visible and nothing else. Anchored to the General page pane with a measured offset, because the tab items have no UIA presence. One switch per sheet opening: the three-row strip reorders on selection"
+
+[actions.set_restrict_mode]
+class = "reversible_pre_commit"
+notes = "selects the 'Restrict certificate managers' radio. Measured: this alone restricts nothing -- it enables the page and each manager starts at <All> templates with Everyone:Allow. In-sheet state only before OK"
+
+[actions.select_manager]
+class = "orientation_only"
+notes = "selects a principal in the Certificate Managers list. The list is rendered from the CA's security descriptor (the three rows matched the role grants certutil decoded from CA\\Security, read independently), so this selects an EXISTING manager and cannot create one"
+
+[actions.edit_template_restriction]
+class = "reversible_pre_commit"
+notes = "Remove on the <All> row and Add... -> 'Enable Certificate Templates' -> a named template -> OK. Builds the selected manager's template restriction in the sheet; discarded by Cancel"
+
+[actions.ok_ca_property_sheet]
+class = "commit_point"
+notes = "OK on the CA property sheet serializes the restriction into the CA guest's registry as CertSvc\\Configuration\\<ca name>\\OfficerRights -- a value that DOES NOT EXIST beforehand, in an undocumented layout. Neither a checkpoint revert of the console guest nor one of the CA guest is the recovery path: recovery is removal of the value the gesture created"
+
+# Selectors, from live UIA dumps of the console, the wizard and the property
+# sheet (2026-09-21). Where a control has no usable name of its own, the
+# selector names its ANCHOR and the run-sheet carries the measured offset.
+
+[selectors.local_ca_error_modal]
+title_regex = "^Microsoft Active Directory Certificate Services$"
+
+[selectors.certsrv_frame_untargeted]
+title_regex = "^certsrv - \\[Certification Authority \\(Local\\)\\]"
+
+# The frame title is the retarget oracle: this resolves only once the console
+# is managing a NAMED CA host. The lookahead excludes the untargeted (Local)
+# frame, whose title would otherwise also match this prefix.
+[selectors.certsrv_frame_targeted]
+title_regex = "^certsrv - \\[Certification Authority \\((?!Local\\\\))"
+
+[selectors.scope_tree]
+name_regex = "^Console Embedded Scope$"
+
+[selectors.results_list]
+name_regex = "^Console Embedded Window Results$"
+
+[selectors.retarget_wizard]
+title_regex = "^Certification Authority$"
+
+[selectors.retarget_another_computer_radio]
+name_regex = "^Another computer:$"
+
+[selectors.retarget_finish]
+name_regex = "^Finish$"
+
+[selectors.ca_property_sheet]
+title_regex = " Properties$"
+
+# MEASURED: the page pane carries the selected tab's name, so this selector is
+# both the anchor for the tab click and the structural proof it landed.
+[selectors.general_page_pane]
+name_regex = "^General$"
+
+[selectors.certificate_managers_page_pane]
+name_regex = "^Certificate Managers$"
+
+[selectors.restrict_radio]
+name_regex = "^Restrict certificate managers$"
+
+[selectors.manager_list_label]
+name_regex = "^Certificate Managers:"
+
+[selectors.template_list_label]
+name_regex = "^Certificate Templates:$"
+
+[selectors.template_add_button]
+name_regex = "^Add\\.\\.\\.$"
+
+[selectors.template_remove_button]
+name_regex = "^Remove$"
+
+[selectors.enable_templates_dialog]
+title_regex = "^Enable Certificate Templates$"
+
+# Selector dependencies: what the compatibility predicate checks, per rung.
+# This surface depends on geometry more heavily than certtmpl does, and on one
+# axis none of the earlier profiles have: the REMOTE CA's identity. A frame
+# title that names the wrong host is a correctly-resolved selector pointed at
+# the wrong machine. The dependency vocabulary has no CA-identity rung, so
+# that guard lives in the run-sheet: the sheet's targeted-frame selector
+# interpolates {args.ca_host} into the title regex and so fails on any other
+# host's frame.
+
+[[selector_dependencies]]
+selector = "local_ca_error_modal"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "certsrv_frame_untargeted"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "certsrv_frame_targeted"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "certsrv_frame_targeted"
+dependency = "os_build"
+strength = "provenance"
+
+[[selector_dependencies]]
+selector = "retarget_wizard"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "retarget_wizard"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "retarget_another_computer_radio"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "retarget_another_computer_radio"
+dependency = "dpi"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "ca_property_sheet"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "ca_property_sheet"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "general_page_pane"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "general_page_pane"
+dependency = "dpi"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "certificate_managers_page_pane"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "restrict_radio"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "manager_list_label"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "manager_list_label"
+dependency = "dpi"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "template_list_label"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "template_list_label"
+dependency = "dpi"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "template_add_button"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "enable_templates_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "enable_templates_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+# WI-L5: the one runtime-enforced selector dependency is the banked
+# prepared-context uia_digest. The qualification window measured it (the
+# prepare-phase context capture in the banked record), and the row below
+# banks that digest, so the gate is ON for every later run on this surface:
+# a mismatch refuses before setup. Dialog-level fingerprints remain
+# deliberately unbanked until a window captures them.
+
+[[surface_fingerprints]]
+selector = "prepared_context"
+uia_digest = "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
+banked_from = "docs/estate-window-11/records/w11-r2-record.json"

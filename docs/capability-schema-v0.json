@@ -33,7 +33,7 @@
     },
     "surface": {
       "type": "string",
-      "enum": ["gpmc-server2025", "certtmpl-server2025"]
+      "enum": ["gpmc-server2025", "certtmpl-server2025", "certsrv-server2025"]
     },
     "revision": {
       "type": "integer",
@@ -123,7 +123,8 @@
             "backup_then_remove_gpo",
             "remove_staging_dir",
             "remove_wmi_filter",
-            "remove_certtmpl"
+            "remove_certtmpl",
+            "remove_officerrights"
           ]
         },
         "requery": {
@@ -200,7 +201,7 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": ["gpmc_ui", "gpmc_com", "certtmpl_ui"]
+        "enum": ["gpmc_ui", "gpmc_com", "certtmpl_ui", "certsrv_ui"]
       }
     },
     "orientation-channels": {
@@ -246,7 +247,8 @@
             "fdeploy_ini",
             "fdeploy_marker",
             "wmi_filter",
-            "certtmpl"
+            "certtmpl",
+            "officerrights"
           ]
         },
         "params": {
@@ -257,7 +259,9 @@
             "relpath": {"$ref": "#/$defs/non-empty-string"},
             "filter_name": {"$ref": "#/$defs/non-empty-string"},
             "template_name": {"$ref": "#/$defs/non-empty-string"},
-            "domain_dns": {"$ref": "#/$defs/non-empty-string"}
+            "domain_dns": {"$ref": "#/$defs/non-empty-string"},
+            "ca_host": {"$ref": "#/$defs/non-empty-string"},
+            "ca_name": {"$ref": "#/$defs/non-empty-string"}
           }
         }
       },
@@ -332,6 +336,21 @@
               "params": {
                 "required": ["template_name", "domain_dns"],
                 "not": {"required": ["path", "relpath", "filter_name"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {"const": "officerrights"}
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "required": ["ca_host", "ca_name"],
+                "not": {"required": ["path", "relpath", "filter_name", "template_name"]}
               }
             }
           }
