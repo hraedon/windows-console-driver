@@ -21,19 +21,28 @@
                     re-verify. This failure hides from NTLM probes, which is
                     exactly why it survives a green canary.
     3. MEMBER BOOT  Start the console VM if Off, wait for PowerShell Direct.
-    4. MEMBER DOMAIN  nltest /dsgetdc from the member; a dead locator gets
+    4. MEMBER CLOCK Same probe and same tolerance against the console VM.
+                    Window 12 measured that a revert-based lane resets the
+                    MEMBER clock to the checkpoint era exactly as every DC
+                    restore always has (~44 h stale), while this tool's
+                    repair was DC-scoped -- the canary caught it as kerberos
+                    red with every NTLM path green. The member repair is
+                    Set-Date only: no dsregdns, no NetLogon restart (the
+                    member is not the KDC; the 2026-09-22 repair went green
+                    on the canary with Set-Date alone).
+    5. MEMBER DOMAIN  nltest /dsgetdc from the member; a dead locator gets
                     one nltest /sc_reset attempt before failing. A member
                     reboot is deliberately NOT automatic: it would kill the
                     console session this tool establishes in the next step,
                     and that trade is the operator's to make.
-    5. CONSOLE      Establish the interactive console session if there is
+    6. CONSOLE      Establish the interactive console session if there is
                     none: CAD -> username -> TAB -> password -> ENTER via
                     Msvm_Keyboard injection (the measured logon path), then
                     re-check quser/LogonUI. The Server Manager WAC/Arc
                     promo dialog that appears on fresh logons is
                     non-blocking once GPMC launches (window 8) and is left
                     alone.
-    6. HELPER       The WCDHelper scheduled task: present and not disabled
+    7. HELPER       The WCDHelper scheduled task: present and not disabled
                     -> report only. Missing (or -RedeployHelper) -> two-hop
                     deploy of guest/helper.ps1 (controller -> host staging ->
                     guest), task registered with the measured principal
@@ -75,7 +84,7 @@ param(
     # (gitignored; names the real host).
     [string] $EstateFile,
 
-    # Kerberos MaxClockSkew in seconds; beyond it the DC clock is repaired.
+    # Kerberos MaxClockSkew in seconds; beyond it a guest clock is repaired.
     [int] $ClockToleranceSec = 300,
 
     # How long to wait for each guest to answer PowerShell Direct after
@@ -270,31 +279,31 @@ function Test-ConsoleSession {
 }
 
 try {
-    # --- [1/6] DC boot ----------------------------------------------------------
+    # --- [1/7] DC boot ----------------------------------------------------------
     if ($SkipDc) {
-        Write-Output '[1/6] dc-boot: skipped (-SkipDc)'
+        Write-Output '[1/7] dc-boot: skipped (-SkipDc)'
     } else {
         $state = Get-VmState -Vm $DcVm
         if ($state -ne 'Running') {
             Invoke-Command -Session $hostSession -ArgumentList $DcVm -ScriptBlock {
                 param($vm) Start-VM -Name $vm
             } | Out-Null
-            Write-Output ("[1/6] dc-boot: {0} was {1}; started, waiting for PowerShell Direct" -f $DcVm, $state)
+            Write-Output ("[1/7] dc-boot: {0} was {1}; started, waiting for PowerShell Direct" -f $DcVm, $state)
         } else {
-            Write-Output "[1/6] dc-boot: $DcVm already Running"
+            Write-Output "[1/7] dc-boot: $DcVm already Running"
         }
         $up = Wait-GuestPsDirect -Vm $DcVm -TimeoutSec $BootTimeoutSec
         if (-not $up) {
             Write-Output "fail: $DcVm never answered PowerShell Direct within $BootTimeoutSec s"
             $failed = $true
         } else {
-            Write-Output "[1/6] dc-boot: $DcVm answered"
+            Write-Output "[1/7] dc-boot: $DcVm answered"
         }
     }
 
-    # --- [2/6] DC clock -----------------------------------------------------------
+    # --- [2/7] DC clock -----------------------------------------------------------
     if ($SkipDc) {
-        Write-Output '[2/6] dc-clock: skipped (-SkipDc)'
+        Write-Output '[2/7] dc-clock: skipped (-SkipDc)'
     } elseif (-not $failed) {
         $clockScript = @'
 param($utcNow)
@@ -317,9 +326,9 @@ param($utcNow)
         $delta = [int]($deltaLine -replace 'delta_s=', '')
         foreach ($line in ($clock | Where-Object { $_ -notlike 'account=*' })) { Write-Output "       $line" }
         if ([Math]::Abs($delta) -le $ClockToleranceSec) {
-            Write-Output "[2/6] dc-clock: within tolerance (delta ${delta}s; MaxClockSkew ${ClockToleranceSec}s); no repair"
+            Write-Output "[2/7] dc-clock: within tolerance (delta ${delta}s; MaxClockSkew ${ClockToleranceSec}s); no repair"
         } else {
-            Write-Output ("[2/6] dc-clock: delta ${delta}s exceeds MaxClockSkew ${ClockToleranceSec}s -- repairing (Set-Date from host UTC, dsregdns, NetLogon restart)")
+            Write-Output ("[2/7] dc-clock: delta ${delta}s exceeds MaxClockSkew ${ClockToleranceSec}s -- repairing (Set-Date from host UTC, dsregdns, NetLogon restart)")
             $repairScript = @'
 param($utcNow)
 # ToLocalTime lands the host's UTC instant correctly whatever timezone the
@@ -346,40 +355,100 @@ Start-Sleep -Seconds 15
                 Write-Output "fail: DC clock still ${deltaAfter}s off after repair; diagnose manually before any lane"
                 $failed = $true
             } else {
-                Write-Output "[2/6] dc-clock: repaired (delta now ${deltaAfter}s)"
+                Write-Output "[2/7] dc-clock: repaired (delta now ${deltaAfter}s)"
             }
         }
         }
     } else {
-        Write-Output '[2/6] dc-clock: skipped (earlier failure)'
+        Write-Output '[2/7] dc-clock: skipped (earlier failure)'
     }
 
-    # --- [3/6] console VM boot ------------------------------------------------------
+    # --- [3/7] console VM boot ------------------------------------------------------
     if ($failed) {
-        Write-Output '[3/6] member-boot: skipped (earlier failure)'
+        Write-Output '[3/7] member-boot: skipped (earlier failure)'
     } else {
         $state = Get-VmState -Vm $ConsoleVm
         if ($state -ne 'Running') {
             Invoke-Command -Session $hostSession -ArgumentList $ConsoleVm -ScriptBlock {
                 param($vm) Start-VM -Name $vm
             } | Out-Null
-            Write-Output ("[3/6] member-boot: {0} was {1}; started, waiting for PowerShell Direct" -f $ConsoleVm, $state)
+            Write-Output ("[3/7] member-boot: {0} was {1}; started, waiting for PowerShell Direct" -f $ConsoleVm, $state)
         } else {
-            Write-Output "[3/6] member-boot: $ConsoleVm already Running"
+            Write-Output "[3/7] member-boot: $ConsoleVm already Running"
         }
         $up = Wait-GuestPsDirect -Vm $ConsoleVm -TimeoutSec $BootTimeoutSec
         if (-not $up) {
             Write-Output "fail: $ConsoleVm never answered PowerShell Direct within $BootTimeoutSec s"
             $failed = $true
         } else {
-            Write-Output '[3/6] member-boot: console VM answered'
+            Write-Output '[3/7] member-boot: console VM answered'
         }
     }
 
-    # --- [4/6] member domain health (before the session: a reboot fix would kill it) ---
+    # --- [4/7] member clock ---------------------------------------------------------
+    # Window 12: a revert-based lane resets the MEMBER clock to the checkpoint
+    # era exactly as every DC restore always has; the canary reddens kerberos
+    # while every NTLM path (including this tool's own PSDirect probes) stays
+    # green. Same probe, same tolerance, same tz-safe Set-Date as the DC step;
+    # deliberately NO dsregdns / NetLogon restart -- the member is not the
+    # KDC, and the 2026-09-22 repair went green with Set-Date alone.
+    if ($failed) {
+        Write-Output '[4/7] member-clock: skipped (earlier failure)'
+    } else {
+        $memberClockScript = @'
+param($utcNow)
+"delta_s=$([int](([DateTime]::UtcNow) - $utcNow).TotalSeconds)"
+"member_utc=$([DateTime]::UtcNow.ToString('u'))"
+"tz=$((Get-TimeZone).Id)"
+'@
+        $hostUtc = Invoke-Command -Session $hostSession { [DateTime]::UtcNow }
+        try {
+            $clock = Invoke-GuestScript -Vm $ConsoleVm -ScriptText $memberClockScript -ScriptArgs @($hostUtc)
+        } catch {
+            Write-Output ("fail: member-clock: probe threw: {0}" -f "$($_.Exception.Message)".Split([char]10)[0])
+            $clock = $null
+        }
+        if (-not $clock) {
+            $failed = $true
+        } else {
+            $deltaLine = ($clock | Where-Object { $_ -like 'delta_s=*' })
+            $delta = [int]($deltaLine -replace 'delta_s=', '')
+            foreach ($line in ($clock | Where-Object { $_ -notlike 'account=*' })) { Write-Output "       $line" }
+            if ([Math]::Abs($delta) -le $ClockToleranceSec) {
+                Write-Output "[4/7] member-clock: within tolerance (delta ${delta}s; MaxClockSkew ${ClockToleranceSec}s); no repair"
+            } else {
+                Write-Output ("[4/7] member-clock: delta ${delta}s exceeds MaxClockSkew ${ClockToleranceSec}s -- repairing (Set-Date from host UTC)")
+                $memberRepairScript = @'
+param($utcNow)
+# ToLocalTime lands the host's UTC instant correctly whatever timezone the
+# guest runs; +2s transit.
+Set-Date -Date ($utcNow.ToLocalTime().AddSeconds(2)) | Out-Null
+"after=$([DateTime]::UtcNow.ToString('u'))"
+"delta_s=$([int](([DateTime]::UtcNow) - $utcNow).TotalSeconds)"
+'@
+                try {
+                    $repair = Invoke-GuestScript -Vm $ConsoleVm -ScriptText $memberRepairScript -ScriptArgs @($hostUtc)
+                } catch {
+                    Write-Output ("fail: member-clock repair threw: {0}" -f "$($_.Exception.Message)".Split([char]10)[0])
+                    $repair = @()
+                }
+                foreach ($line in ($repair | Where-Object { $_ -notlike 'account=*' })) { Write-Output "       $line" }
+                $after = ($repair | Where-Object { $_ -like 'delta_s=*' })
+                $deltaAfter = [int]($after -replace 'delta_s=', '')
+                if ([Math]::Abs($deltaAfter) -gt $ClockToleranceSec) {
+                    Write-Output "fail: member clock still ${deltaAfter}s off after repair; diagnose manually before any lane"
+                    $failed = $true
+                } else {
+                    Write-Output "[4/7] member-clock: repaired (delta now ${deltaAfter}s)"
+                }
+            }
+        }
+    }
+
+    # --- [5/7] member domain health (before the session: a reboot fix would kill it) ---
     $netBios = ''
     if ($failed) {
-        Write-Output '[4/6] member-domain: skipped (earlier failure)'
+        Write-Output '[5/7] member-domain: skipped (earlier failure)'
     } else {
         $locatorScript = @'
 $ErrorActionPreference = 'Continue'
@@ -393,11 +462,11 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
         # Server 2025 nltest success marker (measured 2026-09-17): no
         # "Found DC:" line, but always "The command completed successfully".
         if ($dsdcLine -match 'command completed successfully') {
-            Write-Output "[4/6] member-domain: locator answers from $ConsoleVm (NetBIOS domain $netBios)"
+            Write-Output "[5/7] member-domain: locator answers from $ConsoleVm (NetBIOS domain $netBios)"
         } else {
             $shortDc = if ($dsdcLine.Length -gt 120) { $dsdcLine.Substring(0, 120) + '...' } else { $dsdcLine
             }
-            Write-Output ("[4/6] member-domain: locator NOT answering ({0}); one nltest /sc_reset attempt" -f $shortDc)
+            Write-Output ("[5/7] member-domain: locator NOT answering ({0}); one nltest /sc_reset attempt" -f $shortDc)
             $resetScript = @'
 nltest "/sc_reset:$env:USERDNSDOMAIN" | Out-Null
 Start-Sleep -Seconds 5
@@ -407,7 +476,7 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
             $reset = Invoke-GuestScript -Vm $ConsoleVm -ScriptText $resetScript
             $after = (($reset | Where-Object { $_ -like 'dsdc=*' }) -replace '^dsdc=', '')
             if ($after -match 'command completed successfully') {
-                Write-Output '[4/6] member-domain: sc_reset restored the locator'
+                Write-Output '[5/7] member-domain: sc_reset restored the locator'
             } else {
                 $short = if ($after.Length -gt 120) { $after.Substring(0, 120) + '...' } else { $after }
                 Write-Output ("fail: member locator still dead after sc_reset: {0} -- a member reboot likely needed (deliberately not automatic: it would kill the console session)" -f $short)
@@ -416,14 +485,14 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
         }
     }
 
-    # --- [5/6] console session --------------------------------------------------------
+    # --- [6/7] console session --------------------------------------------------------
     if ($failed) {
-        Write-Output '[5/6] console-session: skipped (earlier failure)'
+        Write-Output '[6/7] console-session: skipped (earlier failure)'
     } else {
         $sess = Invoke-GuestScript -Vm $ConsoleVm -ScriptText $SessionFactsScript
         if (Test-ConsoleSession -Lines $sess) {
             $quserLine = (($sess | Where-Object { $_ -like 'quser=*' }) -replace '^quser=', '')
-            Write-Output "[5/6] console-session: active ($quserLine)"
+            Write-Output "[6/7] console-session: active ($quserLine)"
         } else {
             $logonUi = (($sess | Where-Object { $_ -like 'logonui=*' }) -replace 'logonui=', '')
             if ($logonUi -ne 'True') {
@@ -431,7 +500,7 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
                 Write-Output ("fail: console state unreadable (quser='{0}', logonui={1}); look at the VM manually" -f $quserLine, $logonUi)
                 $failed = $true
             } else {
-                Write-Output '[5/6] console-session: none (logon UI up); injecting the CAD logon sequence'
+                Write-Output '[6/7] console-session: none (logon UI up); injecting the CAD logon sequence'
                 # Host-side key injection, the measured path. Errors carry
                 # character INDEXES only, never characters: the second typed
                 # string is the secret.
@@ -495,7 +564,7 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
                 $sess2 = Invoke-GuestScript -Vm $ConsoleVm -ScriptText $SessionFactsScript
                 if (Test-ConsoleSession -Lines $sess2) {
                     $q2 = (($sess2 | Where-Object { $_ -like 'quser=*' }) -replace '^quser=', '')
-                    Write-Output "[5/6] console-session: established after injection ($q2)"
+                    Write-Output "[6/7] console-session: established after injection ($q2)"
                 } else {
                     Write-Output 'fail: console session not established after injection; check the console thumbnail -- a password-era mismatch is the usual cause'
                     $failed = $true
@@ -504,9 +573,9 @@ $n = (nltest "/dsgetdc:$env:USERDNSDOMAIN" 2>&1 | Out-String).Trim()
         }
     }
 
-    # --- [6/6] helper task --------------------------------------------------------------
+    # --- [7/7] helper task --------------------------------------------------------------
     if ($failed) {
-        Write-Output '[6/6] helper: skipped (earlier failure)'
+        Write-Output '[7/7] helper: skipped (earlier failure)'
     } else {
         $taskScript = @'
 param($taskName)
@@ -520,12 +589,12 @@ if ($t) { "present=1 state=$($t.State)" } else { 'present=0' }
                 Write-Output "fail: task $HelperTask present but Disabled; re-enable it before a lane"
                 $failed = $true
             } else {
-                Write-Output ("[6/6] helper: task {0} present ({1})" -f $HelperTask, ($taskLine -replace 'present=1 ', ''))
+                Write-Output ("[7/7] helper: task {0} present ({1})" -f $HelperTask, ($taskLine -replace 'present=1 ', ''))
             }
         } else {
             $why = if ($RedeployHelper) { 'forced (-RedeployHelper)' } else { 'missing' }
             if ([string]::IsNullOrEmpty($netBios)) { $netBios = 'LAB' }
-            Write-Output "[6/6] helper: task $HelperTask $why; deploying guest/helper.ps1 (two-hop) and re-registering (principal $netBios\$EstateUser)"
+            Write-Output "[7/7] helper: task $HelperTask $why; deploying guest/helper.ps1 (two-hop) and re-registering (principal $netBios\$EstateUser)"
             $helperSource = Join-Path $repoRoot 'guest\helper.ps1'
             if (-not (Test-Path $helperSource)) {
                 Write-Output "fail: helper source not found: $helperSource"
@@ -592,7 +661,7 @@ if (Test-Path "$helperDir\response.json") { 'smoke=context-answered' } else { 's
                 }
                 foreach ($line in @($deploy)) { Write-Output "       $line" }
                 if (@($deploy) -contains 'smoke=context-answered') {
-                    Write-Output '[6/6] helper: deployed, registered, and the context smoke answered'
+                    Write-Output '[7/7] helper: deployed, registered, and the context smoke answered'
                 } else {
                     Write-Output 'fail: helper deploy did not complete; check the task last result before a lane'
                     $failed = $true

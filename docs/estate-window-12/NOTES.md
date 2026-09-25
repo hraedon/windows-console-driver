@@ -80,3 +80,20 @@ no mutation, transaction skipped), `local/scenarios/certtmpl-lane-live.json`
 + `capabilities/certtmpl.duplicate_template.json` (byte-identical to the
 committed copy), and `local/backend.toml` with the identity section renamed
 (backup `backend.toml.pre-certtmpl-lane`).
+
+## Corrections (2026-09-24)
+
+Both composition follow-ups named above are now closed in code, offline
+qualified (their live proof rides the next window):
+
+- The identity seam (finding 1): WEL's `wait_ready` no longer hardcodes
+  `guest_bootstrap` — it resolves the probe identity from the backend's
+  declared identities (bootstrap preferred when declared, else the sole
+  declared role). A backend declaring only `[identity.domain_operator]` can
+  now probe readiness, so the estate can carry one role label end to end
+  and the mvmcc02 `identity_role = "guest_bootstrap"` convergence wart can
+  be retired at the next lane run.
+- The member clock (finding 3): `estate_bringup` grew step 4/7, the member
+  clock — same probe, tolerance, and tz-safe Set-Date as the DC step, and
+  deliberately no dsregdns/NetLogon restart (the 2026-09-22 repair went
+  green on the canary with Set-Date alone).
