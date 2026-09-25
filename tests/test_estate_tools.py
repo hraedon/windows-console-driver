@@ -62,6 +62,18 @@ def test_bringup_keeps_guest_scripts_as_strings_not_scriptblocks() -> None:
     assert "[scriptblock]::Create($scriptText)" in text
 
 
+def test_bringup_repairs_the_member_clock_not_just_the_dc() -> None:
+    # Window 12 measured a revert-based lane resetting the MEMBER clock to
+    # the checkpoint era while this tool's repair was DC-scoped; the canary
+    # caught it as kerberos red with every NTLM path green. The member step
+    # must keep the DC step's tz-safe Set-Date form and tolerance gate.
+    text = BRINGUP.read_text(encoding="ascii")
+    code = re.sub(r"<#.*?#>", "", text, flags=re.DOTALL)  # drop comment-based help
+    member_step = code[code.index("member-clock") : code.index("console-session")]
+    assert "Set-Date -Date ($utcNow.ToLocalTime" in member_step
+    assert "$ClockToleranceSec" in member_step
+
+
 def test_teardown_shuts_down_guest_initiated_not_stop_vm_force() -> None:
     text = TEARDOWN.read_text(encoding="ascii")
     code = re.sub(r"<#.*?#>", "", text, flags=re.DOTALL)  # drop comment-based help

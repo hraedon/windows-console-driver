@@ -55,6 +55,8 @@ The canary detects drift; `tools/estate_bringup.ps1` repairs it. One
 idempotent pass turns the estate from Off (or drifted) to lane-ready in
 failure order: DC boot, DC clock (the restore-trap repair: Set-Date from
 host UTC, `nltest /dsregdns`, NetLogon restart), member boot, member
+clock (the same restore trap on the console VM — a revert-based lane
+resets it too, window 12; Set-Date only, no service restarts), member
 locator health, the CAD key-injection console logon, and the helper
 two-hop deploy with a context smoke. `tools/estate_teardown.ps1` is the
 leave-as-found companion (guest-initiated shutdown, never `Stop-VM`).
