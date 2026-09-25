@@ -474,8 +474,14 @@ class _OfficerRightsCollector:
     invoked with, so this comparison catches a garbled or misrouted read --
     the plan's CA name arriving wrong at the guest -- while a plan that
     itself names the wrong CA drives gesture and oracle alike and is NOT
-    caught here; that guard is the run-sheet's targeted-frame title, which
-    interpolates the plan's CA host and fails on any other machine's frame.
+    caught by it. Revision 2 (2026-09-25) closes that gap at the independent
+    source: the collector also enumerates the forest's
+    ``pKIEnrollmentService`` objects -- a class search taking no input from
+    the plan -- and the fact tree refuses a plan host that is not in the
+    derived set, which lands at the pre-oracle, before prepare, arm, or any
+    mutation. The run-sheet's targeted-frame title remains the gesture's own
+    wrong-CA guard; the derivation is what makes the ORACLE independent of
+    the plan's argument.
     """
 
     def collect(self, ref: GpoRef, params: Mapping[str, object], t: SessionTransport) -> FactSet:

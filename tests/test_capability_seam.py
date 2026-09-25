@@ -204,6 +204,12 @@ def _fixture_snapshot() -> dict[str, Fact]:
         "certsrv.ca.host": "LabCA01.example.test",
         "certsrv.ca.name": "zz Issuing CA",
         "certsrv.ca.observed_from": "LabMS01",
+        # Revision 2: the directory-derived CA host set (the forest's
+        # pKIEnrollmentService objects, committed as count+digest) and the
+        # plan host's membership in it, which the require clause pins.
+        "certsrv.ca.directory.count": 1,
+        "certsrv.ca.directory.hosts_sha256": "2" * 64,
+        "certsrv.ca.directory.member": True,
         "certsrv.config.value_count": 50,
         "certsrv.config.value_names_sha256": "d" * 64,
         "certsrv.officerrights.present": True,

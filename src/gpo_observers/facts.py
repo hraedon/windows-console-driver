@@ -148,10 +148,19 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     # observed as presence+length+sha256 only, plus the digest of what the
     # CA's RPC surface decodes it into -- two stacks, kept separate. The
     # identity keys name the machine the oracle READ, which on this surface
-    # is not the machine the gesture ran on.
+    # is not the machine the gesture ran on. The directory.* keys are the
+    # revision-2 independent host derivation: the forest's CA host set
+    # enumerated from the pKIEnrollmentService class (committed as
+    # count+digest, never the host list) and the membership of the plan's
+    # CA host in that set -- structural because the capability requires no
+    # change to the forest's CA population, so any pre/post movement is a
+    # breach, not a prediction.
     ("certsrv.ca.host", "identity", None),
     ("certsrv.ca.name", "identity", None),
     ("certsrv.ca.observed_from", "identity", None),
+    ("certsrv.ca.directory.count", "structural", None),
+    ("certsrv.ca.directory.hosts_sha256", "structural", None),
+    ("certsrv.ca.directory.member", "structural", None),
     ("certsrv.config.value_count", "structural", None),
     ("certsrv.config.value_names_sha256", "structural", None),
     ("certsrv.officerrights.present", "content", None),
