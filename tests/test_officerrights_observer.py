@@ -1,10 +1,13 @@
 """The officerrights observer: transported CA configuration lines to facts.
 
-Three layers are pinned. The fact tree (``gpo_observers.officerrights``)
+Four layers are pinned. The fact tree (``gpo_observers.officerrights``)
 turns one collected line stream into the ``certsrv.*`` vocabulary and refuses
 the disagreements that matter on this surface: a read of a machine the plan
-did not name, an internally inconsistent presence claim, and a split between
-the two independent read channels. The guest scripts
+did not name, an internally inconsistent presence claim, a split between the
+two independent read channels, and -- since revision 2 -- a plan whose CA
+host is not in the directory-derived CA host set (the window-11 gap: a wrong
+CA named by the plan itself drove gesture and oracle alike and only the
+run-sheet's targeted frame caught it). The guest scripts
 (``officerrights_collect.ps1``, ``officerrights_remove.ps1``,
 ``certsrv_launch.ps1``) are pinned structurally -- 5.1 parse, pure ASCII --
 because nothing here touches a live host, a real CA, or a real registry. The
@@ -15,11 +18,16 @@ cleanup wiring re-queries strict absence naming the RECORDED CA.
 The absence cases carry most of the weight here, which is unusual for an
 observer test and deliberate: this capability's pre-state is a value that
 does not exist, and an observer that cannot tell "not there" from "could not
-look" would certify a run that never touched anything.
+look" would certify a run that never touched anything. The directory cases
+carry the revision-2 weight for the same reason: the derived host set is
+what licenses the read at all, so a plan host the forest does not publish
+must refuse BEFORE the mutation the capability exists to certify.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 import ps_scripts
@@ -38,12 +46,23 @@ SCRIPT = ps_scripts.REPO_ROOT / "tools" / "guest_scripts" / "officerrights_colle
 REMOVE_SCRIPT = ps_scripts.REPO_ROOT / "tools" / "guest_scripts" / "officerrights_remove.ps1"
 LAUNCH_SCRIPT = ps_scripts.REPO_ROOT / "tools" / "guest_scripts" / "certsrv_launch.ps1"
 SHEET = ps_scripts.REPO_ROOT / "runsheets" / "certsrv.restrict_certificate_manager.json"
+CAPABILITY = ps_scripts.REPO_ROOT / "capabilities" / "certsrv.restrict_certificate_manager.json"
 
 SECURITY_SHA = "a" * 64
 PUBLISHED_SHA = "b" * 64
 NAMES_SHA = "c" * 64
 RIGHTS_SHA = "d" * 64
 DECODED_SHA = "e" * 64
+
+# The digest convention the collector and the controller share: sha256 over
+# the LF-joined sorted host list. A one-CA forest digests to this.
+HOSTS_SHA = hashlib.sha256(CA_HOST.encode("utf-8")).hexdigest()
+OTHER_HOST = "LabCA02.zzlab.invalid"
+
+
+def _hosts_sha(*hosts: str) -> str:
+    return hashlib.sha256("\n".join(hosts).encode("utf-8")).hexdigest()
+
 
 # certutil's rc for a value that is not there, as the estate reported it.
 NOT_FOUND_RC = -2147024894
@@ -54,10 +73,18 @@ def _values(facts: dict[str, Any]) -> dict[str, Any]:
 
 
 def _absent(**overrides: str) -> list[str]:
-    """The pre-state: an unrestricted CA, where OfficerRights does not exist."""
+    """The pre-state: an unrestricted CA, where OfficerRights does not exist.
+
+    The directory block is the revision-2 shape: a one-CA forest whose single
+    published CA host is the plan's own -- the happy path, since the fixture
+    stream must parse before anything can refuse.
+    """
     base = {
         "ca.host": CA_HOST,
         "ca.name": CA_NAME,
+        "ca.directory.count": "1",
+        "ca.directory.hosts": CA_HOST,
+        "ca.directory.hosts_sha256": HOSTS_SHA,
         "collector.ran_on": CONSOLE,
         "config.key_present": "True",
         "config.value_count": "49",
@@ -176,6 +203,143 @@ def test_the_machine_read_and_the_machine_that_read_it_are_both_facts() -> None:
     )
 
 
+# --- Revision 2: the CA host is derived from the directory, not echoed ---------
+
+
+def test_the_derived_host_set_and_membership_are_facts() -> None:
+    """The happy path: the plan's host is one the forest publishes.
+
+    The derived set is committed as count+digest (never the host list) and
+    membership as its own fact, so the record carries the claim the
+    capability's require clause pins.
+    """
+    facts = _values(officerrights_fact_tree(_present(), CA_HOST, CA_NAME))
+    assert facts["certsrv.ca.directory.count"] == 1
+    assert facts["certsrv.ca.directory.hosts_sha256"] == HOSTS_SHA
+    assert facts["certsrv.ca.directory.member"] is True
+
+
+def test_membership_holds_in_a_multi_ca_forest_and_across_case() -> None:
+    """The derivation does not assume a one-CA forest, and DNS ignores case."""
+    lines = _present(
+        **{
+            "ca.directory.count": "2",
+            "ca.directory.hosts": f"{OTHER_HOST};{CA_HOST}",
+            "ca.directory.hosts_sha256": _hosts_sha(OTHER_HOST, CA_HOST),
+        }
+    )
+    facts = _values(officerrights_fact_tree(lines, CA_HOST, CA_NAME))
+    assert facts["certsrv.ca.directory.count"] == 2
+    assert facts["certsrv.ca.directory.member"] is True
+    # The plan's argument may differ in case from the directory's spelling;
+    # the membership comparison casefolds like the host echo check.
+    upper = _present(
+        **{
+            "ca.directory.hosts": CA_HOST.lower(),
+            "ca.directory.hosts_sha256": _hosts_sha(CA_HOST.lower()),
+        }
+    )
+    facts = _values(officerrights_fact_tree(upper, CA_HOST, CA_NAME))
+    assert facts["certsrv.ca.directory.member"] is True
+
+
+def test_a_plan_host_the_forest_does_not_publish_refuses() -> None:
+    """The gap revision 2 exists to close, stated as the test that closes it.
+
+    Revision 1's subject check could not catch this: the collector is
+    invoked with the plan's own ca_host, so the echo agrees all the way
+    down and a correctly-resolved read of the WRONG machine certified as
+    evidence. The derived set is independent of the plan -- the directory
+    published two CAs and the plan named neither -- so the observation
+    refuses. The pre-oracle runs before prepare, arm and the commit, which
+    is what makes this a refusal BEFORE any mutation rather than a clause
+    failure after one.
+    """
+    lines = _present(
+        **{
+            "ca.directory.count": "2",
+            "ca.directory.hosts": f"{OTHER_HOST};LabCA03.zzlab.invalid",
+            "ca.directory.hosts_sha256": _hosts_sha(OTHER_HOST, "LabCA03.zzlab.invalid"),
+        }
+    )
+    with pytest.raises(OfficerRightsError, match="not in the directory-derived"):
+        officerrights_fact_tree(lines, CA_HOST, CA_NAME)
+    # The refusal names both sides, so the operator can see which was wrong.
+    with pytest.raises(OfficerRightsError, match="LabCA02"):
+        officerrights_fact_tree(lines, CA_HOST, CA_NAME)
+
+
+def test_an_empty_derived_set_refuses_rather_than_certifying() -> None:
+    """A directory with no published CA is a refusal, not a vacuous pass.
+
+    An empty set contains no members, so membership fails -- but an observer
+    that treated the empty transport as 'nothing to check' would turn a
+    broken derivation (wrong container, no connectivity residue) into the
+    strongest possible echo. The refusal must happen, and it must say the
+    set was empty.
+    """
+    lines = _present(
+        **{
+            "ca.directory.count": "0",
+            "ca.directory.hosts": "",
+            "ca.directory.hosts_sha256": _hosts_sha(),
+        }
+    )
+    with pytest.raises(OfficerRightsError, match="empty set"):
+        officerrights_fact_tree(lines, CA_HOST, CA_NAME)
+
+
+def test_the_derived_count_and_digest_are_recomputed_and_refused() -> None:
+    """The two-pass discipline: the transported list is the record, the
+    claimed count and digest are recomputed from it, and a disagreement
+    refuses -- a collector that shrank or reordered the set cannot make a
+    wrong host look like a member.
+    """
+    with pytest.raises(OfficerRightsError, match=r"ca\.directory\.count is 2 but"):
+        officerrights_fact_tree(
+            _present(**{"ca.directory.count": "2"}), CA_HOST, CA_NAME
+        )
+    with pytest.raises(OfficerRightsError, match="hosts_sha256 disagrees"):
+        officerrights_fact_tree(
+            _present(**{"ca.directory.hosts_sha256": RIGHTS_SHA}), CA_HOST, CA_NAME
+        )
+
+
+@pytest.mark.parametrize(
+    ("overrides", "fragment"),
+    [
+        ({"ca.directory.hosts": f";{CA_HOST}"}, "empty entry"),
+        ({"ca.directory.hosts_sha256": ""}, "digest is empty"),
+    ],
+)
+def test_malformed_directory_blocks_refuse(overrides: dict[str, str], fragment: str) -> None:
+    with pytest.raises(OfficerRightsError, match=fragment):
+        officerrights_fact_tree(_present(**overrides), CA_HOST, CA_NAME)
+
+
+def test_the_capability_pins_membership_in_its_envelope() -> None:
+    """The require clause is the record-facing statement of the refusal.
+
+    The fact tree refuses a non-member before any mutation; the envelope
+    clause is what makes a banked record carry the claim -- satisfied --
+    without a reviewer having to read the observer source. Pinned here so a
+    future edit cannot drop the clause quietly.
+    """
+    capability = json.loads(CAPABILITY.read_text(encoding="utf-8"))
+    assert capability["revision"] == 2
+    member_clauses = [
+        clause
+        for clause in capability["envelope"]["require"]
+        if clause["fact"] == "certsrv.ca.directory.member"
+    ]
+    assert member_clauses == [
+        {
+            "fact": "certsrv.ca.directory.member",
+            "predicate": "post['certsrv.ca.directory.member'] == True",
+        }
+    ]
+
+
 # --- Disagreements the observer refuses instead of averaging -------------------
 
 
@@ -261,6 +425,9 @@ def test_fact_key_vocabulary_is_the_contract() -> None:
         "certsrv.ca.host",
         "certsrv.ca.name",
         "certsrv.ca.observed_from",
+        "certsrv.ca.directory.count",
+        "certsrv.ca.directory.hosts_sha256",
+        "certsrv.ca.directory.member",
         "certsrv.config.value_count",
         "certsrv.config.value_names_sha256",
         "certsrv.officerrights.present",
@@ -435,6 +602,32 @@ def test_guest_scripts_parse_under_windows_powershell_51(script: object) -> None
 @pytest.mark.parametrize("script", [SCRIPT, REMOVE_SCRIPT, LAUNCH_SCRIPT])
 def test_guest_scripts_are_pure_ascii(script: object) -> None:
     ps_scripts.assert_ascii_only(script)  # type: ignore[arg-type]
+
+
+def test_collect_script_derives_the_host_set_independently_of_the_plan() -> None:
+    """The derivation must take no input from the plan's arguments.
+
+    Pinned structurally: the search is over the pKIEnrollmentService CLASS
+    in the Enrollment Services container -- the literal filter, not a query
+    interpolated with $CaHost or $CaName, which would reduce the derived
+    set to another echo of the plan. The independence is the entire point
+    of revision 2, so its shape is pinned the way every other load-bearing
+    guest-script property here is.
+    """
+    text = SCRIPT.read_text(encoding="utf-8-sig")
+    assert "DirectorySearcher" in text
+    assert "'(objectClass=pKIEnrollmentService)'" in text
+    assert "CN=Enrollment Services,CN=Public Key Services,CN=Services" in text
+    assert "dNSHostName" in text
+    # The three derivation lines the controller recomputes and refuses on.
+    for key in ("ca.directory.count", "ca.directory.hosts_sha256", "ca.directory.hosts"):
+        assert f"'{key}'" in text
+    # A search scoped to the plan's own host would rebuild the echo: the
+    # filter must not mention either plan parameter.
+    filter_line = next(
+        line for line in text.splitlines() if line.strip().startswith("$searcher.Filter")
+    )
+    assert "$CaHost" not in filter_line and "$CaName" not in filter_line
 
 
 def test_collect_script_fails_closed() -> None:

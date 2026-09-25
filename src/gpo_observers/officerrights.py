@@ -28,13 +28,29 @@ exists with this digest" is making a claim it can actually support; one that
 claimed to know what the bytes mean would not be.
 
 **The same value is read through two stacks.** The registry read gives the
-opaque digest; ``certutil -getreg`` asks the CA's own RPC surface and, when
-the value exists, decodes it into named rows. They can disagree -- a registry
+opaque digest; ``certutil -getreg`` asks the CA's own RPC surface and, when the
+value exists, decodes it into named rows. They can disagree -- a registry
 value written but not yet adopted by the running service would show exactly
 that -- and this module refuses the disagreement rather than averaging it:
 ``present`` and ``decoded_present`` must agree once the value exists. Before
 it exists they need not: absence reads cleanly through both, and the rc for a
 missing value is a legitimate non-zero.
+
+**The CA host is derived from the directory, not echoed (revision 2).** The
+``ca.host`` subject check below compares what the collector read against the
+plan's argument -- but the collector is INVOKED with that same argument, so
+both sides of the comparison are the echo. That catches a garbled or
+misrouted read and nothing else; a plan that itself names the wrong CA drives
+gesture and oracle alike and passes the check all the way down (the window-11
+correction, 2026-09-22). Revision 2 closes the gap at the independent
+source: every enterprise CA publishes a ``pKIEnrollmentService`` object under
+``CN=Enrollment Services``, each carrying ``dNSHostName``, and the collector
+enumerates the class -- taking no input from the plan -- and transports the
+derived host set whole. The count and digest are recomputed here from the
+transported list and refused on disagreement (the certtmpl two-pass
+discipline), and an observation whose plan host is NOT a member of the
+derived set refuses here: the pre-oracle runs before prepare, arm and the
+commit, so a wrong-CA plan is refused before any mutation, fail-closed.
 
 The forbid scopes (``certsrv.security.*``, ``certsrv.published.*``) are here
 because this capability restricts an EXISTING manager and publishes nothing.
@@ -44,6 +60,7 @@ Security tab") -- which is a claim worth checking rather than believing.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Sequence
 
@@ -57,13 +74,14 @@ _SHA256_RE = re.compile(r"\A[0-9a-f]{64}\Z")
 # whole observation: an observer that ignores what it does not recognise is an
 # observer that cannot notice the collector changing under it.
 _STRING_KEYS: frozenset[str] = frozenset(
-    {"ca.host", "ca.name", "collector.ran_on", "officerrights.kind"}
+    {"ca.host", "ca.name", "ca.directory.hosts", "collector.ran_on", "officerrights.kind"}
 )
 _BOOL_KEYS: frozenset[str] = frozenset(
     {"config.key_present", "officerrights.present", "officerrights.decoded_present"}
 )
 _COUNT_KEYS: frozenset[str] = frozenset(
     {
+        "ca.directory.count",
         "config.value_count",
         "officerrights.bytes",
         "officerrights.decoded_rows",
@@ -73,6 +91,7 @@ _COUNT_KEYS: frozenset[str] = frozenset(
 )
 _DIGEST_KEYS: frozenset[str] = frozenset(
     {
+        "ca.directory.hosts_sha256",
         "config.value_names_sha256",
         "officerrights.sha256",
         "officerrights.decoded_sha256",
@@ -138,6 +157,15 @@ def _digest(value: str, key: str) -> str:
     return value
 
 
+def _hosts_digest(hosts: Sequence[str]) -> str:
+    """sha256 over the LF-joined host list (UTF-8, lowercase hex).
+
+    The same convention the certtmpl surface uses for name lists: the
+    transported list is the record, the digest is what the facts commit.
+    """
+    return hashlib.sha256("\n".join(hosts).encode("utf-8")).hexdigest()
+
+
 def officerrights_fact_tree(
     lines: Sequence[str], ca_host: str, ca_name: str
 ) -> FactSet:
@@ -148,6 +176,10 @@ def officerrights_fact_tree(
     that does not name its subject cannot be checked against the plan -- and
     on this surface the observed machine is NOT the machine the gesture ran
     on, so a mismatch is exactly the confusion the check exists to catch.
+    Since revision 2 ``ca_host`` is additionally checked against the
+    directory-derived CA host set the collector enumerates independently of
+    the plan: a plan that names a host the forest does not publish as a CA
+    refuses here, at the pre-oracle -- before prepare, arm, or any mutation.
     """
     if not ca_host or not ca_name:
         raise OfficerRightsError("officerrights observation needs a CA host and name")
@@ -175,7 +207,11 @@ def officerrights_fact_tree(
             "officerrights observation is incomplete; missing " + ", ".join(missing)
         )
 
-    # The subject check: the collector read what the plan named.
+    # The subject check, revision 1: the collector read what the plan named.
+    # Both sides of this comparison are the plan's argument (the collector
+    # reports ca.host as the argument it was invoked with), so it catches a
+    # garbled or misrouted read -- the plan's CA name arriving wrong at the
+    # guest -- and nothing else.
     if raw["ca.host"].casefold() != ca_host.casefold():
         raise OfficerRightsError(
             f"officerrights read CA host {raw['ca.host']!r}, plan named {ca_host!r}"
@@ -187,6 +223,50 @@ def officerrights_fact_tree(
     if not _bool(raw["config.key_present"], "config.key_present"):
         raise OfficerRightsError(
             f"CA configuration key for {ca_name!r} absent on {ca_host!r}"
+        )
+
+    # The subject check, revision 2: what the plan named is a CA the
+    # directory knows. Unlike the echo check above, this one's right-hand
+    # side is derived independently of the plan -- the forest's
+    # pKIEnrollmentService objects, enumerated by class, not bound by any
+    # name the plan supplied. The count and digest are recomputed from the
+    # transported list and refused on disagreement before membership is
+    # decided, so a collector that shrank or reordered the set cannot make a
+    # wrong host look like a member.
+    directory_hosts: list[str] = (
+        [] if raw["ca.directory.hosts"] == "" else raw["ca.directory.hosts"].split(";")
+    )
+    if any(not host for host in directory_hosts):
+        raise OfficerRightsError(
+            "officerrights ca.directory.hosts has an empty entry: "
+            f"{raw['ca.directory.hosts']!r}"
+        )
+    directory_count = _count(raw["ca.directory.count"], "ca.directory.count")
+    if directory_count != len(directory_hosts):
+        raise OfficerRightsError(
+            f"officerrights ca.directory.count is {directory_count} but the "
+            f"transported host list holds {len(directory_hosts)} host(s)"
+        )
+    directory_sha = _digest(
+        raw["ca.directory.hosts_sha256"], "ca.directory.hosts_sha256"
+    )
+    if not directory_sha:
+        raise OfficerRightsError(
+            "the directory-derived CA host set digest is empty; the derivation "
+            "is a membership source, not an absence-shaped value"
+        )
+    if directory_sha != _hosts_digest(directory_hosts):
+        raise OfficerRightsError(
+            "officerrights ca.directory.hosts_sha256 disagrees with the "
+            "transported host list"
+        )
+    directory_member = ca_host.casefold() in {h.casefold() for h in directory_hosts}
+    if not directory_member:
+        derived = ", ".join(directory_hosts) if directory_hosts else "empty set"
+        raise OfficerRightsError(
+            f"plan CA host {ca_host!r} is not in the directory-derived CA host "
+            f"set ({derived}); the plan names a host the forest does not "
+            "publish as a CA"
         )
 
     present = _bool(raw["officerrights.present"], "officerrights.present")
@@ -231,6 +311,15 @@ def officerrights_fact_tree(
     put("certsrv.ca.host", raw["ca.host"])
     put("certsrv.ca.name", raw["ca.name"])
     put("certsrv.ca.observed_from", raw["collector.ran_on"])
+    # The directory-derived host set: membership as a fact so the record
+    # carries the claim, the set itself committed as count+digest only --
+    # the same never-the-name-list convention as every container digest in
+    # this package. member is True by construction (a non-member refuses
+    # above, before any mutation); the require clause that pins it is the
+    # envelope's record-facing statement of that refusal.
+    put("certsrv.ca.directory.count", directory_count)
+    put("certsrv.ca.directory.hosts_sha256", directory_sha)
+    put("certsrv.ca.directory.member", directory_member)
     put("certsrv.config.value_count", _count(raw["config.value_count"], "config.value_count"))
     put(
         "certsrv.config.value_names_sha256",

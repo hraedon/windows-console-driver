@@ -29,6 +29,20 @@
 #    is visible instead of being averaged away. The bytes themselves are
 #    never transported -- only length and digest, as the template surface
 #    handles nTSecurityDescriptor.
+#
+# 4. IT DERIVES THE FOREST'S CA HOSTS FROM THE DIRECTORY (revision 2). The
+#    CaHost parameter is an echo: every read above aims at the machine the
+#    plan named, so a plan that names the WRONG CA drives gesture and oracle
+#    alike with the same wrong argument and the echo agrees all the way
+#    down. The directory is the independent source: every enterprise CA
+#    publishes a pKIEnrollmentService object under CN=Enrollment Services,
+#    each carrying dNSHostName. The host set is ENUMERATED here -- a class
+#    search, not a bind to any name the plan supplied -- and transported
+#    whole (count, ';'-joined list, digest); the controller compares the
+#    plan's argument against the derived set and refuses a non-member
+#    BEFORE any mutation. The guest still only transports: the membership
+#    decision is the controller's, so the refusal can name both the plan's
+#    host and the derived set.
 param([string]$CaHost, [string]$CaName)
 $ErrorActionPreference = 'Stop'
 
@@ -148,6 +162,36 @@ try {
     }
     Write-Line 'published.count'       $published.Count
     Write-Line 'published.names_sha256' (Get-TextSha256 ($published -join "`n"))
+
+    # -- 5. the forest's CA hosts, derived from the directory ---------------
+    # Revision 2. The echo check the controller already performs (ca.host vs
+    # the plan's argument) catches a garbled or misrouted read; it cannot
+    # catch a plan that itself names the wrong CA, because both sides of it
+    # are the same argument. This enumeration takes NO input from the plan:
+    # it searches the class itself and derives the host set the forest
+    # actually publishes. dNSHostName is single-valued on pKIEnrollmentService;
+    # an object that does not carry exactly one refuses the observation
+    # rather than silently shrinking the derived set.
+    $searcher = New-Object System.DirectoryServices.DirectorySearcher(
+        ([ADSI]"LDAP://CN=Enrollment Services,CN=Public Key Services,CN=Services,$root"))
+    $searcher.Filter = '(objectClass=pKIEnrollmentService)'
+    [void]$searcher.PropertiesToLoad.Add('dNSHostName')
+    $caHosts = @()
+    try {
+        foreach ($result in @($searcher.FindAll())) {
+            $nameValues = @($result.Properties['dNSHostName'])
+            if ($nameValues.Count -ne 1 -or ([string]$nameValues[0]) -eq '') {
+                throw ('enrollment-services object without exactly one dNSHostName: ' + $result.Path)
+            }
+            $caHosts += ([string]$nameValues[0])
+        }
+    } finally {
+        $searcher.Dispose()
+    }
+    $caHosts = @($caHosts | Sort-Object -CaseSensitive -Unique)
+    Write-Line 'ca.directory.count'       $caHosts.Count
+    Write-Line 'ca.directory.hosts'       ($caHosts -join ';')
+    Write-Line 'ca.directory.hosts_sha256' (Get-TextSha256 ($caHosts -join "`n"))
 
     $key.Dispose()
     $base.Dispose()
