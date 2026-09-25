@@ -677,5 +677,5 @@ if ($failed) {
     Write-Output 'estate-bringup: NOT READY (see fail: lines above)'
     exit 3
 }
-Write-Output "estate-bringup: READY -- finish with: wcd estate-canary --estate $EstateFile"
+Write-Output "estate-bringup: READY -- finish with: wcd --estate $EstateFile estate-canary"
 exit 0
