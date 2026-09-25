@@ -1,0 +1,360 @@
+{
+ "envelope_result": {
+  "characterization": "satisfied: 13 clause(s) held; 11 delta entries all covered; covered changed: certtmpl.container.names_sha256 (category 'structural'); covered changed: certtmpl.container.object_count (category 'structural'); covered changed: certtmpl.target.cert_name_flag (category 'content'); covered changed: certtmpl.target.expiration_100ns (category 'content'); covered changed: certtmpl.target.key_flag (category 'content'); covered changed: certtmpl.target.name (category 'content'); covered changed: certtmpl.target.overl",
+  "delta": [
+   {
+    "after": "5141cb6f424c226360f11874169973a68b55c7871fb17df550744db504b317bf",
+    "before": "535c6544aa8e40b3e77c2f0ec38d4e1a5adcefeab5b7a1de2cbaabdb4f8e60f0",
+    "key": "certtmpl.container.names_sha256",
+    "kind": "changed"
+   },
+   {
+    "after": 34,
+    "before": 33,
+    "key": "certtmpl.container.object_count",
+    "kind": "changed"
+   },
+   {
+    "after": 134217728,
+    "before": "",
+    "key": "certtmpl.target.cert_name_flag",
+    "kind": "changed"
+   },
+   {
+    "after": 946080000000000,
+    "before": "",
+    "key": "certtmpl.target.expiration_100ns",
+    "kind": "changed"
+   },
+   {
+    "after": 16842752,
+    "before": "",
+    "key": "certtmpl.target.key_flag",
+    "kind": "changed"
+   },
+   {
+    "after": "zz-welab-certtmpl-01",
+    "before": "",
+    "key": "certtmpl.target.name",
+    "kind": "changed"
+   },
+   {
+    "after": 36288000000000,
+    "before": "",
+    "key": "certtmpl.target.overlap_100ns",
+    "kind": "changed"
+   },
+   {
+    "after": true,
+    "before": false,
+    "key": "certtmpl.target.present",
+    "kind": "changed"
+   },
+   {
+    "after": 2,
+    "before": "",
+    "key": "certtmpl.target.schema_version",
+    "kind": "changed"
+   },
+   {
+    "after": 504,
+    "before": "",
+    "key": "certtmpl.target.sddl_len",
+    "kind": "changed"
+   },
+   {
+    "after": "4a4f2337c839633dbd7d680081717f2495c444b7dadbceb1c3b2ffc5faa56006",
+    "before": "",
+    "key": "certtmpl.target.sddl_sha256",
+    "kind": "changed"
+   }
+  ],
+  "satisfied": [
+   "require[0] fact='certtmpl.target.present'",
+   "require[1] fact='certtmpl.target.name'",
+   "require[2] fact='certtmpl.target.expiration_100ns'",
+   "require[3] fact='certtmpl.target.overlap_100ns'",
+   "require[4] fact='certtmpl.target.schema_version'",
+   "require[5] fact='certtmpl.target.cert_name_flag'",
+   "require[6] fact='certtmpl.target.key_flag'",
+   "require[7] fact='certtmpl.target.sddl_len'",
+   "require[8] fact='certtmpl.target.sddl_sha256'",
+   "derive[0]",
+   "derive[1]",
+   "forbid[0] scope='certtmpl.container.other_names_sha256'",
+   "forbid[1] scope='certtmpl.container.unnamed_count'"
+  ],
+  "status": "satisfied",
+  "unclassified": [],
+  "unresolved": [],
+  "violated": []
+ },
+ "events": [
+  {
+   "from_state": null,
+   "reason": "capability certtmpl.duplicate_template prepared over GPO None",
+   "sequence": 1,
+   "to_state": "prepared"
+  },
+  {
+   "from_state": "prepared",
+   "reason": "capability certtmpl.duplicate_template invocation started",
+   "sequence": 2,
+   "to_state": "armed"
+  },
+  {
+   "from_state": "armed",
+   "reason": "run-sheet crosses 'ok_duplicate_dialog' (profile class 'commit_point')",
+   "sequence": 3,
+   "to_state": "commit_attempted"
+  },
+  {
+   "from_state": "commit_attempted",
+   "reason": "converged after 2 polls, 2 reproductions",
+   "sequence": 4,
+   "to_state": "verified"
+  }
+ ],
+ "provenance": {
+  "$schema": "docs/transaction-record-schema-v2.json",
+  "capability": "certtmpl.duplicate_template",
+  "capability_revision": 1,
+  "capability_sha256": "a9169bf366feabada264157c92c05659229e469c93b04d83dd26fe5e6fb5d81b",
+  "cleanup": {
+   "journal": [
+    {
+     "detail": [
+      {
+       "detail": {
+        "stdout": "remaining=0"
+       },
+       "index": 0,
+       "ok": true,
+       "step": "guest"
+      }
+     ],
+     "index": 0,
+     "ok": true,
+     "step": "guest"
+    },
+    {
+     "detail": [
+      {
+       "detail": {
+        "stdout": "removed=zz-welab-certtmpl-01"
+       },
+       "index": 0,
+       "ok": true,
+       "step": "guest"
+      }
+     ],
+     "index": 1,
+     "ok": true,
+     "step": "guest"
+    },
+    {
+     "detail": [
+      {
+       "detail": {
+        "stdout": "unregistered=WCDLaunchCertTmpl"
+       },
+       "index": 0,
+       "ok": true,
+       "step": "guest"
+      }
+     ],
+     "index": 2,
+     "ok": true,
+     "step": "guest"
+    }
+   ],
+   "ran": true
+  },
+  "console": {
+   "helper_responds": true,
+   "identity": "domain_operator",
+   "machine": "LabMS01",
+   "mode": "wel_exec_transaction",
+   "operation_id": "7280b8a6-9cfc-4d3c-9fe0-d25bdeacd291",
+   "state": "unlocked"
+  },
+  "notes": [
+   "interactive session lease held: wcd.console:mvmhyperv01.ad.hraedon.com:LabMS01",
+   "recovery checkpoint 'domain-joined' present: True",
+   "surface fingerprint gate: banked 9193a3dfa818... observed 9193a3dfa818..."
+  ],
+  "run_sheet": "certtmpl.duplicate_template",
+  "schema_version": 2,
+  "steps": [
+   [
+    {
+     "detail": {
+      "matched": true,
+      "surfaced": true,
+      "title": "Certificate Templates Console"
+     },
+     "index": 0,
+     "ok": true,
+     "step": "wait_foreground[open_certtmpl_console] certtmpl.msc opens directly into the container view (title assumed from documentation conventions; no tree navigation before the first gesture)"
+    },
+    {
+     "detail": {
+      "asserted_window": "Certificate Templates Console",
+      "foreground": {
+       "class": "ConsoleWindowClass",
+       "hwnd": 459172,
+       "pid": 2880,
+       "process_name": "powershell",
+       "rect": {
+        "bottom": 720,
+        "height": 720,
+        "left": 0,
+        "right": 1024,
+        "top": 0,
+        "width": 1024
+       },
+       "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+       "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
+      }
+     },
+     "index": 1,
+     "ok": true,
+     "step": "context[open_certtmpl_console] record the interactive context against the console window before anything touches it"
+    },
+    {
+     "detail": {
+      "saved": "/projects/windows-console-driver/runs/ct-console-open.png"
+     },
+     "index": 2,
+     "ok": true,
+     "step": "shot baseline surface before selection"
+    },
+    {
+     "detail": {
+      "injected_events": 19
+     },
+     "index": 3,
+     "ok": true,
+     "step": "keys[select_source_template] window-anchored click focuses the virtualized results list, then type-ahead selects the source row in the SAME invocation (rows are UIA-invisible on MMC surfaces -- the wmi-sheet measured idiom; center-click placement assumed)"
+    },
+    {
+     "detail": {
+      "saved": "/projects/windows-console-driver/runs/ct-source-selected.png"
+     },
+     "index": 4,
+     "ok": true,
+     "step": "shot qualification checkpoint: the source row must be the selected one"
+    },
+    {
+     "detail": {
+      "injected_events": 8
+     },
+     "index": 5,
+     "ok": true,
+     "step": "keys[open_duplicate_dialog] context menu -> Duplicate Template as ONE composite (Shift+F10 / DOWN / ENTER -- menus die between invocations, measured on GPMC); the single DOWN is the assumed walk depth, menu order unmeasured"
+    },
+    {
+     "detail": {
+      "matched": true,
+      "surfaced": true,
+      "title": "Properties of New Template"
+     },
+     "index": 6,
+     "ok": true,
+     "step": "wait_foreground[open_duplicate_dialog] the duplicate's property sheet. MEASURED 2026-09-20: duplicating a V1 template on Server 2025 opens this sheet directly -- there is no intermediate schema-version dialog -- and it opens on the COMPATIBILITY page, not General"
+    },
+    {
+     "detail": {
+      "saved": "/projects/windows-console-driver/runs/ct-duplicate-dialog.png"
+     },
+     "index": 7,
+     "ok": true,
+     "step": "shot dialog baseline before edits"
+    },
+    {
+     "detail": {
+      "clicked": [
+       113,
+       86
+      ]
+     },
+     "index": 8,
+     "ok": true,
+     "step": "click_element[select_general_tab] select the General page. The tab strip is an unnamed SysTabControl32 (automation id 12320) and its tab items are not in the UIA tree at all, so the click is anchored to the named PAGE pane in the same dialog and offset to the tab measured off the framebuffer -- a same-window offset, so it survives the dialog moving. Ctrl+Tab was measured NOT to change the page here, with the dialog foreground and a click landed in it first. Verification that it worked is structural: the page pane is renamed to the selected tab, so every step after this resolves against elements that only exist on General."
+    },
+    {
+     "detail": {
+      "injected_events": 47
+     },
+     "index": 9,
+     "ok": true,
+     "step": "keys[set_template_name] display name first, in ONE invocation: label-anchored click-focus (the edit's UIA name is its CONTENT -- 'Copy of Computer' -- so a content selector would bind to the source template), ctrl+a because the field pre-fills, then type. Display name goes FIRST because the console auto-fills the template name from it until that field is edited by hand; setting the CN first and the display name second would have the console overwrite the CN this capability certifies."
+    },
+    {
+     "detail": {
+      "injected_events": 47
+     },
+     "index": 10,
+     "ok": true,
+     "step": "keys[set_template_name] then the template name itself -- this is the CN the observer certifies and cleanup re-queries by, so it is set explicitly rather than left to the auto-fill"
+    },
+    {
+     "detail": {
+      "saved": "/projects/windows-console-driver/runs/ct-name-typed.png"
+     },
+     "index": 11,
+     "ok": true,
+     "step": "shot qualification checkpoint: the name field must read the synthetic template name"
+    },
+    {
+     "detail": {
+      "injected_events": 22
+     },
+     "index": 12,
+     "ok": true,
+     "step": "keys[set_validity_period] validity row in ONE invocation, both controls anchored to the same label: the amount edit sits below-left of it and the units combo below-right (measured rects, 2026-09-20). The click lands in the combo's text area, not its arrow, so the list never opens and the type-ahead selects a closed combo -- the R3 measured idiom. Renewal period is the same shape one row right and is deliberately untouched."
+    },
+    {
+     "detail": {
+      "saved": "/projects/windows-console-driver/runs/ct-validity-set.png"
+     },
+     "index": 13,
+     "ok": true,
+     "step": "shot qualification checkpoint: amount and units must read the arguments"
+    },
+    {
+     "detail": {
+      "clicked": [
+       119,
+       540
+      ]
+     },
+     "index": 14,
+     "ok": true,
+     "step": "click_element[ok_duplicate_dialog] OK on the Properties dialog = the declared commit point (writes the template object to the forest configuration partition; settle lets the dialog close before re-targeting)"
+    },
+    {
+     "detail": {
+      "matched": true,
+      "surfaced": true,
+      "title": "Certificate Templates Console"
+     },
+     "index": 15,
+     "ok": true,
+     "step": "wait_foreground[ok_duplicate_dialog] re-surface the console as the sheet target after the dialog closes; the new row's AD-side appearance is the oracle's convergence job, not a UI read"
+    },
+    {
+     "detail": {
+      "saved": "/projects/windows-console-driver/runs/ct-new-row.png"
+     },
+     "index": 16,
+     "ok": true,
+     "step": "shot results pane after the commit (new-row visibility unmeasured on the virtualized list)"
+    }
+   ]
+  ],
+  "transaction_id": "70cd570d-142d-453e-9d75-1307d067211b"
+ },
+ "state": "verified",
+ "verdict": "transaction reached verified"
+}
