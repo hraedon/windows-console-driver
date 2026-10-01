@@ -1,7 +1,7 @@
 # Console-driver contract: transactionally verified actuation for legacy console surfaces
 
 Status: v0 working agreement, written 2026-09-02. This document is the working
-agreement between three independently owned components. Implementations may not
+agreement between four independently owned components. Implementations may not
 merge their responsibilities; the independence of observation from actuation is
 the property the whole design exists to protect.
 
@@ -201,23 +201,30 @@ Rules:
 ### Compatibility predicate
 
 Qualification is intended to bind to **observed surface properties**, not
-administrative version labels. The profile currently declares what its
-selectors depend on, but transaction execution does not yet collect or compare
-a qualified binary/hash/language/dialog-fingerprint baseline. Therefore these
-rows are dependency metadata, not an enforced compatibility predicate:
+administrative version labels. Since WI-L5, one declared dependency is
+runtime-enforced: the prepared surface's `uia_digest` — the dialog/control
+tree fingerprint the helper's context snapshot computes — is compared at
+prepare against the digest banked in the profile, and a mismatch refuses the
+capability before setup runs (exit 2, nothing attempted). Qualified profiles
+bank that fingerprint; a profile that declares none is grandfathered and
+enforces nothing, so declaring a fingerprint is the deliberate act of turning
+the gate on.
 
-- **strong**: snap-in/binary module versions and content hashes; dialog/control
-  tree fingerprint.
+The remaining dependency rows are still metadata, not an enforced
+compatibility predicate:
+
+- **strong**: snap-in/binary module versions and content hashes.
 - **strong-if-used**: UI language (binds only if selectors contain text);
   DPI/resolution (binds only coordinate selectors); theme (binds only visual
   matching).
 - **provenance**: OS build — recorded, not inherently invalidating.
 
-Once baseline capture is implemented, a mismatch on a strong dependency must
-refuse the capability. A mismatch on a weak one must degrade the driver to a
-lower input rung *if the capability's channel contract still permits that
-rung*, with provenance recorded. Until then, banked estate runs qualify only
-the exact exercised environment and do not establish portable compatibility.
+Once those baselines are captured and compared, a mismatch on a strong
+dependency must refuse the capability. A mismatch on a weak one must degrade
+the driver to a lower input rung *if the capability's channel contract still
+permits that rung*, with provenance recorded. Until then, banked estate runs
+qualify only the exact exercised environment and do not establish portable
+compatibility.
 
 ## 7. Lease and interactive context assertions
 
@@ -348,8 +355,9 @@ relearned from WEL).
   classes, channel contracts, lease/context/recovery guards, and independent
   envelopes; record v2 binds each emitted record to the exact capability
   content that produced it (and refuses a plan whose machine/identity
-  disagrees with the estate's own target), while the compatibility-baseline
-  predicate across revisions remains future work.
+  disagrees with the estate's own target), and the prepared-surface
+  fingerprint gate (WI-L5) is enforced at prepare. The remaining
+  compatibility-baseline rows across revisions remain future work.
 - **Driver development** — raw inspect/input allowed, but only when the
   evidence runtime proves the target is a disposable estate with a
   demonstrated exact-baseline recovery route (checkpoint). A confirmation
