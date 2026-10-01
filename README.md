@@ -82,3 +82,13 @@ is not yet supported and fails closed if those artifacts are absent.
   compatibility dependencies).
 - `capabilities/` — capability specifications (intent, channel contract,
   envelope, cleanup, recovery).
+- `runsheets/` — per-capability run sheets (the ordered steps each
+  transaction executes against its surface).
+- `tools/` — estate bring-up/teardown, the session REPL, and the per-surface
+  guest launch/collect/remove scripts the run sheets call.
+- `docs/` — the working agreement (`contract.md`), the qualification ledger
+  and claim registry, the surface-onboarding runbook, and one notes
+  directory per estate window.
+- `tests/` — the offline suite (fake transport and fake backend throughout;
+  live-host work is an operator tool run in a booked window, never a
+  default-suite test).
