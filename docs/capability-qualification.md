@@ -16,7 +16,7 @@ upgrade that record.
 | `gpmc.author_registry_security` | 2 | Qualified; fixed three-key experiment, six distinct screenshots, clean cleanup | `estate-window-4/records/r4-v2b-record.json` |
 | `gpmc.author_wmi_filter` | 1 | Qualified; exact msWMI-* representation incl. the measured Parm2 wire format, SOM-container blast radius frozen at +1, clean cleanup | `estate-window-7/records/w7-record.json` |
 | `certtmpl.duplicate_template` | 1 | Qualified; exact validity duration, blast radius frozen at one added object, clean cleanup with independent strict-absence confirmation. The same qualified bytes also verified through WEL's hosted lane (estate window 12) and again under the domain_operator-only re-pointed lane (estate window 13, the PR #36 identity-resolution proof) | `estate-window-10/records/w10-r2-record.json` (the pre-commit abort that preceded it is at `estate-window-10/records/w10-r1-record.json`); WEL-hosted: `estate-window-12/records/w12-r1-record.json`, `estate-window-13/records/w13-r1-record.json` |
-| `certsrv.restrict_certificate_manager` | 2 | Pending live qualification; the revision-2 directory-derivation clause (plan CA host a member of the directory-derived host set) has not run on the estate yet. Revision 1 remains qualified: the restriction value certified through two independent read channels, blast radius frozen at one added configuration value, clean cleanup with absence confirmed through both channels. Revision 2's live qualification is owed at the next certsrv window | `estate-window-11/records/w11-r2-record.json` at revision 1 (the pre-commit abort that preceded it is at `estate-window-11/records/w11-r1-record.json`); no revision-2 record exists yet |
+| `certsrv.restrict_certificate_manager` | 2 | Qualified; the revision-2 directory-derivation clause ran live (all 16 envelope clauses satisfied), the sheet re-proofed at its real 600 ms delays, clean cleanup with absence confirmed independently, and the CA's `Security` digest stayed byte-identical to window 11's reading. Revision-1 evidence stands unchanged | `estate-window-14/records/w14-r1-record.json` (revision 2); revision-1 evidence at `estate-window-11/records/w11-r2-record.json` (the pre-commit abort that preceded it is at `estate-window-11/records/w11-r1-record.json`) |
 
 The eight GPO-surface capabilities all have clean lab qualification evidence at
 their current revision. The migration-table capability requalified at revision 2
@@ -70,7 +70,9 @@ plan host that is not in the derived set; the envelope gains the
 `certsrv.ca.directory.member` require clause as the record-facing statement
 of that refusal, and the derived set is committed as count+digest only. The
 revision-1 banked evidence above stays bound to the revision-1 capability
-digest; revision 2's live qualification is owed at the next certsrv window.
+digest. The row closed in estate window 14 (2026-09-30/10-01): the
+directory-derivation clause ran live and the sheet re-proofed at its real
+timings, first try.
 
 Transaction-record v1 records the capability ID and run-sheet name, but not a
 capability revision or content digest. Until a future record schema adds an

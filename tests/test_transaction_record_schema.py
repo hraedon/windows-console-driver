@@ -253,10 +253,11 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     # TWO v2 records, the verified run and the pre-commit abort beside it;
     # window 11 took v2 from 2 to 4 with the same pair; window 12 banked the
     # fifth, the WEL-hosted lane's verified run; window 13 banked the sixth,
-    # the same lane re-run under a domain_operator-only backend).
+    # the same lane re-run under a domain_operator-only backend; window 14
+    # banked the seventh, certsrv officer-rights revision 2 live).
     assert sum(version == 0 for version in versions.values()) == 8
     assert sum(version == 1 for version in versions.values()) == 8
-    assert sum(version == 2 for version in versions.values()) == 6
+    assert sum(version == 2 for version in versions.values()) == 7
     assert all(path.read_bytes() == content for path, content in before.items())
     assert all(
         ("schema_version" not in json.loads(path.read_text())["provenance"])
