@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -80,6 +80,25 @@ _UI_OPERATION_ACTIONS = _INPUT_ACTIONS
 # certsrv_ui for the certsrv.msc one). A step in the operation-under-test
 # role must declare its surface's channel.
 _UI_OPERATION_CHANNELS = frozenset({"gpmc_ui", "certtmpl_ui", "certsrv_ui"})
+# Orientation channels each action consumes at runtime, as one table (the
+# contract's "the orientation channels their primitives actually use", given
+# declarative force). Actions absent from the table (label, commit, and the
+# programmatic guest/host steps, which the channel contract handles by
+# phase) consume no orientation channel. ``keys`` is the one composite: its
+# requirement grows with its payload -- a nested ``click_element`` resolves
+# a selector against a dump and therefore reads UIA -- which
+# :func:`_required_orientation` adds to the table's row.
+_ORIENTATION_CHANNELS_BY_ACTION: Mapping[str, frozenset[str]] = {
+    "wait_foreground": frozenset({"hwnd"}),
+    "wait_element": frozenset({"uia", "hwnd"}),
+    "context": frozenset({"hwnd"}),
+    "dump": frozenset({"uia", "hwnd"}),
+    "shot": frozenset({"screenshot", "hwnd"}),
+    "click_element": frozenset({"uia", "hwnd"}),
+    "type_text": frozenset({"hwnd"}),
+    "key": frozenset({"hwnd"}),
+    "keys": frozenset({"hwnd"}),
+}
 
 
 class RunSheetError(RuntimeError):
@@ -173,6 +192,26 @@ def load_run_sheet(path: str | Path) -> RunSheet:
     return RunSheet(name=name, surface=surface, steps=tuple(steps))
 
 
+def _required_orientation(step: Step) -> set[str]:
+    """The orientation channels this step consumes, from the vocabulary table.
+
+    ``wait_element`` polls a UIA dump every cycle (via ``_dump``), so it
+    consumes the uia channel exactly like a dump step; requiring only hwnd
+    let a capability declare orientation ``["hwnd"]`` while reading UIA at
+    runtime. That fact and its siblings live in
+    ``_ORIENTATION_CHANNELS_BY_ACTION``; only the ``keys`` composite's
+    payload-dependent requirement is resolved here.
+    """
+    required = set(_ORIENTATION_CHANNELS_BY_ACTION.get(step.action, frozenset()))
+    if step.action == "keys":
+        nested = step.params.get("steps")
+        if isinstance(nested, list) and any(
+            isinstance(item, dict) and "click_element" in item for item in nested
+        ):
+            required.add("uia")
+    return required
+
+
 def validate_channel_contract(
     sheet: RunSheet,
     raw_contract: object,
@@ -245,31 +284,7 @@ def validate_channel_contract(
                 )
             continue
 
-        required_orientation: set[str] = set()
-        if step.action == "wait_element":
-            # wait_element polls a UIA dump every cycle (via _dump), so it
-            # consumes the uia channel exactly like a dump step; requiring
-            # only hwnd let a capability declare orientation ["hwnd"] while
-            # reading UIA at runtime.
-            required_orientation.update(("uia", "hwnd"))
-        elif step.action in ("wait_foreground", "context"):
-            required_orientation.add("hwnd")
-        elif step.action == "dump":
-            required_orientation.update(("uia", "hwnd"))
-        elif step.action == "shot":
-            required_orientation.update(("screenshot", "hwnd"))
-        elif step.action == "click_element":
-            required_orientation.update(("uia", "hwnd"))
-        elif step.action in {"type_text", "key"}:
-            required_orientation.add("hwnd")
-        elif step.action == "keys":
-            required_orientation.add("hwnd")
-            nested = step.params.get("steps")
-            if isinstance(nested, list) and any(
-                isinstance(item, dict) and "click_element" in item for item in nested
-            ):
-                required_orientation.add("uia")
-        missing_orientation = required_orientation - orientation
+        missing_orientation = _required_orientation(step) - orientation
         if missing_orientation:
             raise RunSheetError(
                 f"step {index} ({step.label}) uses undeclared orientation channels "
@@ -443,39 +458,14 @@ class GestureExecutor:
         on_commit: Callable[[str], None] | None,
     ) -> dict[str, object]:
         params = {k: ctx.interpolate(v) for k, v in step.params.items()}
-        if step.action == "label":
-            return {}
-        if step.action == "guest":
-            return self._run_script(self._guest_scripts, params, ctx, remote="guest")
-        if step.action == "host":
-            return self._run_script(self._host_scripts, params, ctx, remote="host")
-        if step.action == "wait_foreground":
-            return self._wait_foreground(params, ctx)
-        if step.action == "wait_element":
-            return self._wait_element(params, ctx)
-        if step.action == "context":
-            return self._context(params, ctx)
-        if step.action == "dump":
-            return self._dump(params, ctx)
-        if step.action == "click_element":
-            return self._click_element(params, ctx)
-        if step.action == "type_text":
-            return self._type_text(params, ctx)
-        if step.action == "key":
-            return self._key(params, ctx)
-        if step.action == "shot":
-            return self._shot(params, ctx)
-        if step.action == "keys":
-            return self._keys(params, ctx)
-        if step.action == "commit":
-            boundary = params.get("boundary")
-            if not isinstance(boundary, str) or not boundary:
-                raise RunSheetError("commit step needs a boundary name")
-            if on_commit is None:
-                raise RunSheetError("commit step but no transaction callback wired")
-            on_commit(boundary)
-            return {"boundary": boundary}
-        raise RunSheetError(f"unhandled action {step.action!r}")
+        handler = _STEP_HANDLERS.get(step.action)
+        if handler is None:
+            # Unreachable for any sheet that loaded: load_run_sheet refuses
+            # actions outside _GESTURE_ACTIONS, and the module-level pin
+            # below refuses import unless the dispatch table covers exactly
+            # that vocabulary. Kept fail-closed rather than trusted away.
+            raise RunSheetError(f"unhandled action {step.action!r}")
+        return handler(self, params, ctx, on_commit)
 
     # -- primitives --------------------------------------------------------------
 
@@ -1113,3 +1103,79 @@ class GestureExecutor:
 
 def _optional_str(value: object) -> str | None:
     return value if isinstance(value, str) else None
+
+
+# ---------------------------------------------------------------------------
+# The step-dispatch table: one row per vocabulary action
+# ---------------------------------------------------------------------------
+
+# The single home of the action -> handler wiring. Before this table the
+# wiring was an if/elif chain inside _execute_step that had to be kept in
+# lockstep with _GESTURE_ACTIONS by hand: an action added to the vocabulary
+# without an arm failed only at runtime ("unhandled action"), mid-sheet. The
+# module-level pin below refuses import when the two drift, and a runsheet
+# test pins the pair (and the orientation table's keys) against the
+# vocabulary too.
+StepHandler = Callable[
+    ["GestureExecutor", dict[str, object], SheetContext, Callable[[str], None] | None],
+    dict[str, object],
+]
+
+
+def _guest_step(
+    executor: GestureExecutor,
+    params: dict[str, object],
+    ctx: SheetContext,
+    _on_commit: Callable[[str], None] | None,
+) -> dict[str, object]:
+    return executor._run_script(executor._guest_scripts, params, ctx, remote="guest")
+
+
+def _host_step(
+    executor: GestureExecutor,
+    params: dict[str, object],
+    ctx: SheetContext,
+    _on_commit: Callable[[str], None] | None,
+) -> dict[str, object]:
+    return executor._run_script(executor._host_scripts, params, ctx, remote="host")
+
+
+def _commit_step(
+    _executor: GestureExecutor,
+    params: dict[str, object],
+    _ctx: SheetContext,
+    on_commit: Callable[[str], None] | None,
+) -> dict[str, object]:
+    boundary = params.get("boundary")
+    if not isinstance(boundary, str) or not boundary:
+        raise RunSheetError("commit step needs a boundary name")
+    if on_commit is None:
+        raise RunSheetError("commit step but no transaction callback wired")
+    on_commit(boundary)
+    return {"boundary": boundary}
+
+
+_STEP_HANDLERS: Mapping[str, StepHandler] = {
+    "label": lambda _executor, _params, _ctx, _on_commit: {},
+    "guest": _guest_step,
+    "host": _host_step,
+    "wait_foreground": lambda executor, params, ctx, _oc: executor._wait_foreground(
+        params, ctx
+    ),
+    "wait_element": lambda executor, params, ctx, _oc: executor._wait_element(params, ctx),
+    "context": lambda executor, params, ctx, _oc: executor._context(params, ctx),
+    "dump": lambda executor, params, ctx, _oc: executor._dump(params, ctx),
+    "click_element": lambda executor, params, ctx, _oc: executor._click_element(params, ctx),
+    "type_text": lambda executor, params, ctx, _oc: executor._type_text(params, ctx),
+    "key": lambda executor, params, ctx, _oc: executor._key(params, ctx),
+    "shot": lambda executor, params, ctx, _oc: executor._shot(params, ctx),
+    "keys": lambda executor, params, ctx, _oc: executor._keys(params, ctx),
+    "commit": _commit_step,
+}
+
+if set(_STEP_HANDLERS) != set(_GESTURE_ACTIONS):
+    _vocabulary_drift = set(_STEP_HANDLERS) ^ set(_GESTURE_ACTIONS)
+    raise RuntimeError(
+        "run-sheet action vocabulary drift: actions without a dispatch row or "
+        f"rows naming non-vocabulary actions: {sorted(_vocabulary_drift)}"
+    )
