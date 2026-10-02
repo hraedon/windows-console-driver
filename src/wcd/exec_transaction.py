@@ -41,6 +41,8 @@ from pathlib import Path
 
 from gpo_observers import psl
 from gpo_observers.facts import FactSet, JSONValue, make_fact
+from gpo_observers.fdeploy_ini import fdeploy_fact_tree
+from gpo_observers.gpttmpl_inf import gpttmpl_fact_tree
 from gpo_observers.snapshots import GpoRef, capture_snapshot
 
 from . import console_ops
@@ -501,6 +503,37 @@ class _OfficerRightsCollector:
             raise ExecTransactionError(f"officerrights observation malformed: {exc}") from exc
 
 
+# The observer registry: every observer name a fact plan may declare, and
+# the collector that answers it, in one table. This is the single home of
+# the executor's observer vocabulary -- the capability schema
+# (docs/capability-schema-v0.json, $defs.observer.name) enumerates the same
+# names at the document boundary, and a schema test pins the two together,
+# so a new collector cannot ship with the registry alone (or the schema
+# alone). ``r2_core`` lives here rather than as an inline special case in
+# _collect_facts; it is the only entry that ignores its params slot (every
+# shipped capability declares it with params {}).
+ObserverCollect = Callable[[GpoRef, Mapping[str, object], SessionTransport], FactSet]
+
+
+def _r2_core_collect(
+    ref: GpoRef, params: Mapping[str, object], t: SessionTransport
+) -> FactSet:
+    sides = ("machine", "user")
+    return capture_snapshot(PsdirectObserverTransport(t), ref, scripts_sides=sides)
+
+
+_OBSERVER_REGISTRY: Mapping[str, ObserverCollect] = {
+    "r2_core": _r2_core_collect,
+    "migration_table": _MigtableCollector().collect,
+    "wmi_filter": _WmiFilterCollector().collect,
+    "certtmpl": _CerttmplCollector().collect,
+    "officerrights": _OfficerRightsCollector().collect,
+    "gpttmpl_inf": _FileBytesCollector("gpttmpl", gpttmpl_fact_tree).collect,
+    "fdeploy_ini": _FileBytesCollector("fdeploy", fdeploy_fact_tree).collect,
+    "fdeploy_marker": _FileBytesCollector("fdeploy_marker", fdeploy_fact_tree).collect,
+}
+
+
 @dataclass(frozen=True, slots=True)
 class _ObserverEntry:
     name: str
@@ -530,11 +563,6 @@ def _collect_facts(
             raise ExecTransactionError(f"fact_plan params malformed: {raw!r}")
         entries.append(_ObserverEntry(name=raw["name"], params=params))
     for entry in entries:
-        if entry.name == "r2_core":
-            sides = ("machine", "user")
-            factset = capture_snapshot(PsdirectObserverTransport(t), ref, scripts_sides=sides)
-            facts.update(factset)
-            continue
         collector = _named_collector(entry.name)
         params = {
             key: _interpolate(value, args) for key, value in entry.params.items()
@@ -554,30 +582,11 @@ def _interpolate(value: object, args: Mapping[str, object]) -> object:
     return value
 
 
-def _named_collector(
-    name: str,
-) -> Callable[[GpoRef, Mapping[str, object], SessionTransport], FactSet]:
-    if name == "migration_table":
-        return _MigtableCollector().collect
-    if name == "wmi_filter":
-        return _WmiFilterCollector().collect
-    if name == "certtmpl":
-        return _CerttmplCollector().collect
-    if name == "officerrights":
-        return _OfficerRightsCollector().collect
-    if name == "gpttmpl_inf":
-        from gpo_observers.gpttmpl_inf import gpttmpl_fact_tree
-
-        return _FileBytesCollector("gpttmpl", gpttmpl_fact_tree).collect
-    if name == "fdeploy_ini":
-        from gpo_observers.fdeploy_ini import fdeploy_fact_tree
-
-        return _FileBytesCollector("fdeploy", fdeploy_fact_tree).collect
-    if name == "fdeploy_marker":
-        from gpo_observers.fdeploy_ini import fdeploy_fact_tree
-
-        return _FileBytesCollector("fdeploy_marker", fdeploy_fact_tree).collect
-    raise ExecTransactionError(f"unknown observer {name!r}")
+def _named_collector(name: str) -> ObserverCollect:
+    try:
+        return _OBSERVER_REGISTRY[name]
+    except KeyError:
+        raise ExecTransactionError(f"unknown observer {name!r}") from None
 
 
 # ---------------------------------------------------------------------------
