@@ -1076,6 +1076,10 @@ def _helper_context(t: SessionTransport) -> InteractiveContext:
     session_raw = payload.get("session_id")
     user = payload.get("user")
     desktop_raw = payload.get("desktop")
+    # ui_language is read leniently (absent or malformed -> None): a helper
+    # too old to report it must still parse as a context, and the baseline
+    # gate treats an unobserved language as a mismatch, never a pass.
+    ui_language_raw = payload.get("ui_language")
     if (
         not isinstance(session_raw, int)
         or isinstance(session_raw, bool)
@@ -1117,6 +1121,7 @@ def _helper_context(t: SessionTransport) -> InteractiveContext:
         user=user,
         desktop=desktop_raw if isinstance(desktop_raw, str) else None,
         foreground=foreground,
+        ui_language=ui_language_raw if isinstance(ui_language_raw, str) else None,
     )
 
 
