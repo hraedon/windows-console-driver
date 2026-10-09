@@ -404,3 +404,87 @@ def test_shipped_certtmpl_profile_banks_the_measured_prepared_context_digest() -
     assert profile.first_commit_point == "ok_duplicate_dialog"
     assert profile.classification("select_source_template") == "orientation_only"
     assert profile.classification("set_validity_period") == "reversible_pre_commit"
+
+
+# --- baseline values (enforceable-when-banked dependencies) ----------------------
+
+
+def test_baseline_values_for_both_enforceable_kinds_parse() -> None:
+    profile = parse_profile_text(
+        PROFILE_TOML
+        + '\n[[baseline_values]]\ndependency = "ui_language"\n'
+        'value = "en-US"\nbanked_from = "docs/estate-window-14/records/w14.json"\n'
+        '\n[[baseline_values]]\ndependency = "binary_version"\n'
+        'value = "10.0.26100.1"\nbanked_from = "docs/estate-window-14/records/w14.json"\n'
+        "path = 'C:\\Windows\\System32\\mmc.exe'\n"
+    )
+    assert set(profile.baseline_values) == {"ui_language", "binary_version"}
+    language = profile.baseline_values["ui_language"]
+    assert (language.value, language.banked_from, language.path) == (
+        "en-US",
+        "docs/estate-window-14/records/w14.json",
+        None,
+    )
+    binary = profile.baseline_values["binary_version"]
+    assert (binary.value, binary.path) == ("10.0.26100.1", "C:\\Windows\\System32\\mmc.exe")
+
+
+def test_a_baseline_dependency_outside_the_enforceable_set_is_refused() -> None:
+    """Banking a kind the executor cannot observe at prepare would be a lie
+    the gate could never check; the refusal names the enforceable set."""
+    with pytest.raises(ProfileInvalid) as excinfo:
+        parse_profile_text(
+            PROFILE_TOML
+            + '\n[[baseline_values]]\ndependency = "dpi"\n'
+            'value = "96"\nbanked_from = "measured"\n'
+        )
+    message = str(excinfo.value)
+    assert "'dpi'" in message
+    assert "binary_version" in message and "ui_language" in message
+    assert "declared-only" in message
+
+
+def test_binary_version_baseline_requires_a_path() -> None:
+    for bad_row in (
+        '\n[[baseline_values]]\ndependency = "binary_version"\n'
+        'value = "1.2.3.4"\nbanked_from = "measured"\n',
+        '\n[[baseline_values]]\ndependency = "binary_version"\n'
+        "value = \"1.2.3.4\"\nbanked_from = \"measured\"\npath = '  '\n",
+    ):
+        with pytest.raises(ProfileInvalid, match="path is required for binary_version"):
+            parse_profile_text(PROFILE_TOML + bad_row)
+
+
+def test_ui_language_baseline_forbids_a_path() -> None:
+    with pytest.raises(ProfileInvalid, match="path is forbidden"):
+        parse_profile_text(
+            PROFILE_TOML
+            + '\n[[baseline_values]]\ndependency = "ui_language"\n'
+            "value = \"en-US\"\nbanked_from = \"measured\"\npath = 'C:\\x.exe'\n"
+        )
+
+
+def test_one_baseline_value_per_dependency_and_no_unknown_keys() -> None:
+    row = (
+        '\n[[baseline_values]]\ndependency = "ui_language"\n'
+        'value = "en-US"\nbanked_from = "measured"\n'
+    )
+    with pytest.raises(ProfileInvalid, match="a second time"):
+        parse_profile_text(PROFILE_TOML + row + row)
+    with pytest.raises(ProfileInvalid, match="unknown keys"):
+        parse_profile_text(
+            PROFILE_TOML
+            + '\n[[baseline_values]]\ndependency = "ui_language"\n'
+            'value = "en-US"\nbanked_from = "measured"\nselector = "dialog"\n'
+        )
+
+
+def test_blank_baseline_value_or_banked_from_is_refused() -> None:
+    for bad_row in (
+        '\n[[baseline_values]]\ndependency = "ui_language"\n'
+        'value = ""\nbanked_from = "measured"\n',
+        '\n[[baseline_values]]\ndependency = "ui_language"\n'
+        'value = "en-US"\nbanked_from = " "\n',
+    ):
+        with pytest.raises(ProfileInvalid, match="must be a non-blank string"):
+            parse_profile_text(PROFILE_TOML + bad_row)
