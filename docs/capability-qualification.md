@@ -80,11 +80,13 @@ immutable binding, qualification notes must state the revision explicitly and
 must not infer it from the current file at review time.
 
 “Qualified” in this ledger means the named revision completed the banked estate
-experiment. Since WI-L5 the runtime enforces ONE declared dependency — the
-prepared-surface `uia_digest` banked in the profile's
-`[[surface_fingerprints]]` is compared at prepare and a mismatch refuses
-before setup (the ledger rows above were qualified with that same prepared
-context, byte-identical across windows 2–7). Every other selector dependency
-(`ui_language`, `binary_version`, per-dialog fingerprints) remains declared
-but not runtime-enforced, and no per-dialog fingerprint is banked yet. These
-records must not be generalized to a changed estate.
+experiment. Since WI-L5 the runtime enforces the prepared-surface `uia_digest`
+banked in the profile's `[[surface_fingerprints]]` — compared at prepare, a
+mismatch refuses before setup (the ledger rows above were qualified with that
+same prepared context, byte-identical across windows 2–7) — and the baseline
+gate extends the same prepare enforcement to the two observable dependency
+kinds: a banked `[[baseline_values]]` row for `ui_language` or
+`binary_version` is compared before setup and a mismatch (or an unobservable
+baseline) refuses. Per-dialog fingerprints remain declared but not
+runtime-enforced, and none is banked yet. These records must not be
+generalized to a changed estate.

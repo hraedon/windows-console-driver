@@ -778,6 +778,34 @@ def test_a_determinate_pre_setup_refusal_exits_2_with_no_record(
     assert captured.out == ""
 
 
+def test_a_baseline_gate_refusal_exits_2_with_no_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """The baseline gate (2c) raises the same determinate class: exit 2, no
+    record -- a mismatched UI language refused before setup mutated nothing,
+    so nothing is owed."""
+    monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
+    _install_transport(monkeypatch)
+
+    def refuse(**_kwargs: object) -> dict[str, object]:
+        raise ExecTransactionError(
+            "ui_language mismatch: banked 'en-US' from 'docs/x/record.json', "
+            "observed 'de-DE'; the estate's UI language is not the qualified one, "
+            "refusing before setup"
+        )
+
+    monkeypatch.setattr(cli, "execute_transaction", refuse)
+    _stdin(monkeypatch, _stdin_plan())
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "transaction error" in captured.err
+    assert "ui_language mismatch" in captured.err
+    assert captured.out == ""
+
+
 # --- exec-transaction: the plan/estate target agreement (record-schema v2) ------------
 
 

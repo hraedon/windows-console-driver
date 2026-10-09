@@ -85,6 +85,8 @@ _RECORD_STATES = ("verified", "disproven", "indeterminate")
 
 # Helper ``context`` reads (prepare baseline, per-crossing re-assertion).
 _HELPER_CONTEXT_TIMEOUT_S: float = 60.0
+# Helper ``file_version`` reads (baseline gate, one per binary_version row).
+_HELPER_FILE_VERSION_TIMEOUT_S: float = 60.0
 
 
 class ExecTransactionError(RuntimeError):
@@ -803,24 +805,28 @@ def execute_transaction(
         return finish(None)
 
     # -- 2b. surface fingerprint gate (WI-L5) ------------------------------------
-    # A banked prepared-context fingerprint is the ONE runtime-enforced
-    # selector dependency: refuse BEFORE setup when the live surface's
-    # uia_digest does not match the qualified baseline. This is a determinate
-    # refusal (nothing has mutated; no reconciliation is owed), so it raises
-    # rather than writing an indeterminate record. The lease is released
-    # first -- raising skips finish().
+    # A banked prepared-context fingerprint is a runtime-enforced selector
+    # dependency: refuse BEFORE setup when the live surface's uia_digest does
+    # not match the qualified baseline. This is a determinate refusal
+    # (nothing has mutated; no reconciliation is owed), so it raises rather
+    # than writing an indeterminate record. The lease is released first --
+    # raising skips finish(). The helper context is read ONCE here for 2b and
+    # 2c together: a banked digest OR any ui_language baseline row needs it.
     banked_digest = profile.fingerprint_for(PREPARED_CONTEXT_SELECTOR)
     banked_row = profile.surface_fingerprints.get(PREPARED_CONTEXT_SELECTOR)
-    if banked_digest is not None:
-        assert banked_row is not None  # fingerprint_for and the row agree by construction
+    gate_context: InteractiveContext | None = None
+    if banked_digest is not None or "ui_language" in profile.baseline_values:
         try:
             gate_context = _helper_context(transport)
         except ExecTransactionError as exc:
             if lease is not None and registry.is_active(lease):
                 registry.release(lease)
+            gate = "surface fingerprint gate" if banked_digest is not None else "baseline gate"
             raise ExecTransactionError(
-                f"surface fingerprint gate could not read the prepared context: {exc}"
+                f"{gate} could not read the prepared context: {exc}"
             ) from exc
+    if banked_digest is not None:
+        assert banked_row is not None  # fingerprint_for and the row agree by construction
         observed = (
             gate_context.foreground.fingerprint
             if gate_context is not None and gate_context.foreground is not None
@@ -837,6 +843,54 @@ def execute_transaction(
                 "prepared surface fingerprint mismatch: banked "
                 f"{banked_digest} from {banked_row.banked_from!r}, observed {observed!r}; "
                 "the estate's surface is not the qualified one, refusing before setup"
+            )
+
+    # -- 2c. baseline gate (banked [[baseline_values]] rows) ----------------------
+    # Each banked baseline value is observed at prepare and compared
+    # fail-closed, in declaration order, before setup: ui_language from the
+    # one 2b context read, binary_version through the helper's read-only
+    # file_version probe. Same determinate-refusal discipline as 2b --
+    # release the lease, raise, no record. No rows is the grandfathered
+    # state: no extra helper call, no notes.
+    for baseline in profile.baseline_values.values():
+        if baseline.dependency == "ui_language":
+            observed_language = gate_context.ui_language if gate_context is not None else None
+            if observed_language != baseline.value:
+                if lease is not None and registry.is_active(lease):
+                    registry.release(lease)
+                raise ExecTransactionError(
+                    f"ui_language mismatch: banked {baseline.value!r} from "
+                    f"{baseline.banked_from!r}, observed {observed_language!r}; the "
+                    "estate's UI language is not the qualified one, refusing before setup"
+                )
+            provenance.notes.append(
+                f"baseline gate: ui_language banked {baseline.value} "
+                f"observed {observed_language}"
+            )
+        else:
+            assert baseline.dependency == "binary_version"  # parse banks enforceable kinds only
+            path = baseline.path
+            assert path is not None  # required for binary_version at parse time
+            file_version, read_error = _helper_file_version(transport, path)
+            if file_version is None:
+                if lease is not None and registry.is_active(lease):
+                    registry.release(lease)
+                raise ExecTransactionError(
+                    f"binary_version unreadable: {path} (from {baseline.banked_from!r}): "
+                    f"{read_error or 'helper reported no file version'}; "
+                    "refusing before setup"
+                )
+            if file_version != baseline.value:
+                if lease is not None and registry.is_active(lease):
+                    registry.release(lease)
+                raise ExecTransactionError(
+                    f"binary_version mismatch ({path}): banked {baseline.value!r} from "
+                    f"{baseline.banked_from!r}, observed {file_version!r}; the estate's "
+                    "binary is not the qualified one, refusing before setup"
+                )
+            provenance.notes.append(
+                f"baseline gate: binary_version {path} banked {baseline.value} "
+                f"observed {file_version}"
             )
 
     # -- 3. setup (setup role: programmatic) -------------------------------------
@@ -1123,6 +1177,26 @@ def _helper_context(t: SessionTransport) -> InteractiveContext:
         foreground=foreground,
         ui_language=ui_language_raw if isinstance(ui_language_raw, str) else None,
     )
+
+
+def _helper_file_version(t: SessionTransport, path: str) -> tuple[str | None, str | None]:
+    """One read-only helper ``file_version`` read: ``(value, error)``.
+
+    Mirrors the helper's own honesty rule: an unreadable file is data, never
+    an exception -- ``value`` is None with the reason in ``error``, and the
+    baseline gate refuses fail-closed on that pair (an unobserved baseline is
+    never a pass).
+    """
+    result = t.helper(
+        {"action": "file_version", "path": path}, timeout=_HELPER_FILE_VERSION_TIMEOUT_S
+    )
+    if result.outcome != "ok":
+        return None, result.error or "helper file_version read failed"
+    raw = result.payload.get("file_version")
+    value = raw if isinstance(raw, str) and raw else None
+    raw_error = result.payload.get("error")
+    error = raw_error if isinstance(raw_error, str) else None
+    return value, error
 
 
 def _cleanup(
