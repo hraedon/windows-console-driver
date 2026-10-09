@@ -17,8 +17,8 @@ only. It returns facts and injects input; it never interprets either.
 ```console
 C:\> echo {"action":"context"} | powershell -NoProfile -File helper.ps1
 {"action":"context","ok":true,"session_id":2,"user":"LAB\\alice",
- "desktop":"Default","foreground":{"hwnd":943458438,"pid":25296,
- "process_name":"ZCode","title":"ZCode","class":"Chrome_WidgetWin_1",
+ "ui_language":"en-US","desktop":"Default","foreground":{"hwnd":943458438,
+ "pid":25296,"process_name":"ZCode","title":"ZCode","class":"Chrome_WidgetWin_1",
  "rect":{...},"uia_digest":"856262..."},"notes":[]}
 ```
 
@@ -29,6 +29,7 @@ Actions and their requests (response envelopes are locked key-for-key by
 | Action | Request (beyond `"action"`) |
 |---|---|
 | `context` | none |
+| `file_version` | `path` (the file whose version resource is read; unreadable is `file_version: null` + `error`, never a throw) |
 | `uia_dump` | `depth` (1..12, default 4) |
 | `screenshot` | `full` (bool; whole virtual screen instead of the foreground rect) |
 | `key` | `text` and/or `vks: [{vk, modifiers: [ctrl\|alt\|shift\|win]}]` |
