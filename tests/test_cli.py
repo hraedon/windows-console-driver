@@ -11,8 +11,8 @@ observable contract without Windows and without any real session:
   provenance}`` on stdout, and nothing else), the ``--capability``/``--arg``
   controller-direct mode with JSON-typed argument binding, ``--out``
   mirroring, a non-zero exit ONLY for plumbing failures (an indeterminate
-  record is a result, not an error), and clean ``plan error`` exits for
-  malformed stdin plans;
+  record is a result, not an error), and clean ``plan error``/``profile
+  error`` exits for malformed stdin plans and surface profiles;
 - ``ensure-console``/``console-state``: the emitted payload shapes, the
   locked exit code 3, the ``--no-unlock``/``--audit`` routing, and transport
   teardown on every path;
@@ -40,6 +40,7 @@ from wcd.console_ops import ConsoleState, LockAudit, RebootReadiness
 from wcd.estate import EstateConfig
 from wcd.estate_canary import CanaryCheck, CanaryReport
 from wcd.exec_transaction import ExecTransactionError
+from wcd.profiles import ProfileInvalid
 
 # Synthetic-estate identifiers only: zz- placeholders per the project
 # convention. Nothing here names a real host, domain, user, or path, and the
@@ -776,6 +777,35 @@ def test_a_determinate_pre_setup_refusal_exits_2_with_no_record(
     assert "transaction error" in captured.err
     assert "fingerprint mismatch" in captured.err
     assert captured.out == ""
+
+
+def test_a_malformed_surface_profile_is_a_one_line_profile_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """A ProfileInvalid from the executor is an operator error, not a traceback.
+
+    load_profile refuses before any lease or console work, so a malformed
+    surface profile is the same determinate refusal class as the pre-setup
+    gate above: one precise ``profile error:`` line on stderr, exit 2, no
+    record emitted -- never a raw Python traceback.
+    """
+    monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
+    built = _install_transport(monkeypatch)
+
+    def refuse(**_kwargs: object) -> dict[str, object]:
+        raise ProfileInvalid("unknown profile tables/keys: ['zz_typo']")
+
+    monkeypatch.setattr(cli, "execute_transaction", refuse)
+    _stdin(monkeypatch, _stdin_plan())
+
+    code = cli.main(["--estate", str(_estate_file(tmp_path)), "exec-transaction"])
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "profile error" in captured.err
+    assert "zz_typo" in captured.err
+    assert captured.out == ""
+    assert built and built[0].closed  # the refusal path still tears down
 
 
 # --- exec-transaction: the plan/estate target agreement (record-schema v2) ------------
