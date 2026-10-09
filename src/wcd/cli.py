@@ -42,6 +42,7 @@ from .capability_schema import (
 from .estate import EstateConfig, EstateError, load_estate
 from .estate_canary import run_estate_canary
 from .exec_transaction import ExecTransactionError, TransactionPaths, execute_transaction
+from .profiles import ProfileInvalid
 from .record_schema import RecordSchemaError, validate_record
 from .transport import SessionTransport, TransportError, default_repl_path
 
@@ -298,6 +299,13 @@ def main(argv: list[str] | None = None) -> int:
             # gate): nothing mutated, no record is owed, and the caller --
             # WEL included -- reads exit 2 as a determinate refusal.
             print(f"transaction error: {exc}", file=sys.stderr)
+            return 2
+        except ProfileInvalid as exc:
+            # A malformed surface profile is the same class of determinate
+            # operator error: load_profile refuses before any lease or
+            # console work, so nothing mutated and no record is owed -- one
+            # line and exit 2, never a raw traceback.
+            print(f"profile error: {exc}", file=sys.stderr)
             return 2
         finally:
             transport.close()
