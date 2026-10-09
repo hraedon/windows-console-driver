@@ -201,23 +201,22 @@ Rules:
 ### Compatibility predicate
 
 Qualification is intended to bind to **observed surface properties**, not
-administrative version labels. Since WI-L5, one declared dependency is
-runtime-enforced: the prepared surface's `uia_digest` — the dialog/control
-tree fingerprint the helper's context snapshot computes — is compared at
-prepare against the digest banked in the profile, and a mismatch refuses the
-capability before setup runs (exit 2, nothing attempted). Qualified profiles
-bank that fingerprint; a profile that declares none is grandfathered and
-enforces nothing, so declaring a fingerprint is the deliberate act of turning
-the gate on.
+administrative version labels. Enforced at prepare, fail-closed before setup
+(exit 2, nothing attempted): the prepared surface's `uia_digest` — the
+dialog/control tree fingerprint the helper's context snapshot computes —
+compared against the digest banked in the profile's
+`[[surface_fingerprints]]` (WI-L5), plus each banked `[[baseline_values]]`
+row: `ui_language` (read from that same prepare context) or `binary_version`
+(the version resource of the file the row names). A mismatch — or a baseline
+that cannot be observed — refuses the capability. A profile that banks no
+row is grandfathered and enforces nothing, so banking a value is the
+deliberate act of turning its gate on.
 
 The remaining dependency rows are still metadata, not an enforced
-compatibility predicate:
-
-- **strong**: snap-in/binary module versions and content hashes.
-- **strong-if-used**: UI language (binds only if selectors contain text);
-  DPI/resolution (binds only coordinate selectors); theme (binds only visual
-  matching).
-- **provenance**: OS build — recorded, not inherently invalidating.
+compatibility predicate: per-dialog fingerprints and content hashes
+(**strong**; no dialog fingerprint is banked yet), DPI/resolution and theme
+(**strong-if-used**: they bind only coordinate or visual matching), and OS
+build (**provenance** — recorded, not inherently invalidating).
 
 Once those baselines are captured and compared, a mismatch on a strong
 dependency must refuse the capability. A mismatch on a weak one must degrade
@@ -355,9 +354,11 @@ relearned from WEL).
   classes, channel contracts, lease/context/recovery guards, and independent
   envelopes; record v2 binds each emitted record to the exact capability
   content that produced it (and refuses a plan whose machine/identity
-  disagrees with the estate's own target), and the prepared-surface
-  fingerprint gate (WI-L5) is enforced at prepare. The remaining
-  compatibility-baseline rows across revisions remain future work.
+  disagrees with the estate's own target), and the prepare gates are enforced
+  before setup: the prepared-surface fingerprint (WI-L5) plus any banked
+  `[[baseline_values]]` row (`ui_language`, `binary_version`). The remaining
+  compatibility-baseline rows (per-dialog fingerprints, DPI/theme/OS build)
+  remain future work.
 - **Driver development** — raw inspect/input allowed, but only when the
   evidence runtime proves the target is a disposable estate with a
   demonstrated exact-baseline recovery route (checkpoint). A confirmation

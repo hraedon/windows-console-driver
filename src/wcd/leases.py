@@ -303,6 +303,12 @@ class InteractiveContext:
     user: str
     desktop: str | None
     foreground: ForegroundContext | None
+    # Session UI language (e.g. "en-US"), read by the executor's baseline
+    # gate. Deliberately NOT part of the commit-point context match: a banked
+    # ui_language baseline is compared once at prepare (2c), not re-asserted
+    # per crossing, so the field defaults to None for every caller that does
+    # not care (and for a helper too old to report it).
+    ui_language: str | None = None
 
 
 @dataclass(frozen=True)

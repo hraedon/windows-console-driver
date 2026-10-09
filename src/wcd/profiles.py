@@ -20,9 +20,10 @@ commit point must be replayable from scratch (rule 3). The profile also
    dependencies are now enforced for the prepared surface: a
    ``[[surface_fingerprints]]`` row banks the qualified ``uia_digest`` for a
    selector (or the reserved ``prepared_context`` pseudo-selector), and the
-   executor refuses, before setup, when the live digest does not match.
-   Dependencies other than the banked prepared-context fingerprint --
-   ``ui_language``, ``binary_version``, and per-dialog fingerprints -- remain
+   executor refuses, before setup, when the live digest does not match. A
+   ``[[baseline_values]]`` row banks one observable dependency
+   (``ui_language`` or ``binary_version``) the same way. Per-dialog
+   fingerprints and ``dpi``/``theme``/``os_build`` remain
    declared-but-not-runtime-enforced.
 
 The shipped ``profiles/gpmc-server2025.toml`` uses the typed, closed TOML
@@ -55,6 +56,13 @@ shape this module validates::
         selector = "prepared_context"
         uia_digest = "<64 lowercase hex>"
         banked_from = "docs/estate-window-N/records/<record>.json"
+
+        [[baseline_values]]
+        # banked at qualification time; enforced at prepare (fail closed)
+        dependency = "binary_version"   # or "ui_language" (no path then)
+        value = "10.0.26100.1"
+        banked_from = "docs/estate-window-N/records/<record>.json"
+        path = "C:\\Windows\\System32\\mmc.exe"
 
 The schema is closed: unknown keys are :class:`ProfileInvalid`, because a
 profile that silently ignores a misspelled section classifies nothing. The
@@ -94,6 +102,16 @@ DEPENDENCY_NAMES: Final[frozenset[str]] = frozenset(
 )
 STRENGTHS: Final[frozenset[str]] = frozenset({"strong", "strong_if_used", "provenance"})
 
+# Only dependency kinds the executor can OBSERVE at prepare (2b/2c) may bank a
+# baseline value: the helper context reports the session UI language, and a
+# file_version read resolves a binary's version resource. Banking a value for
+# a kind the executor cannot observe would be a lie the gate could never
+# check, so parse refuses it -- dpi/theme/os_build (and per-dialog
+# fingerprints) remain declared-only rows in selector_dependencies.
+ENFORCEABLE_DEPENDENCIES: Final[frozenset[str]] = frozenset(
+    {"ui_language", "binary_version"}
+)
+
 # The one pseudo-selector a surface fingerprint may name that is not a
 # profile-declared selector: the pre-gesture desktop the executor's prepare
 # phase asserts (contract section 7). Banking it gates the whole surface up
@@ -125,6 +143,20 @@ class SurfaceFingerprint:
 
 
 @dataclass(frozen=True)
+class BaselineValue:
+    """One banked enforceable dependency value, checked at prepare (fail closed).
+
+    ``path`` is required for ``binary_version`` (the file the version resource
+    is read from) and must be ``None`` for every other dependency.
+    """
+
+    dependency: str
+    value: str
+    banked_from: str
+    path: str | None
+
+
+@dataclass(frozen=True)
 class DriverProfile:
     """A loaded, validated driver profile.
 
@@ -148,6 +180,7 @@ class DriverProfile:
     selector_dependencies: tuple[SelectorDependency, ...]
     action_notes: Mapping[str, str]
     surface_fingerprints: Mapping[str, SurfaceFingerprint] = MappingProxyType({})
+    baseline_values: Mapping[str, BaselineValue] = MappingProxyType({})
 
     def classification(self, action: str) -> ActionClass | None:
         """The declared class of ``action``, or ``None`` when undeclared."""
@@ -198,6 +231,7 @@ def parse_profile(data: Mapping[str, object]) -> DriverProfile:
         "selectors",
         "selector_dependencies",
         "surface_fingerprints",
+        "baseline_values",
     }
     if unknown_tables:
         raise ProfileInvalid(f"unknown profile tables/keys: {sorted(unknown_tables)!r}")
@@ -297,6 +331,20 @@ def parse_profile(data: Mapping[str, object]) -> DriverProfile:
                 )
             fingerprints[row.selector] = row
 
+    baselines: dict[str, BaselineValue] = {}
+    baselines_raw = data.get("baseline_values")
+    if baselines_raw is not None:
+        if not isinstance(baselines_raw, list):
+            raise ProfileInvalid("baseline_values must be an array of tables")
+        for index, entry in enumerate(baselines_raw):
+            baseline = _parse_baseline_row(entry, index)
+            if baseline.dependency in baselines:
+                raise ProfileInvalid(
+                    f"baseline_values[{index}] banks dependency {baseline.dependency!r} "
+                    "a second time; one baseline value per dependency"
+                )
+            baselines[baseline.dependency] = baseline
+
     return DriverProfile(
         surface=surface,
         description=description,
@@ -308,6 +356,7 @@ def parse_profile(data: Mapping[str, object]) -> DriverProfile:
         selector_dependencies=tuple(dependencies),
         action_notes=MappingProxyType(action_notes),
         surface_fingerprints=MappingProxyType(fingerprints),
+        baseline_values=MappingProxyType(baselines),
     )
 
 
@@ -385,6 +434,54 @@ def _parse_fingerprint_row(
             "lowercase hex characters"
         )
     return SurfaceFingerprint(selector=selector, uia_digest=digest, banked_from=banked_from)
+
+
+def _parse_baseline_row(entry: object, index: int) -> BaselineValue:
+    row = _require_table(entry, f"baseline_values[{index}]")
+    unknown_row_keys = set(row) - {"dependency", "value", "banked_from", "path"}
+    if unknown_row_keys:
+        raise ProfileInvalid(
+            f"baseline_values[{index}] has unknown keys: {sorted(unknown_row_keys)!r}"
+        )
+    dependency = row.get("dependency")
+    value = row.get("value")
+    banked_from = row.get("banked_from")
+    for field_name, field_value in (
+        ("dependency", dependency),
+        ("value", value),
+        ("banked_from", banked_from),
+    ):
+        if not isinstance(field_value, str) or not field_value.strip():
+            raise ProfileInvalid(
+                f"baseline_values[{index}].{field_name} must be a non-blank string"
+            )
+    assert isinstance(dependency, str) and isinstance(value, str)
+    assert isinstance(banked_from, str)
+    if dependency not in ENFORCEABLE_DEPENDENCIES:
+        raise ProfileInvalid(
+            f"baseline_values[{index}] dependency {dependency!r} is not enforceable "
+            f"at prepare; expected one of {sorted(ENFORCEABLE_DEPENDENCIES)} "
+            "(other dependency kinds remain declared-only rows in "
+            "selector_dependencies)"
+        )
+    path = row.get("path")
+    if dependency == "binary_version":
+        if not isinstance(path, str) or not path.strip():
+            raise ProfileInvalid(
+                f"baseline_values[{index}].path is required for binary_version "
+                "and must be a non-blank string"
+            )
+    elif path is not None:
+        raise ProfileInvalid(
+            f"baseline_values[{index}].path is forbidden for dependencies other "
+            "than binary_version"
+        )
+    return BaselineValue(
+        dependency=dependency,
+        value=value,
+        banked_from=banked_from,
+        path=path if isinstance(path, str) else None,
+    )
 
 
 def _table(data: Mapping[str, object], key: str, *, required: bool) -> Mapping[str, object]:

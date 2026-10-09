@@ -92,8 +92,12 @@ class FakeTransport:
         # context drift (an RDP session switch, a resolution change, ...).
         self.session_id = 1
         self.user = "zz-lab-user"
+        self.ui_language = "en-US"
         self.desktop = "Default"
         self.digest = "zz-surface-digest-1"
+        # The scripted baseline-gate facts (file_version probe).
+        self.file_version: str | None = "10.0.26100.1"
+        self.file_version_error: str | None = None
         self.gpo_create_response = f"guid={GPO_GUID}\ndomain=zzlab.invalid\n"
         self.migtable_responder: ScriptResponder = _migtable_absent
         self.requery_response = "remaining=0\n"
@@ -127,6 +131,7 @@ class FakeTransport:
             "key": lambda request: {"injected_events": 1},
             "keys": lambda request: {"injected_events": 3},
             "screenshot": lambda request: {"png_base64": _b64(b"zz-png")},
+            "file_version": self._file_version_payload,
         }
         self.helper_errors: dict[str, str] = {}
 
@@ -184,12 +189,23 @@ class FakeTransport:
     def _gpo_create(self, script: str, args: list[object]) -> str:
         return self.gpo_create_response
 
+    def _file_version_payload(self, request: dict[str, object]) -> dict[str, object]:
+        return {
+            "ok": True,
+            "action": "file_version",
+            "path": request.get("path"),
+            "file_version": self.file_version,
+            "error": self.file_version_error,
+            "notes": [],
+        }
+
     def _context_payload(self) -> dict[str, object]:
         return {
             "ok": True,
             "action": "context",
             "session_id": self.session_id,
             "user": self.user,
+            "ui_language": self.ui_language,
             "desktop": self.desktop,
             "foreground": {
                 "hwnd": 4242,
@@ -1171,6 +1187,262 @@ def test_unreadable_context_at_the_gate_is_a_refusal_not_a_pass(tmp_path: Path) 
             paths=_banked_profile_repo(tmp_path, sheet, "a" * 64),
             transport=transport,  # type: ignore[arg-type]
         )
+
+
+# --- banked baseline_values: the prepare gate (2c) --------------------------------
+
+
+def _baseline_repo(
+    tmp_path: Path, sheet: dict[str, object], baseline_toml: str
+) -> TransactionPaths:
+    paths = _make_repo(tmp_path, sheet)
+    (paths.profiles / "zz-fake-surface.toml").write_text(
+        _PROFILE_TOML + baseline_toml, encoding="utf-8"
+    )
+    return paths
+
+
+_UI_LANGUAGE_ROW = (
+    "[[baseline_values]]\n"
+    'dependency = "ui_language"\n'
+    'value = "en-US"\n'
+    'banked_from = "zz: synthetic bank"\n'
+)
+_BINARY_VERSION_ROW = (
+    "[[baseline_values]]\n"
+    'dependency = "binary_version"\n'
+    'value = "10.0.26100.1"\n'
+    'banked_from = "zz: synthetic bank"\n'
+    "path = 'C:\\lab\\wcd\\mmc.exe'\n"
+)
+
+
+def _execute_with(
+    tmp_path: Path,
+    sheet_name: str,
+    transport: FakeTransport,
+    paths: TransactionPaths,
+) -> dict[str, object]:
+    return execute_transaction(
+        capability=_capability(sheet_name, _SATISFIED_ENVELOPE),
+        arguments={"gpo_name": "zz-studio-evidence-t"},
+        estate=_estate(),
+        paths=paths,
+        transport=transport,  # type: ignore[arg-type]
+    )
+
+
+def test_a_matching_ui_language_baseline_proceeds_and_appends_the_note(
+    tmp_path: Path,
+) -> None:
+    transport = FakeTransport()
+    transport.ui_language = "en-US"
+    sheet = _sheet("zz_lang_match", _commit_crossing_gesture())
+    record = _execute_with(
+        tmp_path, "zz_lang_match", transport, _baseline_repo(tmp_path, sheet, _UI_LANGUAGE_ROW)
+    )
+    assert record["state"] == "verified"
+    assert any(
+        str(note) == "baseline gate: ui_language banked en-US observed en-US"
+        for note in record["provenance"]["notes"]  # type: ignore[index]
+    )
+
+
+def test_ui_language_mismatch_refuses_before_setup_and_releases_the_lease(
+    tmp_path: Path,
+) -> None:
+    """The baseline gate is a determinate refusal exactly like 2b: the exact
+    message, raised before any setup gesture, lease released, no record."""
+    transport = FakeTransport()
+    transport.ui_language = "de-DE"
+    registry = _RecordingRegistry()
+    sheet = _sheet("zz_lang_mismatch", _commit_crossing_gesture())
+
+    with pytest.raises(ExecTransactionError, match="ui_language mismatch") as excinfo:
+        execute_transaction(
+            capability=_capability("zz_lang_mismatch", _SATISFIED_ENVELOPE),
+            arguments={"gpo_name": "zz-studio-evidence-t"},
+            estate=_estate(),
+            paths=_baseline_repo(tmp_path, sheet, _UI_LANGUAGE_ROW),
+            transport=transport,  # type: ignore[arg-type]
+            lease_registry=registry,  # type: ignore[arg-type]
+        )
+
+    assert str(excinfo.value) == (
+        "ui_language mismatch: banked 'en-US' from 'zz: synthetic bank', "
+        "observed 'de-DE'; the estate's UI language is not the qualified one, "
+        "refusing before setup"
+    )
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
+    assert registry.leases and registry.released == registry.leases
+
+
+def test_an_unobserved_ui_language_is_a_mismatch_never_a_pass(tmp_path: Path) -> None:
+    """Fail-closed: a helper too old to report ui_language answers None, and a
+    banked language baseline must refuse on that, not pass it."""
+    transport = FakeTransport()
+    transport.ui_language = None
+    sheet = _sheet("zz_lang_unobserved", _commit_crossing_gesture())
+
+    with pytest.raises(ExecTransactionError, match="ui_language mismatch") as excinfo:
+        _execute_with(
+            tmp_path,
+            "zz_lang_unobserved",
+            transport,
+            _baseline_repo(tmp_path, sheet, _UI_LANGUAGE_ROW),
+        )
+
+    assert str(excinfo.value).endswith(
+        "observed None; the estate's UI language is not the qualified one, "
+        "refusing before setup"
+    )
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
+
+
+def test_a_matching_binary_version_baseline_proceeds_and_appends_the_note(
+    tmp_path: Path,
+) -> None:
+    transport = FakeTransport()
+    sheet = _sheet("zz_bin_match", _commit_crossing_gesture())
+    record = _execute_with(
+        tmp_path, "zz_bin_match", transport, _baseline_repo(tmp_path, sheet, _BINARY_VERSION_ROW)
+    )
+    assert record["state"] == "verified"
+    version_calls = [call for call in transport.helper_calls if call["action"] == "file_version"]
+    assert version_calls == [{"action": "file_version", "path": "C:\\lab\\wcd\\mmc.exe"}]
+    assert any(
+        str(note)
+        == "baseline gate: binary_version C:\\lab\\wcd\\mmc.exe banked 10.0.26100.1 "
+        "observed 10.0.26100.1"
+        for note in record["provenance"]["notes"]  # type: ignore[index]
+    )
+
+
+def test_binary_version_mismatch_refuses_before_setup_and_releases_the_lease(
+    tmp_path: Path,
+) -> None:
+    transport = FakeTransport()
+    transport.file_version = "5.6.7.8"
+    registry = _RecordingRegistry()
+    sheet = _sheet("zz_bin_mismatch", _commit_crossing_gesture())
+
+    with pytest.raises(ExecTransactionError, match="binary_version mismatch") as excinfo:
+        execute_transaction(
+            capability=_capability("zz_bin_mismatch", _SATISFIED_ENVELOPE),
+            arguments={"gpo_name": "zz-studio-evidence-t"},
+            estate=_estate(),
+            paths=_baseline_repo(tmp_path, sheet, _BINARY_VERSION_ROW),
+            transport=transport,  # type: ignore[arg-type]
+            lease_registry=registry,  # type: ignore[arg-type]
+        )
+
+    assert str(excinfo.value) == (
+        "binary_version mismatch (C:\\lab\\wcd\\mmc.exe): banked '10.0.26100.1' "
+        "from 'zz: synthetic bank', observed '5.6.7.8'; the estate's binary is "
+        "not the qualified one, refusing before setup"
+    )
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
+    assert registry.leases and registry.released == registry.leases
+
+
+def test_an_unreadable_binary_version_refuses_before_setup(tmp_path: Path) -> None:
+    """The helper's honest unreadable shape (ok + null + reason) is a refusal,
+    and so is a helper that answers an outright error."""
+    transport = FakeTransport()
+    transport.file_version = None
+    transport.file_version_error = "zz: no FileVersion resource on C:\\lab\\wcd\\mmc.exe"
+    sheet = _sheet("zz_bin_unreadable", _commit_crossing_gesture())
+
+    with pytest.raises(ExecTransactionError, match="binary_version unreadable") as excinfo:
+        _execute_with(
+            tmp_path,
+            "zz_bin_unreadable",
+            transport,
+            _baseline_repo(tmp_path, sheet, _BINARY_VERSION_ROW),
+        )
+
+    assert str(excinfo.value) == (
+        "binary_version unreadable: C:\\lab\\wcd\\mmc.exe (from 'zz: synthetic bank'): "
+        "zz: no FileVersion resource on C:\\lab\\wcd\\mmc.exe; refusing before setup"
+    )
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
+
+
+def test_a_wedged_file_version_helper_is_unreadable_not_a_pass(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    transport.helper_errors["file_version"] = "zz: helper wedged"
+    sheet = _sheet("zz_bin_wedged", _commit_crossing_gesture())
+
+    with pytest.raises(ExecTransactionError, match="binary_version unreadable") as excinfo:
+        _execute_with(
+            tmp_path,
+            "zz_bin_wedged",
+            transport,
+            _baseline_repo(tmp_path, sheet, _BINARY_VERSION_ROW),
+        )
+
+    assert "zz: helper wedged" in str(excinfo.value)
+
+
+def test_unreadable_context_at_the_baseline_gate_is_a_refusal_not_a_pass(
+    tmp_path: Path,
+) -> None:
+    """A ui_language row with no banked digest still reads the context once;
+    an unreadable one refuses under the baseline gate's own name."""
+
+    class _ContextDiesAfterConsoleCheck(FakeTransport):
+        """Answers ensure-console's probe, then wedges for the gate's read."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.context_calls = 0
+
+        def helper(
+            self,
+            request: dict[str, object],
+            *,
+            timeout: float = 200.0,
+            timeout_s: float | None = None,
+        ) -> HelperResult:
+            if request.get("action") == "context":
+                self.context_calls += 1
+                if self.context_calls >= 2:
+                    self.helper_errors["context"] = "zz: helper wedged"
+            return super().helper(request, timeout=timeout, timeout_s=timeout_s)
+
+    transport = _ContextDiesAfterConsoleCheck()
+    sheet = _sheet("zz_base_unreadable", _commit_crossing_gesture())
+
+    with pytest.raises(
+        ExecTransactionError, match="baseline gate could not read the prepared context"
+    ):
+        _execute_with(
+            tmp_path,
+            "zz_base_unreadable",
+            transport,
+            _baseline_repo(tmp_path, sheet, _UI_LANGUAGE_ROW),
+        )
+
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
+
+
+def test_no_baseline_rows_means_no_file_version_probe_and_no_gate_notes(
+    tmp_path: Path,
+) -> None:
+    """Grandfathered: a profile with no [[baseline_values]] rows makes no
+    file_version helper call and records no baseline-gate note."""
+    transport = FakeTransport()
+    record = _run(
+        tmp_path,
+        _sheet("zz_no_baseline", _commit_crossing_gesture()),
+        _SATISFIED_ENVELOPE,
+        transport,
+    )
+    assert record["state"] == "verified"
+    assert not [call for call in transport.helper_calls if call["action"] == "file_version"]
+    assert not any(
+        "baseline gate:" in str(note) for note in record["provenance"]["notes"]  # type: ignore[index]
+    )
 
 
 # --- capability-spec binding (record-schema v2) ---------------------------------

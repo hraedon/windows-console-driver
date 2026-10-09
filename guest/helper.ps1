@@ -14,9 +14,12 @@
 
     Actions:
 
-    context          session id, user, desktop, and the foreground window with
-                     its fingerprint {hwnd, pid, process_name, title, class,
-                     rect, uia_digest}.
+    context          session id, user, UI language, desktop, and the
+                     foreground window with its fingerprint {hwnd, pid,
+                     process_name, title, class, rect, uia_digest}.
+    file_version     the FileVersion string of the file at "path" (read-only
+                     probe; null plus the reason when unreadable -- never a
+                     throw).
     uia_dump         UIA element tree of the foreground window, pre-order
                      (document order), to "depth" (default 4): {elements:
                      [{depth, name, class, automation_id, control_type,
@@ -1237,6 +1240,7 @@ function Invoke-Dispatch {
         'context' {
             $session = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
             $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            $uiLanguage = (Get-UICulture).Name
             $fgHwnd = [WcdNative]::GetForegroundWindow()
             $desktop = $null
             if ($fgHwnd -ne [IntPtr]::Zero) { $desktop = Get-DesktopName -Hwnd $fgHwnd }
@@ -1248,8 +1252,44 @@ function Invoke-Dispatch {
                     action = 'context'
                     session_id = $session
                     user = $user
+                    ui_language = $uiLanguage
                     desktop = $desktop
                     foreground = $foreground
+                    notes = @($script:notes)
+                }
+            }
+        }
+        'file_version' {
+            # Read-only version-resource probe (the executor's baseline gate
+            # input). An unreadable file is DATA, never a throw: the helper
+            # answers ok with file_version null plus the reason, and the
+            # fail-closed refusal on an unreadable baseline is the
+            # controller's decision.
+            $path = Get-Prop -Object $Request -Name 'path'
+            if ($path -isnot [string] -or "$path" -eq '') {
+                throw 'file_version: "path" must be a non-empty string'
+            }
+            $fileVersion = $null
+            $errorText = $null
+            try {
+                $item = Get-Item -LiteralPath $path -ErrorAction Stop
+                $rawVersion = $item.VersionInfo.FileVersion
+                if ("$rawVersion" -eq '') {
+                    $errorText = "no FileVersion resource on $path"
+                } else {
+                    $fileVersion = "$rawVersion"
+                }
+            } catch {
+                $errorText = "$($_.Exception.Message)"
+            }
+            return @{
+                exit = 0
+                payload = @{
+                    ok = $true
+                    action = 'file_version'
+                    path = $path
+                    file_version = $fileVersion
+                    error = $errorText
                     notes = @($script:notes)
                 }
             }
@@ -1416,7 +1456,7 @@ function Invoke-Dispatch {
         'wait_foreground' { return Invoke-WaitForeground -Request $Request }
         default {
             throw ("unknown action '" + $action +
-                "'; expected one of: context, uia_dump, screenshot, key, mouse, wait_foreground")
+                "'; expected one of: context, file_version, uia_dump, screenshot, key, mouse, wait_foreground")
         }
     }
 }
