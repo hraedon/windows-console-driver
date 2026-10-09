@@ -154,6 +154,49 @@ def test_run_sheet_loader_rejects_unknown_phase(tmp_path: Path) -> None:
         raise AssertionError("misspelled phase was accepted")
 
 
+def test_action_vocabulary_dispatch_and_orientation_tables_agree() -> None:
+    """The run-sheet action vocabulary has exactly one wiring: every action
+    the loader accepts has a dispatch row (and no row names an action the
+    loader would refuse), and every orientation requirement is keyed by a
+    vocabulary action and names only channels the schema's orientation enum
+    declares. The module refuses import on dispatch drift; this pins the
+    orientation table too, because its drift would surface only as a wrong
+    channel-contract refusal on the next capability."""
+    from wcd.runsheets import (
+        _GESTURE_ACTIONS,
+        _ORIENTATION_CHANNELS_BY_ACTION,
+        _STEP_HANDLERS,
+    )
+
+    assert set(_STEP_HANDLERS) == set(_GESTURE_ACTIONS)
+    assert set(_ORIENTATION_CHANNELS_BY_ACTION) <= set(_GESTURE_ACTIONS)
+
+    schema = json.loads(
+        (REPO_ROOT / "docs" / "capability-schema-v0.json").read_text(encoding="utf-8")
+    )
+    orientation_enum = set(schema["$defs"]["orientation-channels"]["items"]["enum"])
+    for action, channels in sorted(_ORIENTATION_CHANNELS_BY_ACTION.items()):
+        assert channels <= orientation_enum, (
+            f"{action} requires channels outside the schema's orientation enum: "
+            f"{sorted(channels - orientation_enum)}"
+        )
+
+
+def test_ui_operation_channels_stay_inside_the_schema_operation_enum() -> None:
+    """The UI-operation gate names a subset of the schema's operation channels
+    (every *_ui channel; gpmc_com stays out because it is the programmatic
+    alternative, not a UI surface). A channel added to one side only would
+    make the gate refuse (or wave through) capabilities the schema just
+    accepted."""
+    from wcd.runsheets import _UI_OPERATION_CHANNELS
+
+    schema = json.loads(
+        (REPO_ROOT / "docs" / "capability-schema-v0.json").read_text(encoding="utf-8")
+    )
+    operation_enum = set(schema["$defs"]["operation-channels"]["items"]["enum"])
+    assert operation_enum >= _UI_OPERATION_CHANNELS
+
+
 def test_gesture_script_needs_explicit_allowed_com_channel(tmp_path: Path) -> None:
     path = tmp_path / "bad-channel.json"
     path.write_text(

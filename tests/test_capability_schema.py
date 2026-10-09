@@ -9,6 +9,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from wcd.exec_transaction import _OBSERVER_REGISTRY
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = REPO_ROOT / "docs" / "capability-schema-v0.json"
 CAPABILITIES = tuple(sorted((REPO_ROOT / "capabilities").glob("*.json")))
@@ -86,3 +88,17 @@ def test_schema_rejects_a_clause_free_envelope() -> None:
     capability["envelope"]["forbid"] = []
     capability["envelope"]["derive"] = []
     _assert_invalid(capability)
+
+
+def test_schema_observer_enum_matches_the_executor_registry() -> None:
+    """The schema's observer enum and the executor's collector registry are the
+    same vocabulary: the schema refuses a fact plan naming an observer the
+    registry cannot answer, and the registry has no name the schema forbids.
+    Before the registry this agreement lived in an if/elif chain, and drift
+    failed only mid-transaction; now it fails here, before any window."""
+    schema = _read(SCHEMA_PATH)
+    enum = schema["$defs"]["observer"]["properties"]["name"]["enum"]
+    assert sorted(_OBSERVER_REGISTRY) == sorted(enum), (
+        "observer vocabulary drift between docs/capability-schema-v0.json and "
+        f"wcd.exec_transaction: {sorted(set(enum) ^ set(_OBSERVER_REGISTRY))}"
+    )

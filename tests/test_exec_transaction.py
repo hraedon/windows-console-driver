@@ -1270,3 +1270,13 @@ def test_capability_text_without_a_usable_revision_refuses_before_transport(
     assert not transport.guest_calls
     assert not transport.host_calls
     assert not transport.helper_calls
+
+
+def test_unknown_observer_name_is_refused_with_the_registry_named() -> None:
+    """The observer registry is the whole vocabulary: a name outside it has no
+    collector, and the refusal names the unknown observer (the same message
+    the pre-registry if/elif chain raised, so nothing downstream changes)."""
+    from wcd.exec_transaction import _named_collector
+
+    with pytest.raises(ExecTransactionError, match="unknown observer 'zz_no_such'"):
+        _named_collector("zz_no_such")
