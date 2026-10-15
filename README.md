@@ -1,5 +1,9 @@
 # windows-console-driver
 
+The [IIS evidence tools](docs/iis-evidence-20261014/NOTES.md) read collected
+applicationHost.config and history files, keeping committed and effective values
+distinct. Guarded IIS writes use WEL's verified-session recipe (R3 option b).
+
 Transactionally verified actuation for legacy Windows console surfaces — GPMC,
 MMC snap-ins, legacy Win32 property sheets. The component behind
 `windows-evidence-lab`'s `interactive_transaction` operation.
