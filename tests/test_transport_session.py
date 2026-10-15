@@ -26,6 +26,7 @@ Coverage:
 import json
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -182,9 +183,32 @@ def test_request_round_trip(transport: SessionTransport) -> None:
     assert response["stdout"] == "hello"
 
 
+def _await_stderr_line(
+    transport: SessionTransport, needle: str, *, deadline_s: float = 10.0
+) -> None:
+    """Poll the stderr ring until ``needle`` lands, with a deadline.
+
+    The REPL's stderr travels a SEPARATE pipe drained by a background
+    thread, so a line the child wrote before its response can still reach
+    the ring after ``request()`` returned (stdout delivery does not order
+    the stderr reader). Asserting once therefore races the scheduler --
+    the once-per-thousand CI flake this helper exists to end. On expiry the
+    failure carries the ring's current contents so a genuine miss stays
+    diagnosable.
+    """
+    deadline = time.monotonic() + deadline_s
+    while True:
+        tail = transport.stderr_tail()
+        if needle in tail:
+            return
+        if time.monotonic() >= deadline:
+            pytest.fail(f"{needle!r} never reached the stderr ring; tail was:\n{tail}")
+        time.sleep(0.01)
+
+
 def test_stderr_ring_collects_repl_stderr(transport: SessionTransport) -> None:
     transport.request("stderr_note", timeout=10, note="wcd-fake-diagnostic")
-    assert "wcd-fake-diagnostic" in transport.stderr_tail()
+    _await_stderr_line(transport, "wcd-fake-diagnostic")
 
 
 def test_spawn_uses_pwsh_flags_and_never_puts_the_password_on_argv(
