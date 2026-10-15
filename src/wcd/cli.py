@@ -42,6 +42,7 @@ from .capability_schema import (
 from .estate import EstateConfig, EstateError, load_estate
 from .estate_canary import run_estate_canary
 from .exec_transaction import ExecTransactionError, TransactionPaths, execute_transaction
+from .iis_evidence import IisEvidenceError, config_history, read_config
 from .record_schema import RecordSchemaError, validate_record
 from .transport import SessionTransport, TransportError, default_repl_path
 
@@ -89,6 +90,13 @@ def _build_parser() -> argparse.ArgumentParser:
     ensure.add_argument("--no-unlock", action="store_true", help="report state without wake/unlock")
 
     sub.add_parser("console-state", help="classify the console, changing nothing")
+    for verb in ("read-iis-security-value", "iis-config-history"):
+        read = sub.add_parser(verb, help="read collected committed IIS files without a transport")
+        read.add_argument("--config", type=Path, required=True)
+        read.add_argument("--location", action="append", required=True)
+        if verb == "iis-config-history":
+            read.add_argument("--history", type=Path, required=True)
+            read.add_argument("--diff", help="live or an enumerated CFGHISTORY_<number> name")
     sub.add_parser(
         "estate-canary", help="read-only estate health checks (fail closed)"
     )
@@ -108,6 +116,22 @@ def _emit_json(payload: object, out_path: str | None = None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    if args.verb in {"read-iis-security-value", "iis-config-history"}:
+        try:
+            iis_payload = (
+                read_config(args.config.read_bytes(), args.location)
+                if args.verb == "read-iis-security-value"
+                else config_history(args.config, args.history, args.location, args.diff)
+            )
+        except (OSError, IisEvidenceError) as exc:
+            print(f"IIS evidence error: {exc}", file=sys.stderr)
+            return 2
+        _emit_json(iis_payload)
+        if args.verb == "iis-config-history" and any(
+            "error" in item for item in iis_payload["observations"].values()
+        ):
+            return 3
+        return 0
     try:
         estate = load_estate(args.estate)
     except EstateError as exc:

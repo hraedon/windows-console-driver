@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "record_kind": "read_primitive_qualification_summary",
+  "operator_date": "2026-10-14",
+  "scope": "One Server 2025 CA, two existing enrollment locations, committed apphost files",
+  "capability_qualification": false,
+  "source_sha256": {
+    "src/wcd/iis_evidence.py": "70f8341ca87666f17a156aa92a971a015854203b4cfd7590903c127563a78717",
+    "tools/guest_scripts/read_iis_security_value.ps1": "c414d427f64cb66d28452e7869940fb3ea76e00483c9afd6f609da731eaff677"
+  },
+  "synthetic_corpus": {
+    "path": "tests/fixtures/iis/applicationHost.config",
+    "sha256": "786428ab2022be42ef81d24d090fd885d871c1aad551ca4024572c33bccf4e76"
+  },
+  "private_evidence_inventory_sha256": "d87ee7adb9e61856932c12242c785bec0995b655ac2888adbe8374a3a6951522",
+  "observations": {
+    "effective_and_committed_agree": true,
+    "enrollment_location_count": 2,
+    "token_checking": "Require",
+    "ssl_flags": ["Ssl", "Ssl128"],
+    "history_snapshots_read": 10,
+    "historical_dirty_variants_identified": [34, 36],
+    "historical_original_variants_present": [29, 30, 31, 32, 33, 35],
+    "historical_variants_no_longer_present": [27, 28],
+    "live_matches_snapshot_35": true,
+    "wel_epa_seed_and_exact_restore": true,
+    "wel_ssl_seed_and_exact_restore": true,
+    "wel_close_declared_surfaces": 6,
+    "final_wel_task_count": 0
+  },
+  "limits": [
+    "Summary only; private files and identifiers are not committed",
+    "No WCD mutation capability, v0 schema change, or envelope qualification",
+    "Effective values have API provenance; committed values have file provenance",
+    "Periodic history cannot prove which API wrote a file",
+    "Apphost lock directives do not model every child web.config or IIS schema default"
+  ]
+}

@@ -2,6 +2,10 @@
 # autocrlf lesson: CRLF materialization breaks SHA-256 binding).
 tests/fixtures/** -text
 
+# Exact source bytes bound by the IIS read qualification summary.
+src/wcd/iis_evidence.py -text
+tools/guest_scripts/read_iis_security_value.ps1 -text
+
 # Raw estate captures preserved out of the gitignored runs/ tree; the
 # SHA-256 of each file is banked in gpo-studio provenance and must not
 # drift through a checkout.

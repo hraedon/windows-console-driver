@@ -1,5 +1,11 @@
 # Capability qualification status
 
+IIS read primitives are separately banked in
+[the 2026-10-14 read qualification](iis-evidence-20261014/NOTES.md), with a
+source/corpus-pinned summary under its `records/` directory. IIS writes use the
+guarded WEL recipe (R3 option b); no IIS mutation capability or v0 schema change
+is qualified or advertised here.
+
 Capability behavior, record-format qualification, and historical evidence are
 separate claims. A banked record remains immutable evidence for the capability
 definition that produced it; changing the current capability does not silently
