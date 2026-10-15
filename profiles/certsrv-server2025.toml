@@ -311,3 +311,22 @@ strength = "strong"
 selector = "prepared_context"
 uia_digest = "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea"
 banked_from = "docs/estate-window-11/records/w11-r2-record.json"
+
+# Estate window 16 (2026-10-09): the baseline gate rolled out from gpmc to
+# this surface. Values measured live on LabMS01 in estate window 15 -- the
+# r1/r2 deliberate-mismatch refusal probes on the same guest and the same
+# console session, whose mismatch messages carry the observed values -- and
+# verified banked==observed by this window's record cited below. certsrv.msc
+# runs inside mmc.exe, the same binary those probes measured; a patched or
+# rebuilt guest answers with a different version and the transaction refuses
+# before setup.
+[[baseline_values]]
+dependency = "ui_language"
+value = "en-US"
+banked_from = "docs/estate-window-16/records/w16-r2-record.json"
+
+[[baseline_values]]
+dependency = "binary_version"
+value = "10.0.26100.32860 (WinBuild.160101.0800)"
+banked_from = "docs/estate-window-16/records/w16-r2-record.json"
+path = 'C:\Windows\System32\mmc.exe'

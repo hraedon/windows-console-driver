@@ -56,7 +56,7 @@ EXIT_ERROR = 2
 EXIT_INDETERMINATE = 3
 
 HELPER_ACTIONS: frozenset[str] = frozenset(
-    {"context", "uia_dump", "screenshot", "key", "keys", "mouse", "wait_foreground"}
+    {"context", "file_version", "uia_dump", "screenshot", "key", "keys", "mouse", "wait_foreground"}
 )
 # The only actions that can move the user's session; every one of them accepts
 # the helper's -DryRun switch (or the request field "dry_run": true).
@@ -78,6 +78,13 @@ class VkChord(TypedDict, total=False):
 
 class ContextRequest(TypedDict):
     action: str
+
+
+class FileVersionRequest(TypedDict):
+    """One read-only version-resource probe (baseline-gate input)."""
+
+    action: str
+    path: str
 
 
 class UiaDumpRequest(TypedDict):
@@ -178,8 +185,23 @@ class ContextResponse(TypedDict):
     action: str
     session_id: int
     user: str
+    ui_language: str | None
     desktop: str | None
     foreground: ForegroundInfo | None
+    notes: list[str]
+class FileVersionResponse(TypedDict):
+    """``file_version`` answers ok even when the file is unreadable.
+
+    ``file_version``/``error`` are the honest pair: a value on one side,
+    null plus the reason on the other. The helper never throws on a missing
+    file -- fail-closed on an unreadable baseline is the controller's call.
+    """
+
+    ok: bool
+    action: str
+    path: str
+    file_version: str | None
+    error: str | None
     notes: list[str]
 class UiaDumpResponse(TypedDict):
     ok: bool

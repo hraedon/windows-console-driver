@@ -289,3 +289,22 @@ banked_from = "docs/estate-window-7/records/w7-record.json"
 # Dialog-level fingerprints (new_wmi_filter_dialog, property_sheet_dialog, ...)
 # are deliberately NOT banked yet: no qualification window has captured their
 # digests as standalone facts. They stay declared-only until measured.
+
+# Estate window 15 (2026-10-09): the baseline gate extends prepare-time
+# enforcement to the two observable dependency kinds. Values measured live on
+# LabMS01 in this window -- ui_language from the refusal probe r1, the mmc.exe
+# FileVersion from refusal probe r2 (the mismatch messages carry the observed
+# values) -- then verified banked==observed in the clean run r3 whose record
+# is cited below. The gpmc surface's dialogs live in mmc.exe; a patched or
+# rebuilt guest answers with a different version and the transaction refuses
+# before setup.
+[[baseline_values]]
+dependency = "ui_language"
+value = "en-US"
+banked_from = "docs/estate-window-15/records/w15-r3-record.json"
+
+[[baseline_values]]
+dependency = "binary_version"
+value = "10.0.26100.32860 (WinBuild.160101.0800)"
+banked_from = "docs/estate-window-15/records/w15-r3-record.json"
+path = 'C:\Windows\System32\mmc.exe'

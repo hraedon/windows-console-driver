@@ -74,6 +74,7 @@ def test_psscriptanalyzer_clean_when_available() -> None:
 def test_build_request_round_trips_for_every_action() -> None:
     requests: list[tuple[str, dict[str, object]]] = [
         ("context", {}),
+        ("file_version", {"path": "C:\\lab\\wcd\\mmc.exe"}),
         ("uia_dump", {"depth": 3}),
         ("screenshot", {"full": True}),
         ("key", {"text": "hello"}),
@@ -214,6 +215,8 @@ def test_context_on_live_desktop() -> None:
     assert set(payload) == set(hc.ContextResponse.__annotations__)
     assert isinstance(payload["session_id"], int)
     assert isinstance(payload["user"], str) and payload["user"]
+    # The session UI language (baseline-gate input) is always reported.
+    assert isinstance(payload["ui_language"], str) and payload["ui_language"]
     notes = [str(note) for note in payload["notes"]]
 
     foreground = payload["foreground"]
@@ -347,6 +350,8 @@ def test_wait_foreground_timeout_is_indeterminate_exit_3() -> None:
         {"action": "wait_foreground", "class": "X", "poll_ms": 1},
         {"action": "uia_dump", "depth": 0},
         {"action": "uia_dump", "depth": 13},
+        {"action": "file_version"},
+        {"action": "file_version", "path": 7},
     ],
 )
 def test_read_action_validation_refuses_bad_requests(payload: dict[str, Any]) -> None:
@@ -355,6 +360,28 @@ def test_read_action_validation_refuses_bad_requests(payload: dict[str, Any]) ->
     assert proc.returncode == 2
     assert result["ok"] is False
     assert isinstance(result.get("error"), str) and result["error"]
+
+
+def test_file_version_reads_a_real_version_resource() -> None:
+    proc = run_helper({"action": "file_version", "path": ps_scripts.POWERSHELL})
+    payload = assert_single_line_json(proc)
+    assert proc.returncode == 0
+    assert set(payload) == set(hc.FileVersionResponse.__annotations__)
+    assert payload["path"] == ps_scripts.POWERSHELL
+    assert payload["error"] is None
+    version = payload["file_version"]
+    assert isinstance(version, str) and version  # powershell.exe always carries one
+
+
+def test_file_version_reports_an_unreadable_file_as_data_not_an_error() -> None:
+    proc = run_helper({"action": "file_version", "path": r"C:\zz-no-such-file.exe"})
+    payload = assert_single_line_json(proc)
+    # Unreadable is DATA (ok + null + reason), never a throw: fail-closed on an
+    # unreadable baseline is the controller's decision.
+    assert proc.returncode == 0
+    assert set(payload) == set(hc.FileVersionResponse.__annotations__)
+    assert payload["file_version"] is None
+    assert isinstance(payload["error"], str) and payload["error"]
 
 
 # --- Inject actions: DryRun only, never a real injection ----------------------
