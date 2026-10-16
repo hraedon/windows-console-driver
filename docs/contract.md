@@ -206,24 +206,26 @@ administrative version labels. Enforced at prepare, fail-closed before setup
 dialog/control tree fingerprint the helper's context snapshot computes —
 compared against the digest banked in the profile's
 `[[surface_fingerprints]]` (WI-L5), plus each banked `[[baseline_values]]`
-row: `ui_language` (read from that same prepare context) or `binary_version`
-(the version resource of the file the row names). A mismatch — or a baseline
-that cannot be observed — refuses the capability. A profile that banks no
-row is grandfathered and enforces nothing, so banking a value is the
-deliberate act of turning its gate on.
+row: `ui_language`, `dpi`, `theme` and `os_build` (read from that same
+prepare context: the session UI language, the session system DPI, the
+Personalize light/dark switches packed raw, and `CurrentBuildNumber.UBR`) or
+`binary_version` (the version resource of the file the row names). A mismatch
+— or a baseline that cannot be observed — refuses the capability. A profile
+that banks no row is grandfathered and enforces nothing, so banking a value
+is the deliberate act of turning its gate on: a banked row is compared
+strong today, whatever strength the declared `selector_dependencies` rows
+carry. An operator who wants DPI/theme/OS-build as metadata only simply does
+not bank them.
 
 The remaining dependency rows are still metadata, not an enforced
 compatibility predicate: per-dialog fingerprints and content hashes
-(**strong**; no dialog fingerprint is banked yet), DPI/resolution and theme
-(**strong-if-used**: they bind only coordinate or visual matching), and OS
-build (**provenance** — recorded, not inherently invalidating).
+(**strong**; no dialog fingerprint is banked yet).
 
-Once those baselines are captured and compared, a mismatch on a strong
-dependency must refuse the capability. A mismatch on a weak one must degrade
-the driver to a lower input rung *if the capability's channel contract still
-permits that rung*, with provenance recorded. Until then, banked estate runs
-qualify only the exact exercised environment and do not establish portable
-compatibility.
+The strong-if-used degradation rung — a mismatch on a weak dependency
+degrading the driver to a lower input rung *if the capability's channel
+contract still permits that rung*, with provenance recorded — remains future
+work; until it lands, banked estate runs qualify only the exact exercised
+environment and do not establish portable compatibility.
 
 ## 7. Lease and interactive context assertions
 
@@ -356,9 +358,9 @@ relearned from WEL).
   content that produced it (and refuses a plan whose machine/identity
   disagrees with the estate's own target), and the prepare gates are enforced
   before setup: the prepared-surface fingerprint (WI-L5) plus any banked
-  `[[baseline_values]]` row (`ui_language`, `binary_version`). The remaining
-  compatibility-baseline rows (per-dialog fingerprints, DPI/theme/OS build)
-  remain future work.
+  `[[baseline_values]]` row (`ui_language`, `binary_version`, `dpi`, `theme`,
+  `os_build`). The remaining compatibility-baseline work is per-dialog
+  fingerprints and the strong-if-used degradation rung.
 - **Driver development** — raw inspect/input allowed, but only when the
   evidence runtime proves the target is a disposable estate with a
   demonstrated exact-baseline recovery route (checkpoint). A confirmation

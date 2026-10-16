@@ -90,9 +90,11 @@ experiment. Since WI-L5 the runtime enforces the prepared-surface `uia_digest`
 banked in the profile's `[[surface_fingerprints]]` — compared at prepare, a
 mismatch refuses before setup (the ledger rows above were qualified with that
 same prepared context, byte-identical across windows 2–7) — and the baseline
-gate extends the same prepare enforcement to the two observable dependency
-kinds: a banked `[[baseline_values]]` row for `ui_language` or
-`binary_version` is compared before setup and a mismatch (or an unobservable
-baseline) refuses. Per-dialog fingerprints remain declared but not
-runtime-enforced, and none is banked yet. These records must not be
-generalized to a changed estate.
+gate extends the same prepare enforcement to the observable dependency kinds:
+a banked `[[baseline_values]]` row for `ui_language`, `binary_version`,
+`dpi`, `theme` or `os_build` is compared before setup and a mismatch (or an
+unobservable baseline) refuses. Per-dialog fingerprints remain declared but
+not runtime-enforced, and none is banked yet. No surface has banked the three
+context kinds yet (they became observable on 2026-10-16); the ledger rows
+above were qualified on `ui_language` + `binary_version` alone. These records
+must not be generalized to a changed estate.

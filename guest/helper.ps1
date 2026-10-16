@@ -1241,6 +1241,38 @@ function Invoke-Dispatch {
             $session = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
             $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
             $uiLanguage = (Get-UICulture).Name
+            # The remaining baseline-gate facts, read fail-soft: an unreadable
+            # value answers null plus a note (the file_version discipline) --
+            # fail-closed on an unobserved baseline is the controller's call.
+            # dpi is the SESSION system DPI (the NULL-hwnd graphics object);
+            # theme packs the Personalize light/dark switches raw; os_build is
+            # CurrentBuildNumber.UBR from the NT CurrentVersion key.
+            $dpi = $null
+            try {
+                Add-Type -AssemblyName System.Drawing | Out-Null
+                $graphics = [System.Drawing.Graphics]::FromHwnd([IntPtr]::Zero)
+                try { $dpi = [int][math]::Round($graphics.DpiX) } finally { $graphics.Dispose() }
+            } catch { Add-Note ("dpi unreadable: " + $_.Exception.Message) }
+            $theme = $null
+            try {
+                $personalize = Get-ItemProperty `
+                    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' `
+                    -ErrorAction Stop
+                if ($null -ne $personalize.AppsUseLightTheme -and
+                    $null -ne $personalize.SystemUsesLightTheme) {
+                    $theme = 'apps={0};system={1}' -f `
+                        [int]$personalize.AppsUseLightTheme, [int]$personalize.SystemUsesLightTheme
+                }
+            } catch { Add-Note ("theme unreadable: " + $_.Exception.Message) }
+            $osBuild = $null
+            try {
+                $currentVersion = Get-ItemProperty `
+                    'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction Stop
+                if ($null -ne $currentVersion.CurrentBuildNumber -and
+                    $null -ne $currentVersion.UBR) {
+                    $osBuild = '{0}.{1}' -f $currentVersion.CurrentBuildNumber, $currentVersion.UBR
+                }
+            } catch { Add-Note ("os_build unreadable: " + $_.Exception.Message) }
             $fgHwnd = [WcdNative]::GetForegroundWindow()
             $desktop = $null
             if ($fgHwnd -ne [IntPtr]::Zero) { $desktop = Get-DesktopName -Hwnd $fgHwnd }
@@ -1253,6 +1285,9 @@ function Invoke-Dispatch {
                     session_id = $session
                     user = $user
                     ui_language = $uiLanguage
+                    dpi = $dpi
+                    theme = $theme
+                    os_build = $osBuild
                     desktop = $desktop
                     foreground = $foreground
                     notes = @($script:notes)

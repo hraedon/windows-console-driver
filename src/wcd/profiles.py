@@ -103,13 +103,13 @@ DEPENDENCY_NAMES: Final[frozenset[str]] = frozenset(
 STRENGTHS: Final[frozenset[str]] = frozenset({"strong", "strong_if_used", "provenance"})
 
 # Only dependency kinds the executor can OBSERVE at prepare (2b/2c) may bank a
-# baseline value: the helper context reports the session UI language, and a
-# file_version read resolves a binary's version resource. Banking a value for
-# a kind the executor cannot observe would be a lie the gate could never
-# check, so parse refuses it -- dpi/theme/os_build (and per-dialog
-# fingerprints) remain declared-only rows in selector_dependencies.
+# baseline value: the helper context reports the session UI language, desktop
+# DPI, desktop theme and OS build; a file_version read resolves a binary's
+# version resource. Banking a value for a kind the executor cannot observe
+# would be a lie the gate could never check, so parse refuses it -- per-dialog
+# fingerprints remain the declared-only rows in selector_dependencies.
 ENFORCEABLE_DEPENDENCIES: Final[frozenset[str]] = frozenset(
-    {"ui_language", "binary_version"}
+    {"ui_language", "binary_version", "dpi", "theme", "os_build"}
 )
 
 # The one pseudo-selector a surface fingerprint may name that is not a
