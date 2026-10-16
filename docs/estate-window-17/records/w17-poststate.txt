@@ -1,0 +1,61 @@
+Window 17 read-only re-reads, 2026-10-16 11:44Z (raw operator output; the
+session scripts live under gitignored local/, secrets never transported).
+Vantage: LabCL01 (PSDirect, host-relayed, freshly booted). LabMS01 stayed Off.
+
+--- r1: Certificate Templates container, explicit-credential LDAP LabCL01 -> LabDC01
+r1.container.count=33
+r1.container.names_sha256=535c6544aa8e40b3e77c2f0ec38d4e1a5adcefeab5b7a1de2cbaabdb4f8e60f0
+r1.zz_count=0
+r1.copyof_count=0
+r1.w16_target_present=False
+r1.pks_children.count=8
+r1.pks_children.names=AIA;CDP;Certificate Templates;Certification Authorities;Enrollment Services;KRA;NTAuthCertificates;OID
+r1.rootdse.currentTime=20261016114310.0Z
+r1.ran_on=LABCL01
+
+--- r2: officerrights_collect.ps1 ON LabCL01 (committed collector, remote registry + certutil RPC)
+ca.host=LabCA01.ad.labdomain.dev
+ca.name=Lab Issuing CA 01
+collector.ran_on=LABCL01
+config.key_present=True
+config.value_count=51
+config.value_names_sha256=c4cbfea7553adafcd62497f211fe02f7c0c6c0dec35026ad0712f080169dfe73
+officerrights.present=False
+officerrights.kind=
+officerrights.bytes=0
+officerrights.sha256=
+officerrights.certutil_rc=-2147024894
+officerrights.decoded_present=False
+officerrights.decoded_rows=0
+officerrights.decoded_sha256=
+security.bytes=320
+security.sha256=e0e944b288920b3851b7e5e522e31fd49ccb339522d7e603f38cbaff572f57cf
+published.count=11
+published.names_sha256=ddc186b8413874c86c49a3943ad4e81e33d6e2e07a68c23a353dd5f01618fee0
+ca.directory.count=1
+ca.directory.hosts=LabCA01.ad.labdomain.dev
+ca.directory.hosts_sha256=fc448707a617144ce0a05b698c139e0a3125a907b1fbab751e741b25a9bcff3e
+
+--- r2 follow-up: the 51 value names, read on LabCA01 by PSDirect (local registry)
+CACertHash CACertPublicationURLs CAServerName CAType CAXchgCertHash
+CAXchgOverlapPeriod CAXchgOverlapPeriodUnits CAXchgValidityPeriod
+CAXchgValidityPeriodUnits CertEnrollCompatible ClockSkewMinutes CommonName
+CRLAttemptRepublish CRLDeltaNextPublish CRLDeltaOverlapPeriod
+CRLDeltaOverlapUnits CRLDeltaPeriod CRLDeltaPeriodUnits CRLEditFlags CRLFlags
+CRLNextPublish CRLOverlapPeriod CRLOverlapUnits CRLPeriod CRLPeriodUnits
+CRLPublicationURLs DSConfigDN DSDomainDN EKUOIDsForPublishExpiredCertInCRL
+Enabled EnforceX500NameLengths ForceTeletex HighSerial InterfaceFlags
+KRACertCount KRACertHash KRAFlags LogLevel MaxIncomingAllocSize
+MaxIncomingMessageSize PolicyFlags RequestFileName Security SetupStatus
+SignedAttributes SubjectTemplate UseDS ValidityPeriod ValidityPeriodUnits
+ViewAgeMinutes ViewIdleMinutes
+enrollmentagent_present=False
+
+--- offline leave-one-out (controller-side, replicating the collector's digest semantics)
+51-name digest == c4cbfea7... (matches the live read)
+51 minus exactly 'CRLAttemptRepublish' == 99e7865d... (the w16-r2 banked 50-name digest)
+=> CRLAttemptRepublish is the single value added between w16 (2026-10-09) and
+   this re-read; LabCA01's CertSvc restarted at the 2026-10-14 host reboot.
+
+--- estate restored to found state (verified 11:57Z)
+LabCA01 Running (as found) | LabCL01 Off | LabDC01 Off | LabMS01 Off (never powered) | LabCAroot Off
