@@ -38,6 +38,8 @@ import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import MappingProxyType
+from typing import Final
 
 from gpo_observers import psl
 from gpo_observers.facts import FactSet, JSONValue, make_fact
@@ -87,6 +89,22 @@ _RECORD_STATES = ("verified", "disproven", "indeterminate")
 _HELPER_CONTEXT_TIMEOUT_S: float = 60.0
 # Helper ``file_version`` reads (baseline gate, one per binary_version row).
 _HELPER_FILE_VERSION_TIMEOUT_S: float = 60.0
+
+# Baseline kinds the ONE prepare-time helper ``context`` read observes (2c):
+# a banked row of any of these kinds needs that read (2b shares it).
+_CONTEXT_BASELINE_KINDS: Final[frozenset[str]] = frozenset(
+    {"ui_language", "dpi", "theme", "os_build"}
+)
+# Refusal prose per context kind -- "the estate's <prose> is not the
+# qualified one". ui_language's wording is pinned by tests and history.
+_BASELINE_KIND_PROSE: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "ui_language": "UI language",
+        "dpi": "desktop DPI",
+        "theme": "desktop theme",
+        "os_build": "OS build",
+    }
+)
 
 
 class ExecTransactionError(RuntimeError):
@@ -815,7 +833,8 @@ def execute_transaction(
     banked_digest = profile.fingerprint_for(PREPARED_CONTEXT_SELECTOR)
     banked_row = profile.surface_fingerprints.get(PREPARED_CONTEXT_SELECTOR)
     gate_context: InteractiveContext | None = None
-    if banked_digest is not None or "ui_language" in profile.baseline_values:
+    context_kinds_banked = _CONTEXT_BASELINE_KINDS & profile.baseline_values.keys()
+    if banked_digest is not None or context_kinds_banked:
         try:
             gate_context = _helper_context(transport)
         except ExecTransactionError as exc:
@@ -847,28 +866,14 @@ def execute_transaction(
 
     # -- 2c. baseline gate (banked [[baseline_values]] rows) ----------------------
     # Each banked baseline value is observed at prepare and compared
-    # fail-closed, in declaration order, before setup: ui_language from the
-    # one 2b context read, binary_version through the helper's read-only
-    # file_version probe. Same determinate-refusal discipline as 2b --
+    # fail-closed, in declaration order, before setup: the context kinds
+    # (ui_language/dpi/theme/os_build) from the one 2b context read,
+    # binary_version through the helper's read-only file_version probe.
+    # Same determinate-refusal discipline as 2b --
     # release the lease, raise, no record. No rows is the grandfathered
     # state: no extra helper call, no notes.
     for baseline in profile.baseline_values.values():
-        if baseline.dependency == "ui_language":
-            observed_language = gate_context.ui_language if gate_context is not None else None
-            if observed_language != baseline.value:
-                if lease is not None and registry.is_active(lease):
-                    registry.release(lease)
-                raise ExecTransactionError(
-                    f"ui_language mismatch: banked {baseline.value!r} from "
-                    f"{baseline.banked_from!r}, observed {observed_language!r}; the "
-                    "estate's UI language is not the qualified one, refusing before setup"
-                )
-            provenance.notes.append(
-                f"baseline gate: ui_language banked {baseline.value} "
-                f"observed {observed_language}"
-            )
-        else:
-            assert baseline.dependency == "binary_version"  # parse banks enforceable kinds only
+        if baseline.dependency == "binary_version":
             path = baseline.path
             assert path is not None  # required for binary_version at parse time
             file_version, read_error = _helper_file_version(transport, path)
@@ -892,6 +897,30 @@ def execute_transaction(
                 f"baseline gate: binary_version {path} banked {baseline.value} "
                 f"observed {file_version}"
             )
+            continue
+        # The context-sourced kinds share one comparison shape: observed from
+        # the one gate_context read (string-compared against the banked row;
+        # dpi's observed int is compared in its canonical string form), and an
+        # unobserved value is a mismatch, never a pass.
+        assert baseline.dependency in _CONTEXT_BASELINE_KINDS  # parse banks enforceable kinds
+        observed = getattr(gate_context, baseline.dependency) if gate_context else None
+        if isinstance(observed, str) or observed is None:
+            observed_str: str | None = observed
+        else:
+            observed_str = str(observed)
+        human = _BASELINE_KIND_PROSE[baseline.dependency]
+        if observed_str != baseline.value:
+            if lease is not None and registry.is_active(lease):
+                registry.release(lease)
+            raise ExecTransactionError(
+                f"{baseline.dependency} mismatch: banked {baseline.value!r} from "
+                f"{baseline.banked_from!r}, observed {observed_str!r}; the "
+                f"estate's {human} is not the qualified one, refusing before setup"
+            )
+        provenance.notes.append(
+            f"baseline gate: {baseline.dependency} banked {baseline.value} "
+            f"observed {observed_str}"
+        )
 
     # -- 3. setup (setup role: programmatic) -------------------------------------
     executor = GestureExecutor(
@@ -1130,10 +1159,14 @@ def _helper_context(t: SessionTransport) -> InteractiveContext:
     session_raw = payload.get("session_id")
     user = payload.get("user")
     desktop_raw = payload.get("desktop")
-    # ui_language is read leniently (absent or malformed -> None): a helper
-    # too old to report it must still parse as a context, and the baseline
-    # gate treats an unobserved language as a mismatch, never a pass.
+    # ui_language/dpi/theme/os_build are read leniently (absent or malformed
+    # -> None): a helper too old to report them must still parse as a context,
+    # and the baseline gate treats an unobserved value as a mismatch, never a
+    # pass.
     ui_language_raw = payload.get("ui_language")
+    dpi_raw = payload.get("dpi")
+    theme_raw = payload.get("theme")
+    os_build_raw = payload.get("os_build")
     if (
         not isinstance(session_raw, int)
         or isinstance(session_raw, bool)
@@ -1176,6 +1209,9 @@ def _helper_context(t: SessionTransport) -> InteractiveContext:
         desktop=desktop_raw if isinstance(desktop_raw, str) else None,
         foreground=foreground,
         ui_language=ui_language_raw if isinstance(ui_language_raw, str) else None,
+        dpi=dpi_raw if isinstance(dpi_raw, int) and not isinstance(dpi_raw, bool) else None,
+        theme=theme_raw if isinstance(theme_raw, str) else None,
+        os_build=os_build_raw if isinstance(os_build_raw, str) else None,
     )
 
 

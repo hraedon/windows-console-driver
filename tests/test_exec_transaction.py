@@ -93,6 +93,10 @@ class FakeTransport:
         self.session_id = 1
         self.user = "zz-lab-user"
         self.ui_language = "en-US"
+        # The scripted context-sourced baseline facts (dpi/theme/os_build).
+        self.dpi: int | None = 96
+        self.theme: str | None = "apps=1;system=1"
+        self.os_build: str | None = "26100.1"
         self.desktop = "Default"
         self.digest = "zz-surface-digest-1"
         # The scripted baseline-gate facts (file_version probe).
@@ -206,6 +210,9 @@ class FakeTransport:
             "session_id": self.session_id,
             "user": self.user,
             "ui_language": self.ui_language,
+            "dpi": self.dpi,
+            "theme": self.theme,
+            "os_build": self.os_build,
             "desktop": self.desktop,
             "foreground": {
                 "hwnd": 4242,
@@ -1443,6 +1450,100 @@ def test_no_baseline_rows_means_no_file_version_probe_and_no_gate_notes(
     assert not any(
         "baseline gate:" in str(note) for note in record["provenance"]["notes"]  # type: ignore[index]
     )
+
+
+_DPI_ROW = (
+    "[[baseline_values]]\n"
+    'dependency = "dpi"\n'
+    'value = "96"\n'
+    'banked_from = "zz: synthetic bank"\n'
+)
+_THEME_ROW = (
+    "[[baseline_values]]\n"
+    'dependency = "theme"\n'
+    'value = "apps=1;system=1"\n'
+    'banked_from = "zz: synthetic bank"\n'
+)
+_OS_BUILD_ROW = (
+    "[[baseline_values]]\n"
+    'dependency = "os_build"\n'
+    'value = "26100.1"\n'
+    'banked_from = "zz: synthetic bank"\n'
+)
+
+
+def test_matching_dpi_theme_os_build_baselines_proceed_and_append_notes(
+    tmp_path: Path,
+) -> None:
+    """All three context-sourced kinds compare from the ONE prepare-time
+    context read (no extra helper calls), dpi in its canonical string form."""
+    transport = FakeTransport()
+    sheet = _sheet("zz_ctx_kinds_match", _commit_crossing_gesture())
+    record = _execute_with(
+        tmp_path,
+        "zz_ctx_kinds_match",
+        transport,
+        _baseline_repo(tmp_path, sheet, _DPI_ROW + _THEME_ROW + _OS_BUILD_ROW),
+    )
+    assert record["state"] == "verified"
+    notes = [str(note) for note in record["provenance"]["notes"]]  # type: ignore[index]
+    assert "baseline gate: dpi banked 96 observed 96" in notes
+    assert "baseline gate: theme banked apps=1;system=1 observed apps=1;system=1" in notes
+    assert "baseline gate: os_build banked 26100.1 observed 26100.1" in notes
+    # The three rows ride the ONE gate context read 2b already needed: the
+    # total stays at the no-extra-rows count (console check, prepare baseline,
+    # both crossings) instead of growing per row.
+    context_calls = [call for call in transport.helper_calls if call["action"] == "context"]
+    assert len(context_calls) == 4
+
+
+def test_dpi_mismatch_refuses_before_setup_and_releases_the_lease(
+    tmp_path: Path,
+) -> None:
+    transport = FakeTransport()
+    transport.dpi = 144  # a differently-scaled desktop, not the qualified one
+    registry = _RecordingRegistry()
+    sheet = _sheet("zz_dpi_mismatch", _commit_crossing_gesture())
+
+    with pytest.raises(ExecTransactionError, match="dpi mismatch") as excinfo:
+        execute_transaction(
+            capability=_capability("zz_dpi_mismatch", _SATISFIED_ENVELOPE),
+            arguments={"gpo_name": "zz-studio-evidence-t"},
+            estate=_estate(),
+            paths=_baseline_repo(tmp_path, sheet, _DPI_ROW),
+            transport=transport,  # type: ignore[arg-type]
+            lease_registry=registry,  # type: ignore[arg-type]
+        )
+
+    assert str(excinfo.value) == (
+        "dpi mismatch: banked '96' from 'zz: synthetic bank', observed '144'; "
+        "the estate's desktop DPI is not the qualified one, refusing before setup"
+    )
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
+    assert registry.leases and registry.released == registry.leases
+
+
+def test_an_unobserved_context_kind_is_a_mismatch_never_a_pass(tmp_path: Path) -> None:
+    """Fail-closed: a helper too old to report the theme answers None, and a
+    banked theme baseline must refuse on that, not pass it."""
+    transport = FakeTransport()
+    transport.theme = None
+    sheet = _sheet("zz_theme_unobserved", _commit_crossing_gesture())
+
+    with pytest.raises(ExecTransactionError, match="theme mismatch") as excinfo:
+        _execute_with(
+            tmp_path,
+            "zz_theme_unobserved",
+            transport,
+            _baseline_repo(tmp_path, sheet, _THEME_ROW),
+        )
+
+    assert str(excinfo.value) == (
+        "theme mismatch: banked 'apps=1;system=1' from 'zz: synthetic bank', "
+        "observed None; the estate's desktop theme is not the qualified one, "
+        "refusing before setup"
+    )
+    assert not any("gpo_create" in call["script"] for call in transport.guest_calls)
 
 
 # --- capability-spec binding (record-schema v2) ---------------------------------

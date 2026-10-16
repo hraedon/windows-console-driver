@@ -309,6 +309,14 @@ class InteractiveContext:
     # per crossing, so the field defaults to None for every caller that does
     # not care (and for a helper too old to report it).
     ui_language: str | None = None
+    # The remaining prepare-once baseline facts, same discipline as
+    # ui_language: compared at 2c when a row banks them, never per crossing.
+    # dpi is the session system DPI (e.g. 96); theme packs the Personalize
+    # switches raw ("apps=1;system=1"); os_build is "CurrentBuildNumber.UBR".
+    # None = unobserved (a helper too old to report the field).
+    dpi: int | None = None
+    theme: str | None = None
+    os_build: str | None = None
 
 
 @dataclass(frozen=True)

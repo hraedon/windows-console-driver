@@ -308,3 +308,26 @@ dependency = "binary_version"
 value = "10.0.26100.32860 (WinBuild.160101.0800)"
 banked_from = "docs/estate-window-15/records/w15-r3-record.json"
 path = 'C:\Windows\System32\mmc.exe'
+
+
+# Estate window 18 (2026-10-16): the three context-sourced baseline kinds
+# became observable and were measured live on LabMS01 by the refusal probes
+# r1-r3 (the mismatch messages carry the observed values) -- session system
+# DPI 96 (the 100% scaling of the qualified 1024x768 desktop), both
+# Personalize switches light (apps=1;system=1), OS build 26100.33438
+# (CurrentBuildNumber.UBR, the same 26100 family mmc.exe versions) -- then
+# verified banked==observed in the armed run r1 below.
+[[baseline_values]]
+dependency = "dpi"
+value = "96"
+banked_from = "docs/estate-window-18/records/w18-r1-record.json"
+
+[[baseline_values]]
+dependency = "theme"
+value = "apps=1;system=1"
+banked_from = "docs/estate-window-18/records/w18-r1-record.json"
+
+[[baseline_values]]
+dependency = "os_build"
+value = "26100.33438"
+banked_from = "docs/estate-window-18/records/w18-r1-record.json"

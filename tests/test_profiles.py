@@ -409,7 +409,7 @@ def test_shipped_certtmpl_profile_banks_the_measured_prepared_context_digest() -
 # --- baseline values (enforceable-when-banked dependencies) ----------------------
 
 
-def test_baseline_values_for_both_enforceable_kinds_parse() -> None:
+def test_baseline_values_for_every_enforceable_kind_parse() -> None:
     profile = parse_profile_text(
         PROFILE_TOML
         + '\n[[baseline_values]]\ndependency = "ui_language"\n'
@@ -417,8 +417,20 @@ def test_baseline_values_for_both_enforceable_kinds_parse() -> None:
         '\n[[baseline_values]]\ndependency = "binary_version"\n'
         'value = "10.0.26100.1"\nbanked_from = "docs/estate-window-14/records/w14.json"\n'
         "path = 'C:\\Windows\\System32\\mmc.exe'\n"
+        '\n[[baseline_values]]\ndependency = "dpi"\n'
+        'value = "96"\nbanked_from = "measured"\n'
+        '\n[[baseline_values]]\ndependency = "theme"\n'
+        'value = "apps=1;system=1"\nbanked_from = "measured"\n'
+        '\n[[baseline_values]]\ndependency = "os_build"\n'
+        'value = "26100.32860"\nbanked_from = "measured"\n'
     )
-    assert set(profile.baseline_values) == {"ui_language", "binary_version"}
+    assert set(profile.baseline_values) == {
+        "ui_language",
+        "binary_version",
+        "dpi",
+        "theme",
+        "os_build",
+    }
     language = profile.baseline_values["ui_language"]
     assert (language.value, language.banked_from, language.path) == (
         "en-US",
@@ -427,20 +439,28 @@ def test_baseline_values_for_both_enforceable_kinds_parse() -> None:
     )
     binary = profile.baseline_values["binary_version"]
     assert (binary.value, binary.path) == ("10.0.26100.1", "C:\\Windows\\System32\\mmc.exe")
+    assert (profile.baseline_values["dpi"].value, profile.baseline_values["dpi"].path) == (
+        "96",
+        None,
+    )
+    assert profile.baseline_values["theme"].value == "apps=1;system=1"
+    assert profile.baseline_values["os_build"].value == "26100.32860"
 
 
 def test_a_baseline_dependency_outside_the_enforceable_set_is_refused() -> None:
     """Banking a kind the executor cannot observe at prepare would be a lie
-    the gate could never check; the refusal names the enforceable set."""
+    the gate could never check; the refusal names the enforceable set.
+    Per-dialog fingerprints are the remaining declared-only kind."""
     with pytest.raises(ProfileInvalid) as excinfo:
         parse_profile_text(
             PROFILE_TOML
-            + '\n[[baseline_values]]\ndependency = "dpi"\n'
-            'value = "96"\nbanked_from = "measured"\n'
+            + '\n[[baseline_values]]\ndependency = "dialog_fingerprint"\n'
+            'value = "9193a3dfa818"\nbanked_from = "measured"\n'
         )
     message = str(excinfo.value)
-    assert "'dpi'" in message
+    assert "'dialog_fingerprint'" in message
     assert "binary_version" in message and "ui_language" in message
+    assert "os_build" in message and "dpi" in message and "theme" in message
     assert "declared-only" in message
 
 

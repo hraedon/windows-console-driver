@@ -186,6 +186,9 @@ class ContextResponse(TypedDict):
     session_id: int
     user: str
     ui_language: str | None
+    dpi: int | None
+    theme: str | None
+    os_build: str | None
     desktop: str | None
     foreground: ForegroundInfo | None
     notes: list[str]
