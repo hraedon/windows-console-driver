@@ -971,10 +971,18 @@ def test_dump_save_as_banks_the_full_payload_beside_the_screenshots(tmp_path: Pa
     saved = json.loads(raw.decode("utf-8"))
     assert saved["action"] == "uia_dump"
     assert len(saved["elements"]) == 2
-    provenance = json.dumps(record["provenance"])
-    assert str(evidence / "zz-tree.uia.json") in provenance
+    # Compare against the journal entry itself, not a JSON dump of it: on
+    # Windows the dump escapes the path's backslashes.
+    details = [
+        entry.get("detail")
+        for journal in record["provenance"]["steps"]  # type: ignore[index]
+        for entry in (journal if isinstance(journal, list) else [journal])
+    ]
+    saved = [d for d in details if isinstance(d, dict) and "saved" in d]
+    assert len(saved) == 1
+    assert saved[0]["saved"] == str(evidence / "zz-tree.uia.json")
     # The journal binds the saved bytes: a later overwrite would not match.
-    assert hashlib.sha256(raw).hexdigest() in provenance
+    assert saved[0]["sha256"] == hashlib.sha256(raw).hexdigest()
 
 
 def test_dump_save_as_refuses_to_overwrite_banked_evidence(tmp_path: Path) -> None:
