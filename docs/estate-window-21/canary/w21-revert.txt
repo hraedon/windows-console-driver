@@ -1,0 +1,9 @@
+[1/4] pre-check: checkpoint domain-joined created 2026-10-20T19:59:29.2795510Z; machine pwdLastSet 2026-10-20T18:27:08.3969157Z; DisablePasswordChange=1
+[2/4] revert: LabMS01 restored to domain-joined (state Running)
+       delta_before_s=-9665
+       delta_after_s=0
+[3/4] time-sync: member clock set from host UTC
+       secure_channel=True
+       delta_s=0
+[4/4] verify: secure channel healthy, clock within MaxClockSkew
+estate-revert-member: READY -- finish with tools/estate_bringup.ps1, then wcd estate-canary

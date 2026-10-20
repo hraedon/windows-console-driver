@@ -260,10 +260,11 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     # window 19 banked the eleventh to thirteenth, gpo-studio Plan 035: the
     # WP-1 indeterminate r1, the verified WP-1 r2 and the verified WP-2 r3;
     # window 20 banked the fourteenth and fifteenth, the revision-2 Plan 035
-    # requalification runs.)
+    # requalification runs; window 21 banked the sixteenth and seventeenth,
+    # the revision-3 runs that carry provenance.invocation.)
     assert sum(version == 0 for version in versions.values()) == 8
     assert sum(version == 1 for version in versions.values()) == 8
-    assert sum(version == 2 for version in versions.values()) == 15
+    assert sum(version == 2 for version in versions.values()) == 17
     assert all(path.read_bytes() == content for path, content in before.items())
     assert all(
         ("schema_version" not in json.loads(path.read_text())["provenance"])

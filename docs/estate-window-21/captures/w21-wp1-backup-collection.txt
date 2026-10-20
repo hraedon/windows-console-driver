@@ -1,0 +1,9 @@
+zip_sha256=4b2c8761c6ad3085d9e8b71a0746972290a126a0a0ae3bde4dd12c3da4dd1f52
+file=\.wcd-owner attrs=Archive sha256=2adf465c827c26691aafffabcc2ad42884409b2713e4f98e5adb01c493d65665 bytes=38
+file=\manifest.xml attrs=Hidden, Archive sha256=e31221e7dff0205793e5499ef95bb34040a66174170b322e0a5ef4b1bf049a91 bytes=770
+file=\{97BE9EC2-5A4D-4B6B-8223-E346D8304CB9}\Backup.xml attrs=Archive sha256=011fbb91fff4a7caddd516598851e6e4082d05cc5bdd9b8660f9226ff5058085 bytes=7862
+file=\{97BE9EC2-5A4D-4B6B-8223-E346D8304CB9}\bkupInfo.xml attrs=Hidden sha256=407107bc6d9058366687d1ab05c08ba0283652a5f5229ce11153367dda6dd6dc bytes=661
+file=\{97BE9EC2-5A4D-4B6B-8223-E346D8304CB9}\gpreport.xml attrs=Archive sha256=d2c8e3a7bf0af4992a80eecc465971cdfdd6e9afe06eab532711b593f041d1d1 bytes=16014
+file=\{97BE9EC2-5A4D-4B6B-8223-E346D8304CB9}\DomainSysvol\GPO\GPO.cmt attrs=Archive sha256=17586b63b50d3b2c730e53eee25f24454120817769a4e42c002caafec474da6a bytes=118
+file=\{97BE9EC2-5A4D-4B6B-8223-E346D8304CB9}\DomainSysvol\GPO\Machine\Scripts\scripts.ini attrs=Hidden, Archive sha256=f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489 bytes=158
+file=\{97BE9EC2-5A4D-4B6B-8223-E346D8304CB9}\DomainSysvol\GPO\User\Scripts\scripts.ini attrs=Hidden, Archive sha256=ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5 bytes=138

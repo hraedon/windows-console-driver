@@ -420,7 +420,7 @@ def test_new_guest_scripts_parse_under_windows_powershell_51(script: Path) -> No
     ps_scripts.parse_check(script)
 
 
-@pytest.mark.parametrize("window", ["estate-window-19", "estate-window-20"])
+@pytest.mark.parametrize("window", ["estate-window-19", "estate-window-20", "estate-window-21"])
 def test_capture_manifest_matches_the_committed_bytes(window: str) -> None:
     """The WCD-side hash manifest (review, Sol 4) binds every banked capture,
     including the raw scripts.ini bytes gpo-studio's fixtures transcribe."""
@@ -435,7 +435,7 @@ def test_capture_manifest_matches_the_committed_bytes(window: str) -> None:
     assert set(entries) == on_disk
     for name, digest in entries.items():
         assert hashlib.sha256((captures / name).read_bytes()).hexdigest() == digest, name
-    prefix = "w19-r2" if window == "estate-window-19" else "w20-r1"
+    prefix = {"estate-window-19": "w19-r2", "estate-window-20": "w20-r1"}.get(window, "w21-r1")
     assert entries[f"{prefix}-user-scripts.ini"].startswith("ba526db6")
     assert entries[f"{prefix}-machine-scripts.ini"].startswith("f8fa4009")
 
@@ -562,3 +562,38 @@ def test_dir_clean_owned_refuses_names_that_are_not_owned_leaves(
     _owned_stage(root)
     assert _clean(root, stage).startswith("clean_refused=")
     assert (root / "w-stage").exists()
+
+
+def test_window_21_records_carry_a_recomputable_untruncated_invocation() -> None:
+    """Round-2 review (Sol B3): the revision-3 records bind their arguments
+    and setup output whole, recomputable from the record alone."""
+    import hashlib
+    import json as _json
+
+    from wcd.record_schema import validate_record
+
+    records = REPO_ROOT / "docs" / "estate-window-21" / "records"
+    for name, capability in (("w21-r1", WP1), ("w21-r2", WP2)):
+        record = _json.loads((records / f"{name}-record.json").read_text(encoding="utf-8"))
+        text = (REPO_ROOT / "capabilities" / f"{capability}.json").read_text(encoding="utf-8")
+        assert validate_record(record, capability_text=text) == 2
+        assert record["state"] == "verified"
+        assert record["provenance"]["capability_revision"] == 3
+        invocation = record["provenance"]["invocation"]
+        canonical = _json.dumps(
+            invocation["arguments"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        assert hashlib.sha256(canonical.encode()).hexdigest() == invocation["arguments_sha256"]
+        assert all(entry["truncated"] is False for entry in invocation["setup_manifest"])
+    wp2 = _json.loads((records / "w21-r2-record.json").read_text(encoding="utf-8"))
+    imported = next(
+        e for e in wp2["provenance"]["invocation"]["setup_manifest"]
+        if e["script"] == "gpo_stage_import"
+    )
+    assert "bundle_sha256=3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f" in (
+        imported["stdout"]
+    )
+    assert (
+        "registry_pol_sha256=25ad9748d1872472abcc7b8992016989c011e9b60fda3fc5dfc53e8b179de081"
+        in imported["stdout"]
+    )
