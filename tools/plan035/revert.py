@@ -1,11 +1,17 @@
-"""Plan 035 operator tool: Restore-VMSnapshot the estate member to its checkpoint
-(-Confirm:, window-9 rule). MUTATING. usage: revert.py <estate.toml>"""
+"""Plan 035 operator tool, MUTATING: restore the estate member to its checkpoint.
+
+Restore-VMSnapshot with -Confirm:$false (the window-9 rule: without it the
+cmdlet throws a bare NullReferenceException in a headless WinRM session).
+
+usage: revert.py <estate.toml>
+"""
+
 import sys
+
 from wcd.cli import _default_transport
 from wcd.estate import load_estate
-e = load_estate(sys.argv[1]); t = _default_transport(e)
-try:
-    script = r"""param($vm,$cp)
+
+SCRIPT = r"""param($vm,$cp)
 $ErrorActionPreference='Stop'
 $s = Get-VMSnapshot -VMName $vm -Name $cp
 "before_state=$((Get-VM -Name $vm).State)"
@@ -13,6 +19,16 @@ Restore-VMSnapshot -VMSnapshot $s -Confirm:$false
 "restored=$cp"
 "after_state=$((Get-VM -Name $vm).State)"
 """
-    print(t.host(script, [e.vm_name, e.checkpoint_name], timeout=600))
-finally:
-    t.close()
+
+
+def main() -> None:
+    estate = load_estate(sys.argv[1])
+    transport = _default_transport(estate)
+    try:
+        print(transport.host(SCRIPT, [estate.vm_name, estate.checkpoint_name], timeout=600))
+    finally:
+        transport.close()
+
+
+if __name__ == "__main__":
+    main()
