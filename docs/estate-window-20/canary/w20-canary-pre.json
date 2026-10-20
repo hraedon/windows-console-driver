@@ -1,0 +1,55 @@
+{
+  "ok": false,
+  "checks": [
+    {
+      "name": "host_winrm",
+      "ok": true,
+      "detail": "host op answered over WinRM; vm state Running"
+    },
+    {
+      "name": "guest_psdirect",
+      "ok": true,
+      "detail": "guest answered over PSDirect; vm state Running"
+    },
+    {
+      "name": "checkpoint",
+      "ok": true,
+      "detail": "recovery checkpoint 'domain-joined' present on host"
+    },
+    {
+      "name": "domain_account",
+      "ok": true,
+      "detail": "account claude: enabled, password valid"
+    },
+    {
+      "name": "dc_locator",
+      "ok": true,
+      "detail": "nltest /dsgetdc:ad.labdomain.dev answered (rc=0)"
+    },
+    {
+      "name": "kerberos",
+      "ok": true,
+      "detail": "DC clock within 66s; klist minted krbtgt/ad.labdomain.dev (rc=0)"
+    },
+    {
+      "name": "member_clock",
+      "ok": true,
+      "detail": "member clock within 3s of the host"
+    },
+    {
+      "name": "machine_password",
+      "ok": false,
+      "detail": "machine pwdLastSet 2026-10-20t18:27:08.3969157z is NEWER than checkpoint 'domain-joined' (2026-09-20t18:59:31.6016790z): a revert restores a machine key the KDC no longer uses and every Kerberos logon to the member fails -- re-mint the checkpoint (rotation disabled first)"
+    },
+    {
+      "name": "helper_task",
+      "ok": true,
+      "detail": "scheduled task 'WCDHelper' present (state ready)"
+    },
+    {
+      "name": "console_session",
+      "ok": true,
+      "detail": "console session active (state unlocked)"
+    }
+  ]
+}
