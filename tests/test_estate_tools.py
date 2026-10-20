@@ -114,3 +114,14 @@ def test_bringup_reports_the_machine_key_fault_instead_of_waiting_it_out() -> No
     assert "'credential_invalid'" in text
     assert "$invalidStreak -ge 3" in text
     assert "machine-key fault" in text
+
+
+def test_revert_tool_requires_rotation_disabled_unless_forced() -> None:
+    """Round-2 review (Sol N1): observing DisablePasswordChange is not enough;
+    the normal path refuses a member with rotation on."""
+    text = REVERT.read_text(encoding="ascii")
+    refusal = text.index("if ($disable -ne '1')")
+    assert refusal < text.index("Restore-VMSnapshot -VMSnapshot $s -Confirm:$false")
+    assert "machine-password rotation is enabled on the member" in text
+    # The comment no longer claims a DC guard the code does not have.
+    assert "never the DC" not in text

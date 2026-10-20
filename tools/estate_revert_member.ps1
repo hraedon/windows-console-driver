@@ -21,8 +21,9 @@
       [1/4] PRE-CHECK (read-only, member still healthy): reads the checkpoint's
             creation time on the host, and AD pwdLastSet plus
             DisablePasswordChange through the member. A pwdLastSet newer than
-            the checkpoint REFUSES the revert (exit 3) unless -Force: the
-            revert would break the member.
+            the checkpoint, or rotation not disabled, REFUSES the revert
+            (exit 3) unless -Force: the first would break the member now, the
+            second at the next rotation.
       [2/4] REVERT: Restore-VMSnapshot -Confirm:$false (the window-9 rule).
       [3/4] TIME SYNC: as soon as PSDirect answers, Set-Date from the host's
             UTC (tz-safe: the host UTC is converted to guest-local inside the
@@ -39,7 +40,12 @@
     estate file NAMES (password_env); the optional host trio likewise. No
     secret reaches argv, output, or a file.
     GUARD RAILS. The VM name must match ^[Ll]ab[A-Za-z0-9]{1,12}$ (disposable
-    guests only). Only the estate's console member is reverted -- never the DC.
+    guests only). The tool reverts the VM the estate file names as vm_name;
+    nothing in the tool itself tells a DC from a member, so pointing the
+    estate file at the DC is the operator's error to avoid. The member must
+    also have machine-password rotation disabled (DisablePasswordChange=1):
+    with rotation on, the checkpoint goes stale at the next rotation, so the
+    revert is refused unless -Force.
 .NOTES
     Operator tool; the suite pins its structure only (ASCII, parse under
     PowerShell 5.1, the guard, the ordering of revert and time sync).
@@ -171,6 +177,13 @@ $c = Get-ADComputer -Identity $env:COMPUTERNAME -Properties pwdLastSet
             exit 3
         }
         Write-Output '[1/4] pre-check: stale machine key overridden by -Force; expect to repair the secure channel'
+    }
+    if ($disable -ne '1') {
+        if (-not $Force) {
+            Write-Output "fail: [1/4] machine-password rotation is enabled on the member (DisablePasswordChange=$disable): the checkpoint goes stale at the next rotation. Set DisablePasswordChange=1 and re-mint the checkpoint, or pass -Force."
+            exit 3
+        }
+        Write-Output '[1/4] pre-check: rotation enabled, overridden by -Force'
     }
 
     # --- [2/4] revert ------------------------------------------------------------
