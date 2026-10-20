@@ -108,3 +108,19 @@ convenience, not a reset path.
 True size: one estate. The revert was proven twice on LabMS01 only; LabCL01
 and LabCA01 were re-minted but not reverted. The canary watches the estate
 file's member, not every lab VM.
+
+## Addendum, 22:00 UTC — superseded checkpoints removed (owner-authorized)
+
+The owner authorized clearing the old checkpoints, "including the 10-08 DC
+checkpoint". Removed with `Remove-VMSnapshot -Confirm:$false`, never
+`-IncludeAllChildSnapshots` (a removed parent merges into its children):
+LabMS01 `domain-joined-20260920`, LabCA01 `domain-joined-20260920`, LabCL01
+`user-logged-on-20261008` and `domain-joined-20261008`, and LabDC01
+`domain-joined` (10-08). Merges completed within the pass and every VM reported
+"Operating normally".
+
+What is left is LabMS01 / LabCA01 `domain-joined` and LabCL01 `domain-joined`
+→ `user-logged-on`, all from 2026-10-20 with rotation disabled, plus
+LabCAroot `offline-root`, which was out of scope and left in place. **LabDC01
+now has no checkpoint**, so the stale-DC-rollback hazard is gone with it.
+Canary after the prune: 10/10, exit 0.
