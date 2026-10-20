@@ -180,7 +180,10 @@ def _validate_provenance(value: object, *, legacy: bool, version: RecordVersion)
     allowed = _BASE_PROVENANCE_KEYS | frozenset({"$schema", "schema_version"})
     required = _BASE_PROVENANCE_KEYS if legacy else allowed
     if version == 2:
-        allowed = allowed | _V2_PROVENANCE_KEYS
+        # ``invocation`` is OPTIONAL within v2 (added after window 20): v2
+        # records banked before it stay valid, and the WEL seam, which accepts
+        # exactly schema_version 2, keeps accepting the records that carry it.
+        allowed = allowed | _V2_PROVENANCE_KEYS | frozenset({"invocation"})
         required = required | _V2_PROVENANCE_KEYS
     _keys(provenance, allowed, "provenance", required=required)
     if legacy:
@@ -211,6 +214,51 @@ def _validate_provenance(value: object, *, legacy: bool, version: RecordVersion)
         _fail("provenance.steps", "must be an array")
     _object(provenance["cleanup"], "provenance.cleanup")
     _string_list(provenance["notes"], "provenance.notes")
+    if version == 2 and "invocation" in provenance:
+        _validate_invocation(provenance["invocation"])
+
+
+def _validate_invocation(value: object) -> None:
+    """The untruncated invocation binding: recomputable from the record alone.
+
+    The arguments' SHA-256 must be the digest of their canonical JSON
+    (sorted keys, compact separators, UTF-8) as carried in this very field,
+    and each whole setup output must hash to its own recorded digest.
+    """
+    invocation = _object(value, "provenance.invocation")
+    keys = frozenset({"arguments", "arguments_sha256", "run_sheet_sha256", "setup_manifest"})
+    _keys(invocation, keys, "provenance.invocation", required=keys)
+    arguments = _object(invocation["arguments"], "provenance.invocation.arguments")
+    for name in ("arguments_sha256", "run_sheet_sha256"):
+        digest = invocation[name]
+        if not isinstance(digest, str) or not _CAPABILITY_SHA256.fullmatch(digest):
+            _fail(f"provenance.invocation.{name}", "must be a lowercase SHA-256 digest")
+    canonical = json.dumps(arguments, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != invocation["arguments_sha256"]:
+        _fail(
+            "provenance.invocation.arguments_sha256",
+            "is not the SHA-256 of the recorded arguments' canonical JSON",
+        )
+    manifest = invocation["setup_manifest"]
+    if not isinstance(manifest, list):
+        _fail("provenance.invocation.setup_manifest", "must be an array")
+    entry_keys = frozenset({"script", "stdout", "stdout_sha256", "truncated"})
+    for index, raw in enumerate(manifest):
+        where = f"provenance.invocation.setup_manifest[{index}]"
+        entry = _object(raw, where)
+        _keys(entry, entry_keys, where, required=entry_keys)
+        _string(entry["script"], f"{where}.script")
+        if not isinstance(entry["stdout"], str):
+            _fail(f"{where}.stdout", "must be a string")
+        if not isinstance(entry["truncated"], bool):
+            _fail(f"{where}.truncated", "must be a boolean")
+        digest = entry["stdout_sha256"]
+        if not isinstance(digest, str) or not _CAPABILITY_SHA256.fullmatch(digest):
+            _fail(f"{where}.stdout_sha256", "must be a lowercase SHA-256 digest")
+        if not entry["truncated"] and (
+            hashlib.sha256(entry["stdout"].encode("utf-8")).hexdigest() != digest
+        ):
+            _fail(f"{where}.stdout_sha256", "is not the SHA-256 of the recorded output")
 
 
 def _is_committed_legacy_source(source: str | Path | None) -> bool:

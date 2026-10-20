@@ -7,6 +7,24 @@
 # bytes the operator later collects. Report, never throw.
 param([string]$Guid, [string]$Name)
 $ErrorActionPreference = 'Continue'
+function Test-ReparseChain {
+    # True when $Path or any existing ancestor of it is a reparse point
+    # (round-2 review: a junction at C:\gpo-studio itself passes a root-only
+    # check and the lexical containment test).
+    param([string]$Path)
+    $current = $Path
+    while ($current) {
+        if (Test-Path -LiteralPath $current) {
+            $attrs = (Get-Item -LiteralPath $current -Force).Attributes
+            if ($attrs -band [IO.FileAttributes]::ReparsePoint) { return $true }
+        }
+        $parent = Split-Path -Parent $current
+        if (-not $parent -or $parent -eq $current) { break }
+        $current = $parent
+    }
+    return $false
+}
+
 $root = 'C:\gpo-studio\wcd-backup'
 $parsed = [Guid]::Empty
 if (-not [Guid]::TryParse($Guid, [ref]$parsed) -or $parsed -eq [Guid]::Empty) { "backup_skipped=no_owned_guid"; return }
@@ -14,7 +32,7 @@ if ($Name -notmatch '^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$' -or $Name -match '^\.+$'
 try {
     New-Item -ItemType Directory -Force -Path $root | Out-Null
     $rootItem = Get-Item -LiteralPath $root -Force
-    if ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { "backup_refused=root_is_reparse_point"; return }
+    if (Test-ReparseChain $rootItem.FullName) { "backup_refused=root_is_reparse_point"; return }
     $rootFull = [IO.Path]::GetFullPath($rootItem.FullName).TrimEnd('\')
     $target = [IO.Path]::GetFullPath((Join-Path $rootFull $Name))
     if ([IO.Path]::GetDirectoryName($target).TrimEnd('\') -ne $rootFull) { "backup_refused=outside_root"; return }

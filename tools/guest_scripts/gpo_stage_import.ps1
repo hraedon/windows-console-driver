@@ -9,6 +9,24 @@
 # refused. Output: backup_id, bundle_sha256, registry_pol_sha256, stage.
 param([string]$Guid, [string]$StageName, [string]$BundleName, [string]$BundleSha256)
 $ErrorActionPreference = 'Stop'
+function Test-ReparseChain {
+    # True when $Path or any existing ancestor of it is a reparse point
+    # (round-2 review: a junction at C:\gpo-studio itself passes a root-only
+    # check and the lexical containment test).
+    param([string]$Path)
+    $current = $Path
+    while ($current) {
+        if (Test-Path -LiteralPath $current) {
+            $attrs = (Get-Item -LiteralPath $current -Force).Attributes
+            if ($attrs -band [IO.FileAttributes]::ReparsePoint) { return $true }
+        }
+        $parent = Split-Path -Parent $current
+        if (-not $parent -or $parent -eq $current) { break }
+        $current = $parent
+    }
+    return $false
+}
+
 $root = 'C:\gpo-studio\wcd-stage'
 $parsed = [Guid]$Guid
 foreach ($leaf in @($StageName, $BundleName)) {
@@ -16,7 +34,7 @@ foreach ($leaf in @($StageName, $BundleName)) {
 }
 if ($StageName -eq 'incoming') { throw 'stage name may not be the incoming directory' }
 $rootItem = Get-Item -LiteralPath $root -Force
-if ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'staging root is a reparse point' }
+if (Test-ReparseChain $rootItem.FullName) { throw 'staging root or one of its ancestors is a reparse point' }
 $rootFull = [IO.Path]::GetFullPath($rootItem.FullName).TrimEnd('\')
 $bundle = [IO.Path]::GetFullPath((Join-Path (Join-Path $rootFull 'incoming') $BundleName))
 if ([IO.Path]::GetDirectoryName($bundle).TrimEnd('\') -ne (Join-Path $rootFull 'incoming')) { throw 'bundle outside incoming' }

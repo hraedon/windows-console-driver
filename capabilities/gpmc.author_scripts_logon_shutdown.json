@@ -2,8 +2,8 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.author_scripts_logon_shutdown",
   "surface": "gpmc-server2025",
-  "revision": 2,
-  "intent": "Author exactly one command shutdown script on the computer side and one command logon script on the user side of a disposable GPO through the GPME Scripts sheets, so the user-side Scripts extension pair, the per-side version movement and the scripts.ini shapes for the Shutdown and Logon triggers can be read off the capture (gpo-studio Plan 035 WP-1, WI-071). Revision 2 re-runs the measurement with every measured value asserted exactly (window 19 r2 measured the user-side tool GUID unasserted).",
+  "revision": 3,
+  "intent": "Author exactly one command shutdown script on the computer side and one command logon script on the user side of a disposable GPO through the GPME Scripts sheets, so the user-side Scripts extension pair, the per-side version movement and the scripts.ini shapes for the Shutdown and Logon triggers can be read off the capture (gpo-studio Plan 035 WP-1, WI-071). Revisions 2 and 3 re-run the measurement with every measured value asserted exactly (revision 3: leaf by leaf, plus the INI bytes) (window 19 r2 measured the user-side tool GUID unasserted).",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
@@ -14,7 +14,11 @@
       "shutdown_params",
       "logon_script",
       "logon_params",
-      "backup_name"
+      "backup_name",
+      "expected_machine_ini_bytes",
+      "expected_machine_ini_sha256",
+      "expected_user_ini_bytes",
+      "expected_user_ini_sha256"
     ],
     "properties": {
       "gpo_name": {
@@ -41,6 +45,22 @@
       "backup_name": {
         "type": "string",
         "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "expected_machine_ini_bytes": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "expected_machine_ini_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "expected_user_ini_bytes": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "expected_user_ini_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
       }
     }
   },
@@ -76,50 +96,56 @@
       {
         "name": "r2_core",
         "params": {}
+      },
+      {
+        "name": "file_digest",
+        "params": {
+          "relpath": "Machine\\Scripts\\scripts.ini",
+          "label": "machine_ini"
+        }
+      },
+      {
+        "name": "file_digest",
+        "params": {
+          "relpath": "User\\Scripts\\scripts.ini",
+          "label": "user_ini"
+        }
       }
     ]
   },
   "envelope": {
     "require": [
       {
-        "fact": "scripts_ini.machine",
-        "predicate": "post.scripts_ini.machine.present == True and post.scripts_ini.machine.config_shape == 'none'"
+        "fact": "scripts_ini.machine.present",
+        "predicate": "pre['scripts_ini.machine.present'] == False and post['scripts_ini.machine.present'] == True and post['scripts_ini.machine.encoding.bom'] == 'utf-16le' and post['scripts_ini.machine.encoding.bom_width'] == 2 and post['scripts_ini.machine.encoding.cr_count'] == 4 and post['scripts_ini.machine.encoding.lf_count'] == 4 and post['scripts_ini.machine.encoding.total_bytes'] == args['expected_machine_ini_bytes'] and post['scripts_ini.machine.encoding.fallback_codec'] == None and post['scripts_ini.machine.config_shape'] == 'none'"
       },
       {
         "fact": "scripts_ini.machine.Shutdown.entry_count",
-        "predicate": "post.scripts_ini.machine.Shutdown.entry_count == 1"
+        "predicate": "post['scripts_ini.machine.Shutdown.entry_count'] == 1 and post['scripts_ini.machine.Shutdown.0.script'] == args['shutdown_script'] and post['scripts_ini.machine.Shutdown.0.parameters'] == args['shutdown_params'] and post['scripts_ini.machine.Shutdown.0.prop.CmdLine'] == args['shutdown_script'] and post['scripts_ini.machine.Shutdown.0.prop.Parameters'] == args['shutdown_params'] and post['scripts_ini.machine.Shutdown.0.raw'] == '0CmdLine=' + args['shutdown_script']"
       },
       {
-        "fact": "scripts_ini.machine.Shutdown.0.script",
-        "predicate": "post['scripts_ini.machine.Shutdown.0.script'] == args['shutdown_script']"
+        "fact": "filedigest.machine_ini.sha256",
+        "predicate": "pre['filedigest.machine_ini.present'] == False and post['filedigest.machine_ini.present'] == True and post['filedigest.machine_ini.bytes'] == args['expected_machine_ini_bytes'] and post['filedigest.machine_ini.sha256'] == args['expected_machine_ini_sha256']"
       },
       {
-        "fact": "scripts_ini.machine.Shutdown.0.parameters",
-        "predicate": "post['scripts_ini.machine.Shutdown.0.parameters'] == args['shutdown_params']"
+        "fact": "scripts_ini.ps.machine.present",
+        "predicate": "post['scripts_ini.ps.machine.present'] == False and post['scripts_ini.ps.machine.config_shape'] == 'none'"
       },
       {
-        "fact": "scripts_ini.user",
-        "predicate": "post.scripts_ini.user.present == True and post.scripts_ini.user.config_shape == 'none'"
+        "fact": "scripts_ini.user.present",
+        "predicate": "pre['scripts_ini.user.present'] == False and post['scripts_ini.user.present'] == True and post['scripts_ini.user.encoding.bom'] == 'utf-16le' and post['scripts_ini.user.encoding.bom_width'] == 2 and post['scripts_ini.user.encoding.cr_count'] == 4 and post['scripts_ini.user.encoding.lf_count'] == 4 and post['scripts_ini.user.encoding.total_bytes'] == args['expected_user_ini_bytes'] and post['scripts_ini.user.encoding.fallback_codec'] == None and post['scripts_ini.user.config_shape'] == 'none'"
       },
       {
         "fact": "scripts_ini.user.Logon.entry_count",
-        "predicate": "post.scripts_ini.user.Logon.entry_count == 1"
+        "predicate": "post['scripts_ini.user.Logon.entry_count'] == 1 and post['scripts_ini.user.Logon.0.script'] == args['logon_script'] and post['scripts_ini.user.Logon.0.parameters'] == args['logon_params'] and post['scripts_ini.user.Logon.0.prop.CmdLine'] == args['logon_script'] and post['scripts_ini.user.Logon.0.prop.Parameters'] == args['logon_params'] and post['scripts_ini.user.Logon.0.raw'] == '0CmdLine=' + args['logon_script']"
       },
       {
-        "fact": "scripts_ini.user.Logon.0.script",
-        "predicate": "post['scripts_ini.user.Logon.0.script'] == args['logon_script']"
+        "fact": "filedigest.user_ini.sha256",
+        "predicate": "pre['filedigest.user_ini.present'] == False and post['filedigest.user_ini.present'] == True and post['filedigest.user_ini.bytes'] == args['expected_user_ini_bytes'] and post['filedigest.user_ini.sha256'] == args['expected_user_ini_sha256']"
       },
       {
-        "fact": "scripts_ini.user.Logon.0.parameters",
-        "predicate": "post['scripts_ini.user.Logon.0.parameters'] == args['logon_params']"
-      },
-      {
-        "fact": "scripts_ini.ps.machine",
-        "predicate": "post.scripts_ini.ps.machine.config_shape == 'none'"
-      },
-      {
-        "fact": "scripts_ini.ps.user",
-        "predicate": "post.scripts_ini.ps.user.config_shape == 'none'"
+        "fact": "scripts_ini.ps.user.present",
+        "predicate": "post['scripts_ini.ps.user.present'] == False and post['scripts_ini.ps.user.config_shape'] == 'none'"
       },
       {
         "fact": "ad.gPCMachineExtensionNames",
@@ -132,10 +158,6 @@
       {
         "fact": "scope.sysvol_relpaths",
         "predicate": "pre.scope.sysvol_relpaths == ['GPO.cmt', 'GPT.INI', 'Machine', 'User'] and post.scope.sysvol_relpaths == ['GPO.cmt', 'GPT.INI', 'Machine', 'Machine/Scripts', 'Machine/Scripts/Shutdown', 'Machine/Scripts/Startup', 'Machine/Scripts/scripts.ini', 'User', 'User/Documents & Settings', 'User/Scripts', 'User/Scripts/Logoff', 'User/Scripts/Logon', 'User/Scripts/scripts.ini']"
-      },
-      {
-        "fact": "scripts_ini.ps.machine.present",
-        "predicate": "post.scripts_ini.ps.machine.present == False and post.scripts_ini.ps.user.present == False"
       }
     ],
     "allow": [
@@ -199,7 +221,7 @@
   "structured_checks": [
     {
       "id": "one_entry_per_trigger",
-      "checks": "The envelope requires exactly one scripts.ini Shutdown entry on the machine side and exactly one Logon entry on the user side, each name and parameter string matched against the flat capability arguments. Other sections (an empty Startup or Logoff, if GPME writes one) are recorded under the side's require prefix, not asserted: their presence is part of the scripts.ini shape this capability measures."
+      "checks": "Revision 3 (round-2 review): no clause names a scripts_ini side or file as a prefix, so nothing under it is covered wholesale. Each side's presence, encoding facts (BOM, width, CR/LF counts, total bytes, fallback codec) and config shape, the single trigger section's entry count, script, parameters, raw line and both split properties, and the absence of psscripts.ini are asserted leaf by leaf; any other section (an extra populated Startup or Logoff trigger) adds facts no clause predicts and disproves the run."
     },
     {
       "id": "both_extension_lists_are_the_measured_strings",
@@ -228,6 +250,10 @@
     {
       "id": "owned_gpo_only",
       "checks": "Cleanup removes and backs up only the GPO whose GUID setup captured from New-GPO ({out.setup.gpo.guid}); a setup that never created one (an existing name is refused) removes nothing. Never by display name."
+    },
+    {
+      "id": "exact_ini_bytes",
+      "checks": "Both scripts.ini files are pinned byte-for-byte through the file_digest observer: absent before, then exactly expected_<side>_ini_bytes long with SHA-256 expected_<side>_ini_sha256 (the window-19/20 measurement). The arguments carry the values, and the record's invocation field binds them."
     }
   ],
   "bindings": {

@@ -14,6 +14,8 @@ view of an imported firewall GPO. The window-19 review asked for revision 2:
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -48,9 +50,9 @@ MACHINE_PAIR = "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-
 USER_PAIR = "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B66650-4972-11D1-A7CA-0000F87571E3}]"
 
 
-def test_wp1_rev2_asserts_both_measured_extension_lists_exactly() -> None:
+def test_wp1_rev3_asserts_both_measured_extension_lists_exactly() -> None:
     capability = _capability(WP1)
-    assert capability["revision"] == 2
+    assert capability["revision"] == 3
     require = {c["fact"]: c["predicate"] for c in capability["envelope"]["require"]}
     assert f"post.ad.gPCMachineExtensionNames == '{MACHINE_PAIR}'" in require[
         "ad.gPCMachineExtensionNames"
@@ -59,15 +61,140 @@ def test_wp1_rev2_asserts_both_measured_extension_lists_exactly() -> None:
     assert "pre.ad.gPCUserExtensionNames == None" in require["ad.gPCUserExtensionNames"]
 
 
-def test_wp1_rev2_pins_the_exact_sysvol_delta_and_no_psscripts() -> None:
-    capability = _capability(WP1)
-    require = {c["fact"]: c["predicate"] for c in capability["envelope"]["require"]}
-    relpaths = require["scope.sysvol_relpaths"]
+def test_wp1_rev3_predicts_no_subtree_wholesale() -> None:
+    """Round-2 review (Sol B1): a require clause's fact key predicts every
+    key UNDER it, so no clause may name a scripts_ini side or a file as a
+    prefix -- only leaves."""
+    require = _capability(WP1)["envelope"]["require"]
+    facts = {clause["fact"] for clause in require}
+    for broad in (
+        "scripts_ini.machine",
+        "scripts_ini.user",
+        "scripts_ini.ps.machine",
+        "scripts_ini.ps.user",
+        "filedigest.machine_ini",
+        "filedigest.user_ini",
+    ):
+        assert broad not in facts
+    relpaths = next(c["predicate"] for c in require if c["fact"] == "scope.sysvol_relpaths")
     assert "'User/Scripts/scripts.ini'" in relpaths
     assert "'Machine/Scripts/scripts.ini'" in relpaths
-    assert "post.scripts_ini.ps.user.present == False" in require["scripts_ini.ps.machine.present"]
-    relations = [d["relation"] for d in capability["envelope"]["derive"]]
+    relations = [d["relation"] for d in _capability(WP1)["envelope"]["derive"]]
     assert not any("sysvol_relpaths !=" in relation for relation in relations)
+
+
+W20_ARGS = {
+    "gpo_name": "zz-studio-evidence-plan035-wp1-w20",
+    "domain_dns": "ad.labdomain.dev",
+    "shutdown_script": "zz-studio-shutdown.cmd",
+    "shutdown_params": "/c shutdown-alpha",
+    "logon_script": "zz-studio-logon.cmd",
+    "logon_params": "/c logon-beta",
+    "backup_name": "w20-r1",
+    "expected_machine_ini_bytes": 158,
+    "expected_machine_ini_sha256": (
+        "f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489"
+    ),
+    "expected_user_ini_bytes": 138,
+    "expected_user_ini_sha256": "ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5",
+}
+
+
+def _w20_wp1_states() -> tuple[dict[str, object], dict[str, object]]:
+    """Pre/post fact maps rebuilt from the banked w20-r1 delta, plus the
+    unchanged facts revision 3's clauses read and the file_digest facts it
+    adds (whose values window 20's cleanup journal measured)."""
+    import json as _json
+
+    from gpo_observers.scripts_ini import absent_psscripts_ini_facts
+
+    record = _json.loads(
+        (REPO_ROOT / "docs" / "estate-window-20" / "records" / "w20-r1-record.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    unchanged: dict[str, object] = {
+        "scope.sysvol_contained": True,
+        "scope.policies.gpc_guids": ["zz"],
+        "scripts_ini.machine.encoding.fallback_codec": None,
+        "scripts_ini.user.encoding.fallback_codec": None,
+        "scripts_ini.machine.config_shape": "none",
+        "scripts_ini.user.config_shape": "none",
+        **absent_psscripts_ini_facts("machine"),
+        **absent_psscripts_ini_facts("user"),
+    }
+    pre = dict(unchanged)
+    post = dict(unchanged)
+    for entry in record["envelope_result"]["delta"]:
+        if entry["before"] != "<missing>":
+            pre[entry["key"]] = entry["before"]
+        if entry["after"] != "<missing>":
+            post[entry["key"]] = entry["after"]
+    for side in ("machine", "user"):
+        pre[f"filedigest.{side}_ini.present"] = False
+        pre[f"filedigest.{side}_ini.bytes"] = None
+        pre[f"filedigest.{side}_ini.sha256"] = None
+        post[f"filedigest.{side}_ini.present"] = True
+        post[f"filedigest.{side}_ini.bytes"] = W20_ARGS[f"expected_{side}_ini_bytes"]
+        post[f"filedigest.{side}_ini.sha256"] = W20_ARGS[f"expected_{side}_ini_sha256"]
+    return pre, post
+
+
+def _assert_wp1(pre: dict[str, object], post: dict[str, object]):  # type: ignore[no-untyped-def]
+    from gpo_observers.facts import make_fact
+    from wcd.envelope import assert_envelope, parse_envelope
+    from wcd.exec_transaction import _envelope_dict
+
+    envelope = parse_envelope(_envelope_dict(_capability(WP1), W20_ARGS))
+    categories = {}
+    for key in set(pre) | set(post):
+        fact = make_fact(key, None)
+        categories[key] = fact.volatile_subcategory or fact.category
+    return assert_envelope(envelope, pre, post, categories)
+
+
+def test_wp1_rev3_accepts_the_banked_window_20_run() -> None:
+    pre, post = _w20_wp1_states()
+    result = _assert_wp1(pre, post)
+    assert result.status == "satisfied", result.characterization
+    assert result.unclassified == ()
+
+
+def test_wp1_rev3_disproves_an_extra_populated_startup_trigger() -> None:
+    """The round-2 attack: an added machine [Startup] entry with the file's
+    aggregate facts moved to match. Revision 2 verified it (25 clauses, no
+    unclassified delta); revision 3 must not."""
+    pre, post = _w20_wp1_states()
+    post.update(
+        {
+            "scripts_ini.machine.Startup.entry_count": 1,
+            "scripts_ini.machine.Startup.0.script": "zz-extra.cmd",
+            "scripts_ini.machine.Startup.0.parameters": "",
+            "scripts_ini.machine.Startup.0.raw": "0CmdLine=zz-extra.cmd",
+            "scripts_ini.machine.Startup.0.prop.CmdLine": "zz-extra.cmd",
+            "scripts_ini.machine.Startup.0.prop.Parameters": "",
+        }
+    )
+    result = _assert_wp1(pre, post)
+    assert result.status == "disproven"
+    assert "scripts_ini.machine.Startup.entry_count" in result.unclassified
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("scripts_ini.machine.encoding.total_bytes", 230),
+        ("scripts_ini.machine.encoding.cr_count", 6),
+        ("scripts_ini.user.encoding.lf_count", 6),
+        ("filedigest.machine_ini.sha256", "0" * 64),
+        ("filedigest.user_ini.bytes", 200),
+    ],
+)
+def test_wp1_rev3_disproves_altered_ini_measurements(key: str, value: object) -> None:
+    pre, post = _w20_wp1_states()
+    post[key] = value
+    result = _assert_wp1(pre, post)
+    assert result.status == "disproven", key
 
 
 def test_wp1_version_relations_are_inequalities_plus_the_packing() -> None:
@@ -92,10 +219,12 @@ def test_wp1_forbids_gpp_clsids_on_both_extension_lists() -> None:
 
 def test_wp1_requires_exactly_one_entry_per_trigger_from_the_arguments() -> None:
     require = {c["fact"]: c["predicate"] for c in _capability(WP1)["envelope"]["require"]}
-    assert "== 1" in require["scripts_ini.machine.Shutdown.entry_count"]
-    assert "== 1" in require["scripts_ini.user.Logon.entry_count"]
-    assert "args['shutdown_script']" in require["scripts_ini.machine.Shutdown.0.script"]
-    assert "args['logon_script']" in require["scripts_ini.user.Logon.0.script"]
+    shutdown = require["scripts_ini.machine.Shutdown.entry_count"]
+    logon = require["scripts_ini.user.Logon.entry_count"]
+    assert "post['scripts_ini.machine.Shutdown.entry_count'] == 1" in shutdown
+    assert "args['shutdown_script']" in shutdown and "args['shutdown_params']" in shutdown
+    assert "post['scripts_ini.user.Logon.entry_count'] == 1" in logon
+    assert "args['logon_script']" in logon and "args['logon_params']" in logon
 
 
 def test_wp1_backs_up_and_removes_only_the_owned_guid() -> None:
@@ -174,9 +303,11 @@ def test_wp2_first_crossing_is_the_measured_security_settings_write() -> None:
 
 def test_wp2_rev2_pins_the_stub_bytes_and_the_exact_relpath_delta() -> None:
     capability = _capability(WP2)
-    assert capability["revision"] == 2
+    assert capability["revision"] == 3
     require = {c["fact"]: c["predicate"] for c in capability["envelope"]["require"]}
-    stub = require["filedigest.gpttmpl"]
+    assert "gpttmpl" not in require and "filedigest.gpttmpl" not in require
+    assert "post['gpttmpl.sections.1.line_count'] == 2" in require["gpttmpl.present"]
+    stub = require["filedigest.gpttmpl.sha256"]
     assert "pre.filedigest.gpttmpl.present == False" in stub
     assert "post.filedigest.gpttmpl.bytes == args['expected_gpttmpl_bytes']" in stub
     assert "post.filedigest.gpttmpl.sha256 == args['expected_gpttmpl_sha256']" in stub
@@ -228,10 +359,16 @@ def test_wp2_import_verifies_the_bundle_hash_before_importing() -> None:
 )
 def test_confined_scripts_take_leaf_names_under_a_fixed_root(script: str) -> None:
     text = (REPO_ROOT / "tools" / "guest_scripts" / f"{script}.ps1").read_text(encoding="utf-8")
-    assert "$root = 'C:\\gpo-studio\\wcd-" in text
+    # dir_clean_owned takes the root as a defaulted test seam; the run-sheet
+    # passes two arguments (pinned above), so the default is what runs.
+    assert ("$root = 'C:\\gpo-studio\\wcd-" in text) or (
+        "[string]$Root = 'C:\\gpo-studio\\wcd-stage'" in text
+    )
     assert "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$" in text
     assert "GetDirectoryName" in text
-    assert "ReparsePoint" in text
+    # The reparse refusal is pinned behaviourally (dir_clean_owned below) and
+    # structurally here: every confined script walks the whole ancestor chain.
+    assert "function Test-ReparseChain" in text
 
 
 def test_owned_cleanup_requires_the_marker_and_never_removes_by_name() -> None:
@@ -293,8 +430,6 @@ def test_capture_manifest_matches_the_committed_bytes(window: str) -> None:
     entries = {}
     for line in (captures / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
         digest, _, name = line.partition("  ")
-        if name.endswith(".zip") or ".zip " in name:
-            continue  # held outside the repository; recorded for reference
         entries[name] = digest
     on_disk = {p.name for p in captures.iterdir() if p.name != "MANIFEST.sha256"}
     assert set(entries) == on_disk
@@ -332,3 +467,98 @@ def hashlib_sha256(data: bytes) -> str:
     import hashlib
 
     return hashlib.sha256(data).hexdigest()
+
+
+# --- dir_clean_owned, behaviourally (round-2 review, Sol B2) ---------------------
+#
+# Runs the shipped script under PowerShell 7 against temporary directories,
+# through its $Root test seam (the run-sheets never pass it). On Linux and
+# Windows alike .NET reports a symbolic link's attributes as ReparsePoint, so
+# a symlinked root or ancestor is the same refusal a junction gets on the guest.
+
+_PWSH = shutil.which("pwsh")
+_CLEAN = REPO_ROOT / "tools" / "guest_scripts" / "dir_clean_owned.ps1"
+_OWNER = "11111111-2222-3333-4444-555555555555"
+
+
+def _clean(root: Path, stage: str, guid: str = _OWNER) -> str:
+    assert _PWSH is not None
+    completed = subprocess.run(
+        [_PWSH, "-NoProfile", "-NonInteractive", "-File", str(_CLEAN), stage, guid, str(root)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return completed.stdout.strip()
+
+
+def _owned_stage(root: Path, name: str = "w-stage", owner: str = _OWNER) -> Path:
+    stage = root / name
+    (stage / "expanded").mkdir(parents=True)
+    (stage / "expanded" / "payload.bin").write_bytes(b"zz")
+    (stage / ".wcd-owner").write_text(owner + "\n", encoding="ascii")
+    return stage
+
+
+needs_pwsh = pytest.mark.skipif(_PWSH is None, reason="PowerShell 7 (pwsh) not present")
+
+
+@needs_pwsh
+def test_dir_clean_owned_removes_an_owned_leaf(tmp_path: Path) -> None:
+    root = tmp_path / "wcd-stage"
+    stage = _owned_stage(root)
+    assert _clean(root, "w-stage") == "removed_dir=w-stage"
+    assert not stage.exists() and root.exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_foreign_owner(tmp_path: Path) -> None:
+    root = tmp_path / "wcd-stage"
+    stage = _owned_stage(root, owner="99999999-2222-3333-4444-555555555555")
+    assert _clean(root, "w-stage") == "clean_refused=foreign_owner"
+    assert stage.exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_root_swapped_for_a_link(tmp_path: Path) -> None:
+    """The cleanup-time substitution: the fixed root now points elsewhere,
+    where a leaf with a matching marker waits. Nothing may be deleted."""
+    elsewhere = tmp_path / "elsewhere"
+    victim = _owned_stage(elsewhere)
+    root = tmp_path / "wcd-stage"
+    root.symlink_to(elsewhere, target_is_directory=True)
+    assert _clean(root, "w-stage") == "clean_refused=root_reparse_point"
+    assert victim.exists() and (victim / "expanded" / "payload.bin").exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_linked_ancestor_of_the_root(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    victim = _owned_stage(real / "wcd-stage")
+    linked = tmp_path / "gpo-studio"
+    linked.symlink_to(real, target_is_directory=True)
+    assert _clean(linked / "wcd-stage", "w-stage") == "clean_refused=root_reparse_point"
+    assert victim.exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_linked_leaf(tmp_path: Path) -> None:
+    elsewhere = _owned_stage(tmp_path / "elsewhere", name="target")
+    root = tmp_path / "wcd-stage"
+    root.mkdir()
+    (root / "w-stage").symlink_to(elsewhere, target_is_directory=True)
+    assert _clean(root, "w-stage") == "clean_refused=reparse_point"
+    assert elsewhere.exists()
+
+
+@needs_pwsh
+@pytest.mark.parametrize("stage", ["..", "a/b", "incoming", ""])
+def test_dir_clean_owned_refuses_names_that_are_not_owned_leaves(
+    tmp_path: Path, stage: str
+) -> None:
+    root = tmp_path / "wcd-stage"
+    _owned_stage(root)
+    assert _clean(root, stage).startswith("clean_refused=")
+    assert (root / "w-stage").exists()

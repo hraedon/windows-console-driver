@@ -39,7 +39,7 @@ from wcd.estate import EstateConfig
 from wcd.exec_transaction import ExecTransactionError, TransactionPaths, execute_transaction
 from wcd.helper_client import HelperResult
 from wcd.leases import LeaseRegistry
-from wcd.record_schema import validate_record
+from wcd.record_schema import RecordSchemaError, validate_record
 from wcd.transport import TransportError
 
 # Synthetic-estate identifiers only: zz- placeholders per the project
@@ -1069,6 +1069,32 @@ def test_existing_name_refusal_removes_no_gpo(tmp_path: Path) -> None:
     assert _cleanup_of(record).get("evidence_gpo_guid") is None
 
 
+def _run_v2(
+    tmp_path: Path,
+    sheet: dict[str, object],
+    transport: FakeTransport,
+    arguments: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Run with the capability TEXT supplied, so the record is schema v2."""
+    capability = _capability(str(sheet["name"]), _SATISFIED_ENVELOPE)
+    capability["revision"] = 1
+    if arguments is not None:
+        capability["parameters"] = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": sorted(arguments),
+            "properties": {name: {"type": "string"} for name in arguments},
+        }
+    return execute_transaction(
+        capability=capability,
+        arguments=arguments if arguments is not None else {"gpo_name": "zz-studio-evidence-t"},
+        estate=_estate(),
+        paths=_make_repo(tmp_path, sheet),
+        transport=transport,  # type: ignore[arg-type]
+        capability_text=json.dumps(capability),
+    )
+
+
 def test_post_create_import_failure_removes_exactly_the_owned_guid(tmp_path: Path) -> None:
     """The GUID is captured by the create step before the import can fail;
     cleanup removes that GUID and nothing named."""
@@ -1078,44 +1104,65 @@ def test_post_create_import_failure_removes_exactly_the_owned_guid(tmp_path: Pat
         raise TransportError("bundle hash mismatch")
 
     transport.guest_routes.insert(0, (lambda s: "zzfake: stage_import" in s, import_fails))
-    record = _run(
-        tmp_path, _owned_cleanup_sheet("zz_owned_import"), _SATISFIED_ENVELOPE, transport
-    )
+    record = _run_v2(tmp_path, _owned_cleanup_sheet("zz_owned_import"), transport)
 
     assert record["state"] == "indeterminate"
     removals = _removal_calls(transport)
     assert len(removals) == 1
     assert removals[0]["args"] == [GPO_GUID]
-    notes = record["provenance"]["notes"]  # type: ignore[index]
-    assert any(str(note).startswith("setup manifest: ") for note in notes)
+    invocation = record["provenance"]["invocation"]  # type: ignore[index]
+    # The create step's output is banked even though setup failed after it.
+    assert [entry["script"] for entry in invocation["setup_manifest"]] == ["zz_gpo_create"]
+    assert f"guid={GPO_GUID}" in invocation["setup_manifest"][0]["stdout"]
 
 
-def test_record_notes_bind_invocation_arguments_and_run_sheet(tmp_path: Path) -> None:
+def test_record_banks_untruncated_invocation_recomputable_from_the_record(
+    tmp_path: Path,
+) -> None:
+    """Round-2 review (Sol B3): canonical arguments and setup output travel in
+    provenance.invocation WHOLE -- longer than the 512-character notes cap --
+    and the arguments hash is recomputable from the record alone."""
+    long_stdout = "bundle_sha256=" + "a" * 64 + "\n" + "line=" + "x" * 900 + "\n"
     transport = FakeTransport()
     transport.guest_routes.append(
-        (lambda s: "zzfake: stage_import" in s, lambda s, a: "bundle_sha256=" + "a" * 64 + "\n")
+        (lambda s: "zzfake: stage_import" in s, lambda s, a: long_stdout)
     )
     transport.guest_routes.append(
         (lambda s: "zzfake: gpo_remove_owned" in s, lambda s, a: f"removed_guid={a[0]}\n")
     )
-    record = _run(
-        tmp_path, _owned_cleanup_sheet("zz_manifest"), _SATISFIED_ENVELOPE, transport
-    )
+    arguments = {"gpo_name": "zz-studio-evidence-t", "padding": "p" * 700}
+    record = _run_v2(tmp_path, _owned_cleanup_sheet("zz_manifest"), transport, arguments)
 
     assert record["state"] == "verified"
+    assert validate_record(record) == 2
+    invocation = record["provenance"]["invocation"]  # type: ignore[index]
+    recomputed = hashlib.sha256(
+        json.dumps(
+            invocation["arguments"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+    ).hexdigest()
+    assert recomputed == invocation["arguments_sha256"]
+    assert invocation["arguments"] == arguments
+    sheet_bytes = (tmp_path / "runsheets" / "zz_manifest.json").read_bytes()
+    assert invocation["run_sheet_sha256"] == hashlib.sha256(sheet_bytes).hexdigest()
+    entries = invocation["setup_manifest"]
+    assert [entry["script"] for entry in entries] == ["zz_gpo_create", "zz_stage_import"]
+    assert entries[1]["stdout"] == long_stdout and entries[1]["truncated"] is False
+    assert entries[1]["stdout_sha256"] == hashlib.sha256(long_stdout.encode()).hexdigest()
     notes = [str(note) for note in record["provenance"]["notes"]]  # type: ignore[index]
-    canonical = json.dumps(
-        {"gpo_name": "zz-studio-evidence-t"}, sort_keys=True, separators=(",", ":")
+    assert any(note.startswith("invocation: arguments sha256=" + recomputed) for note in notes)
+
+
+def test_tampered_invocation_arguments_fail_record_validation(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    transport.guest_routes.append((lambda s: "zzfake: stage_import" in s, lambda s, a: "ok=1\n"))
+    transport.guest_routes.append(
+        (lambda s: "zzfake: gpo_remove_owned" in s, lambda s, a: "removed_guid=x\n")
     )
-    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    assert f"invocation arguments sha256={digest} {canonical}" in notes
-    assert any(
-        note.startswith("run_sheet sha256=") and note.endswith(" zz_manifest") for note in notes
-    )
-    manifest = next(note for note in notes if note.startswith("setup manifest: "))
-    entries = json.loads(manifest.removeprefix("setup manifest: "))
-    assert [entry["ok"] for entry in entries] == [True, True]
-    assert "bundle_sha256=" + "a" * 64 in entries[1]["stdout"]
+    record = _run_v2(tmp_path, _owned_cleanup_sheet("zz_tamper"), transport)
+    record["provenance"]["invocation"]["arguments"]["gpo_name"] = "zz-other"  # type: ignore[index]
+    with pytest.raises(RecordSchemaError, match="arguments_sha256"):
+        validate_record(record)
 
 
 def test_malformed_screenshot_is_contained_recorded_and_cleaned_up(tmp_path: Path) -> None:

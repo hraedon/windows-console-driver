@@ -163,9 +163,9 @@ def _fixture_snapshot() -> dict[str, Fact]:
     # SHA-256 per labelled file; pinned here in the post-state shape for the
     # one label a shipped capability uses.
     for key, value in {
-        "filedigest.gpttmpl.present": True,
-        "filedigest.gpttmpl.bytes": 142,
-        "filedigest.gpttmpl.sha256": "9" * 64,
+        f"filedigest.{label}.{leaf}": value
+        for label in ("gpttmpl", "machine_ini", "user_ini")
+        for leaf, value in (("present", True), ("bytes", 142), ("sha256", "9" * 64))
     }.items():
         fact = make_fact(key, value)
         snapshot[fact.key] = fact

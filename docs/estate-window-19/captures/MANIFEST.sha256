@@ -1,3 +1,4 @@
+c6ce06c41e69966b1a17add623252f1dae9472d9b3064e5d9c0576b57d6dd0f5  EXTERNAL.txt
 375f3a6c34a5bda7bafdb530e310ef0ae0c5ae274a336850971054a8b8a906f9  recon-r02-user-windows-settings.png
 8604be2fc2ff74efdf6c3d55db67ac34a4661f27ee38e9d255f813aeaa3276ae  recon-r02-user-windows-settings.uia.json
 ad4ae8ea578109e83b44e00decafeaddb21e6a4fde40f061e45e397edae20a62  recon-r03-user-scripts-node.png
@@ -34,4 +35,3 @@ fe3514c578238e048fd38975642463cca3ab8517640f845ce04404d59aedb250  wp2-inbound-ru
 44e3f62fc00db4e18d20fe95cf09fd86c412623b3c12aa82656350473300f951  wp2-inbound-rules.uia.json
 6abbea85eb4d2335141ad43bcf8199d8ade4bd5dd3a790d89b86764285acc5c9  wp2-rule-properties.png
 a585492c26ad6fa63bc39776ac794589b5be2db04fd090ba35dcbee30ba5ca68  wp2-rule-properties.uia.json
-494be98ca6c31b20079cf26ca2654a7466b7d9ec1ba2f599d28abb18429898ae  wp1-backups.zip (raw collection, held outside the repo: gpo-studio-evidence inbox plan035-w19)

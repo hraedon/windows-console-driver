@@ -2,7 +2,7 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.observe_imported_firewall_rules",
   "surface": "gpmc-server2025",
-  "revision": 2,
+  "revision": 3,
   "intent": "Observe-only: import a GPMC backup bundle (gpo-studio's firewall export) into a disposable GPO, open it in GPME, walk to Windows Defender Firewall with Advanced Security > Inbound Rules, bank the full UIA tree and screenshots of the rules list and of one rule's Properties sheet, cancel and close -- so a person can review whether GPME displays and offers to edit the imported rules under the extension registration the export wrote (gpo-studio Plan 035 WP-2, WI-077). Surface evidence, not a certified claim: nothing here proves an edit persists.",
   "parameters": {
     "type": "object",
@@ -110,12 +110,12 @@
         "predicate": "pre.ad.gPCMachineExtensionNames == args['expected_machine_extensions'] and post.ad.gPCMachineExtensionNames == pre.ad.gPCMachineExtensionNames"
       },
       {
-        "fact": "filedigest.gpttmpl",
+        "fact": "filedigest.gpttmpl.sha256",
         "predicate": "pre.filedigest.gpttmpl.present == False and post.filedigest.gpttmpl.present == True and post.filedigest.gpttmpl.bytes == args['expected_gpttmpl_bytes'] and post.filedigest.gpttmpl.sha256 == args['expected_gpttmpl_sha256']"
       },
       {
-        "fact": "gpttmpl",
-        "predicate": "pre.gpttmpl.present == False and post.gpttmpl.present == True and post['gpttmpl.sections.0.name'] == 'Unicode' and post['gpttmpl.sections.1.name'] == 'Version'"
+        "fact": "gpttmpl.present",
+        "predicate": "pre.gpttmpl.present == False and post.gpttmpl.present == True and post['gpttmpl.encoding.bom'] == 'utf16le' and post['gpttmpl.encoding.cr_count'] == 5 and post['gpttmpl.encoding.lf_count'] == 5 and post['gpttmpl.encoding.crlf_only'] == True and post['gpttmpl.sections.0.name'] == 'Unicode' and post['gpttmpl.sections.0.line_count'] == 1 and post['gpttmpl.sections.0.key_value_shape'] == True and post['gpttmpl.sections.1.name'] == 'Version' and post['gpttmpl.sections.1.line_count'] == 2 and post['gpttmpl.sections.1.key_value_shape'] == True"
       },
       {
         "fact": "scope.sysvol_relpaths",
@@ -197,6 +197,10 @@
     {
       "id": "owned_gpo_and_stage_only",
       "checks": "gpo_create runs first, so the GPO GUID is captured before the import can fail; cleanup removes only that GUID, and only the staging leaf under C:\\gpo-studio\\wcd-stage whose .wcd-owner marker names it. Leaf names only; root, out-of-root and reparse-point targets are refused."
+    },
+    {
+      "id": "leaf_exact_predictions",
+      "checks": "Revision 3 (round-2 review): the GptTmpl.inf parse is asserted leaf by leaf (encoding, both sections' names, line counts and shape) under a leaf fact key, so a third section or any other parsed fact is unpredicted and disproves the run, independently of the byte digest."
     }
   ],
   "bindings": {

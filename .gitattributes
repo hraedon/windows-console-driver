@@ -19,3 +19,4 @@ docs/estate-window-20/captures/*.ini -text
 docs/estate-window-20/captures/*.inf -text
 docs/estate-window-20/captures/*.txt -text
 docs/estate-window-20/captures/MANIFEST.sha256 -text
+docs/estate-window-*/captures/EXTERNAL.txt -text

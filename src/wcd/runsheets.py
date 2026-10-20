@@ -333,6 +333,10 @@ class SheetContext:
     hwnd_stack: list[int] = field(default_factory=list)
     last_context: dict[str, object] | None = None
     journal: list[dict[str, object]] = field(default_factory=list)
+    # Every guest/host script's FULL stdout, in execution order. The journal
+    # keeps only the first 512 characters; the executor's invocation manifest
+    # banks the setup phase's complete output from here (Plan 035 review).
+    script_outputs: list[tuple[str, str]] = field(default_factory=list)
 
     def interpolate(self, value: object) -> object:
         """Resolve ``{args.key}`` / ``{out.key}`` references inside strings.
@@ -496,6 +500,7 @@ class GestureExecutor:
             # Transport failures inside a sheet are reconciled, never crashed:
             # the transaction layer owns the indeterminate + cleanup path.
             raise RunSheetError(f"{remote} script {script_ref!r} transport failed: {exc}") from exc
+        ctx.script_outputs.append((script_ref, stdout))
         output_key = params.get("output_as")
         if isinstance(output_key, str) and output_key:
             for line in stdout.splitlines():

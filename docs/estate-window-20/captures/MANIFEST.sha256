@@ -1,3 +1,4 @@
+51026fcc2688e17ad2a09ebba2cd5ca4ec937bd7006406d50c167048a61718f6  EXTERNAL.txt
 07cba636ed9c1c30c4a4c228e555151f1fc43f7bfc941cbb221ed67297ea3dbc  recon-gpttmpl-stub.inf
 f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489  w20-r1-machine-scripts.ini
 ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5  w20-r1-user-scripts.ini
@@ -13,4 +14,3 @@ ac302d3fcf1b038ba56d928adbfdc2314a7321a27963bcfd03c1f18efab960f0  wp2-firewall-o
 66c56f8b38e6c21e896a6d713dda8a25ed836f268ba2b47cda158604b349e8bd  wp2-inbound-rules.uia.json
 07f6bee2f841de3d7ef6d039b03d9057e9da5aa254a39c0fce5a3461752f88f9  wp2-rule-properties.png
 0163b80232596d0f5a018f097168ccb37bb296c6297c8bb9e955aaed83449e22  wp2-rule-properties.uia.json
-6a8b4fb2bfa69984d6042efc8ef1e7c4a619512bfe6ee6d26972115aaa86e2fe  w20-wp1-backup.zip (raw collection, held outside the repo: gpo-studio-evidence inbox plan035-w20)

@@ -1,0 +1,2 @@
+# Raw collection held OUTSIDE the repository (not checked by sha256sum -c MANIFEST.sha256):
+# 494be98ca6c31b20079cf26ca2654a7466b7d9ec1ba2f599d28abb18429898ae  wp1-backups.zip (raw collection, held outside the repo: gpo-studio-evidence inbox plan035-w19)

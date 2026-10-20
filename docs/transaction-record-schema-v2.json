@@ -90,7 +90,32 @@
         "console": { "type": "object" },
         "steps": { "type": "array" },
         "cleanup": { "type": "object" },
-        "notes": { "type": "array", "items": { "type": "string" } }
+        "notes": { "type": "array", "items": { "type": "string" } },
+        "invocation": {
+          "description": "OPTIONAL (added 2026-10-20, Plan 035 round-2 review): the untruncated invocation binding. arguments_sha256 is the SHA-256 of the canonical JSON of arguments (sorted keys, separators ',' and ':', UTF-8); each setup_manifest entry carries one setup script's whole output (capped at 16384 characters with truncated=true) and the SHA-256 of the full output.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "arguments_sha256", "run_sheet_sha256", "setup_manifest"],
+          "properties": {
+            "arguments": { "type": "object" },
+            "arguments_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "run_sheet_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "setup_manifest": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["script", "stdout", "stdout_sha256", "truncated"],
+                "properties": {
+                  "script": { "type": "string", "minLength": 1 },
+                  "stdout": { "type": "string" },
+                  "stdout_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                  "truncated": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
