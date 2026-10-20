@@ -35,6 +35,8 @@ _CHECK_ORDER = (
     "domain_account",
     "dc_locator",
     "kerberos",
+    "member_clock",
+    "machine_password",
     "helper_task",
     "console_session",
 )
@@ -62,7 +64,15 @@ class FakeCanaryTransport:
         console_active: bool = True,
         host_error: Exception | None = None,
         alive_error: Exception | None = None,
+        member_clock_delta_s: str = "1",
+        checkpoint_created: str = "2026-10-20T19:00:00.0000000Z",
+        pwd_last_set: str = "2026-10-20T18:27:00.0000000Z",
+        disable_password_change: str = "1",
     ) -> None:
+        self.member_clock_delta_s = member_clock_delta_s
+        self.checkpoint_created = checkpoint_created
+        self.pwd_last_set = pwd_last_set
+        self.disable_password_change = disable_password_change
         self.vm_state = vm_state
         self.checkpoint_count = checkpoint_count
         self.enabled = enabled
@@ -88,6 +98,12 @@ class FakeCanaryTransport:
         self.host_calls.append(script)
         if self.host_error is not None:
             raise self.host_error
+        if "UtcNow.ToString('o')" in script:
+            return "2026-10-20T19:30:00.0000000Z\n"
+        if "checkpoint_created" in script:
+            if self.checkpoint_count == 0:
+                return "checkpoint_created=unreadable\n"
+            return f"checkpoint_created={self.checkpoint_created}\n"
         if "Get-VM -Name" in script:
             return f"state={self.vm_state}\n"
         if "Get-VMSnapshot" in script:
@@ -110,6 +126,13 @@ class FakeCanaryTransport:
             return (
                 f"dc_time_delta_s={self.dc_time_delta_s}\n"
                 f"klist_rc={self.klist_rc}\n{self.klist_lines}"
+            )
+        if "member_clock_delta_s" in script:
+            return f"member_clock_delta_s={self.member_clock_delta_s}\n"
+        if "pwd_last_set" in script:
+            return (
+                f"pwd_last_set={self.pwd_last_set}\n"
+                f"disable_password_change={self.disable_password_change}\n"
             )
         if "Get-ScheduledTask" in script:
             if not self.helper_present:
@@ -148,9 +171,11 @@ def test_missing_checkpoint_fails_with_its_name() -> None:
     details = _details(report)
     assert "NOT present on host" in details["checkpoint"]
     assert "zz-checkpoint-current" in details["checkpoint"]
-    # Every other check still ran and stayed green.
+    # Every other check still ran; only machine_password, which compares
+    # against the missing checkpoint's creation time, fails with it.
     assert _names(report) == list(_CHECK_ORDER)
-    assert sum(1 for c in report.checks if c.ok) == 7
+    failing = sorted(c.name for c in report.checks if not c.ok)
+    assert failing == ["checkpoint", "machine_password"]
 
 
 def test_empty_checkpoint_name_is_a_config_failure_not_a_probe() -> None:
@@ -338,6 +363,9 @@ def test_probe_exception_becomes_a_failing_line_never_a_raise() -> None:
         "klist_rc",
         "helper_present",
         "console_active",
+        "member_clock_delta_s",
+        "pwd_last_set",
+        "disable_password_change",
     ],
 )
 def test_every_single_check_alone_can_redden_the_report(field: str) -> None:
@@ -351,6 +379,54 @@ def test_every_single_check_alone_can_redden_the_report(field: str) -> None:
         "klist_rc": {"klist_rc": "-1073741715"},
         "helper_present": {"helper_present": False},
         "console_active": {"console_active": False},
+        "member_clock_delta_s": {"member_clock_delta_s": "-2592000"},
+        "pwd_last_set": {"pwd_last_set": "2026-10-21T00:00:00.0000000Z"},
+        "disable_password_change": {"disable_password_change": ""},
     }
     report = run_estate_canary(FakeCanaryTransport(**variants[field]), _ESTATE)
     assert report.ok is False, field
+
+
+def test_member_clock_thirty_days_behind_fails_with_the_revert_hint() -> None:
+    """Window 19: a revert restored a guest clock 30 days stale."""
+    report = run_estate_canary(FakeCanaryTransport(member_clock_delta_s="-2592000"), _ESTATE)
+    detail = _details(report)["member_clock"]
+    assert "2592000s behind the host" in detail
+    assert "Set-Date" in detail
+
+
+def test_machine_password_newer_than_checkpoint_fails() -> None:
+    """Window 19: pwdLastSet 10-16 vs checkpoint 09-20 -- every Kerberos logon
+    to the reverted member failed."""
+    report = run_estate_canary(
+        FakeCanaryTransport(
+            checkpoint_created="2026-09-20T18:59:31.0000000Z",
+            pwd_last_set="2026-10-16T12:29:19.0000000Z",
+        ),
+        _ESTATE,
+    )
+    check = next(c for c in report.checks if c.name == "machine_password")
+    assert check.ok is False
+    assert "NEWER than checkpoint" in check.detail
+
+
+def test_enabled_rotation_fails_even_when_the_checkpoint_is_fresh() -> None:
+    report = run_estate_canary(FakeCanaryTransport(disable_password_change="0"), _ESTATE)
+    check = next(c for c in report.checks if c.name == "machine_password")
+    assert check.ok is False
+    assert "DisablePasswordChange=0" in check.detail
+
+
+def test_unreadable_checkpoint_time_fails_machine_password_closed() -> None:
+    report = run_estate_canary(FakeCanaryTransport(checkpoint_created="unreadable"), _ESTATE)
+    check = next(c for c in report.checks if c.name == "machine_password")
+    assert check.ok is False
+    assert "fail closed" in check.detail
+
+
+def test_psdirect_refusal_after_revert_points_at_the_machine_key() -> None:
+    report = run_estate_canary(
+        FakeCanaryTransport(alive_error=TransportError("The credential is invalid.")), _ESTATE
+    )
+    detail = _details(report)["machine_password"]
+    assert "machine key is older than AD's" in detail
