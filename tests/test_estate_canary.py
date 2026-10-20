@@ -66,12 +66,12 @@ class FakeCanaryTransport:
         alive_error: Exception | None = None,
         member_clock_delta_s: str = "1",
         checkpoint_created: str = "2026-10-20T19:00:00.0000000Z",
-        pwd_last_set: str = "2026-10-20T18:27:00.0000000Z",
+        key_changed_at: str = "2026-10-20T18:27:00.0000000Z",
         disable_password_change: str = "1",
     ) -> None:
         self.member_clock_delta_s = member_clock_delta_s
         self.checkpoint_created = checkpoint_created
-        self.pwd_last_set = pwd_last_set
+        self.key_changed_at = key_changed_at
         self.disable_password_change = disable_password_change
         self.vm_state = vm_state
         self.checkpoint_count = checkpoint_count
@@ -131,7 +131,7 @@ class FakeCanaryTransport:
             return f"member_clock_delta_s={self.member_clock_delta_s}\n"
         if "pwd_last_set" in script:
             return (
-                f"pwd_last_set={self.pwd_last_set}\n"
+                f"pwd_last_set={self.key_changed_at}\n"
                 f"disable_password_change={self.disable_password_change}\n"
             )
         if "Get-ScheduledTask" in script:
@@ -364,7 +364,7 @@ def test_probe_exception_becomes_a_failing_line_never_a_raise() -> None:
         "helper_present",
         "console_active",
         "member_clock_delta_s",
-        "pwd_last_set",
+        "key_changed_at",
         "disable_password_change",
     ],
 )
@@ -380,7 +380,7 @@ def test_every_single_check_alone_can_redden_the_report(field: str) -> None:
         "helper_present": {"helper_present": False},
         "console_active": {"console_active": False},
         "member_clock_delta_s": {"member_clock_delta_s": "-2592000"},
-        "pwd_last_set": {"pwd_last_set": "2026-10-21T00:00:00.0000000Z"},
+        "key_changed_at": {"key_changed_at": "2026-10-21T00:00:00.0000000Z"},
         "disable_password_change": {"disable_password_change": ""},
     }
     report = run_estate_canary(FakeCanaryTransport(**variants[field]), _ESTATE)
@@ -401,7 +401,7 @@ def test_machine_password_newer_than_checkpoint_fails() -> None:
     report = run_estate_canary(
         FakeCanaryTransport(
             checkpoint_created="2026-09-20T18:59:31.0000000Z",
-            pwd_last_set="2026-10-16T12:29:19.0000000Z",
+            key_changed_at="2026-10-16T12:29:19.0000000Z",
         ),
         _ESTATE,
     )
