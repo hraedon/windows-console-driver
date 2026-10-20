@@ -283,21 +283,52 @@ def test_new_guest_scripts_parse_under_windows_powershell_51(script: Path) -> No
     ps_scripts.parse_check(script)
 
 
-def test_window_19_capture_manifest_matches_the_committed_bytes() -> None:
+@pytest.mark.parametrize("window", ["estate-window-19", "estate-window-20"])
+def test_capture_manifest_matches_the_committed_bytes(window: str) -> None:
     """The WCD-side hash manifest (review, Sol 4) binds every banked capture,
     including the raw scripts.ini bytes gpo-studio's fixtures transcribe."""
     import hashlib
 
-    captures = REPO_ROOT / "docs" / "estate-window-19" / "captures"
+    captures = REPO_ROOT / "docs" / window / "captures"
     entries = {}
     for line in (captures / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
         digest, _, name = line.partition("  ")
-        if name.startswith("wp1-backups.zip"):
+        if name.endswith(".zip") or ".zip " in name:
             continue  # held outside the repository; recorded for reference
         entries[name] = digest
     on_disk = {p.name for p in captures.iterdir() if p.name != "MANIFEST.sha256"}
     assert set(entries) == on_disk
     for name, digest in entries.items():
         assert hashlib.sha256((captures / name).read_bytes()).hexdigest() == digest, name
-    assert entries["w19-r2-user-scripts.ini"].startswith("ba526db6")
-    assert entries["w19-r2-machine-scripts.ini"].startswith("f8fa4009")
+    prefix = "w19-r2" if window == "estate-window-19" else "w20-r1"
+    assert entries[f"{prefix}-user-scripts.ini"].startswith("ba526db6")
+    assert entries[f"{prefix}-machine-scripts.ini"].startswith("f8fa4009")
+
+
+def test_window_20_records_bind_what_window_19_left_unbound() -> None:
+    """Revision 2's records carry the invocation, the setup output and the
+    collected digests in themselves (review, Sol 4)."""
+    import json as _json
+
+    records = REPO_ROOT / "docs" / "estate-window-20" / "records"
+    wp1 = _json.loads((records / "w20-r1-record.json").read_text(encoding="utf-8"))
+    wp2 = _json.loads((records / "w20-r2-record.json").read_text(encoding="utf-8"))
+    assert wp1["state"] == wp2["state"] == "verified"
+    assert wp1["provenance"]["capability_revision"] == wp2["provenance"]["capability_revision"] == 2
+    wp1_text = _json.dumps(wp1)
+    assert "sha256=f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489" in wp1_text
+    assert "sha256=ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5" in wp1_text
+    notes = "\n".join(wp2["provenance"]["notes"])
+    assert "bundle_sha256=3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f" in notes
+    assert "invocation arguments sha256=" in notes
+    captures = REPO_ROOT / "docs" / "estate-window-20" / "captures"
+    wp2_text = _json.dumps(wp2)
+    for name in ("wp2-inbound-rules", "wp2-rule-properties", "wp2-firewall-overview"):
+        digest = hashlib_sha256((captures / f"{name}.uia.json").read_bytes())
+        assert digest in wp2_text, name
+
+
+def hashlib_sha256(data: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
