@@ -35,7 +35,7 @@ import hashlib
 import json
 import re
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -517,6 +517,59 @@ class _OfficerRightsCollector:
 ObserverCollect = Callable[[GpoRef, Mapping[str, object], SessionTransport], FactSet]
 
 
+class _FileDigestCollector:
+    """Exact-bytes identity of one SYSVOL file: presence, length, SHA-256.
+
+    Plan 035 review: a require clause on a parsed fact tree covers every
+    descendant key, so a dedicated parser's tree is not an exact prediction
+    of a file's content. This observer is: the envelope pins the measured
+    length and digest, and any other byte disproves. The guest transports the
+    bytes; the digest is computed controller-side like every other parse.
+    """
+
+    def collect(self, ref: GpoRef, params: Mapping[str, object], t: SessionTransport) -> FactSet:
+        relpath = str(params.get("relpath", ""))
+        label = str(params.get("label", ""))
+        if not relpath or not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", label):
+            raise ExecTransactionError(
+                "file_digest observer needs a relpath and a lowercase label param"
+            )
+        full = str(__import__("pathlib").PureWindowsPath(ref.sysvol_path) / relpath)
+        script = r"""
+param([string]$Path)
+$ErrorActionPreference = 'Stop'
+if (Test-Path -LiteralPath $Path -PathType Leaf) {
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $data = @{ file_b64 = [Convert]::ToBase64String($bytes) }
+    @{ ok = $true; data = $data } | ConvertTo-Json -Compress -Depth 4
+} else {
+    @{ ok = $true; data = @{} } | ConvertTo-Json -Compress -Depth 4
+}
+exit 0
+"""
+        stdout = t.guest(script, [full], timeout=120.0)
+        payload = json.loads(stdout)
+        data = payload.get("data") or {}
+        b64 = data.get("file_b64")
+        prefix = f"filedigest.{label}"
+        facts: FactSet = {}
+        if not b64:
+            values: dict[str, object] = {"present": False, "bytes": None, "sha256": None}
+        else:
+            import base64
+
+            raw = base64.b64decode(b64)
+            values = {
+                "present": True,
+                "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        for key, value in values.items():
+            fact = make_fact(f"{prefix}.{key}", value)
+            facts[fact.key] = fact
+        return facts
+
+
 def _r2_core_collect(
     ref: GpoRef, params: Mapping[str, object], t: SessionTransport
 ) -> FactSet:
@@ -533,6 +586,7 @@ _OBSERVER_REGISTRY: Mapping[str, ObserverCollect] = {
     "gpttmpl_inf": _FileBytesCollector("gpttmpl", gpttmpl_fact_tree).collect,
     "fdeploy_ini": _FileBytesCollector("fdeploy", fdeploy_fact_tree).collect,
     "fdeploy_marker": _FileBytesCollector("fdeploy_marker", fdeploy_fact_tree).collect,
+    "file_digest": _FileDigestCollector().collect,
 }
 
 
@@ -905,8 +959,24 @@ def execute_transaction(
     domain_dns = _domain_dns(transport)
     gpo_guid: str | None = None
 
+    # Invocation manifest (Plan 035 review): the record binds the capability
+    # document by digest, but not what it was invoked WITH or which run-sheet
+    # bytes drove it. Both go into the notes before anything moves, so a
+    # record authenticates its own inputs.
+    canonical_args = json.dumps(arguments, sort_keys=True, separators=(",", ":"))
+    provenance.notes.append(
+        "invocation arguments sha256="
+        + hashlib.sha256(canonical_args.encode("utf-8")).hexdigest()
+        + " "
+        + canonical_args
+    )
+    sheet_path = paths.run_sheets / f"{sheet_name}.json"
+    provenance.notes.append(
+        f"run_sheet sha256={hashlib.sha256(sheet_path.read_bytes()).hexdigest()} {sheet_name}"
+    )
     try:
-        executor.execute(setup_sheet, ctx)
+        setup_journal = executor.execute(setup_sheet, ctx)
+        provenance.notes.append("setup manifest: " + _setup_manifest(setup_journal))
         if gpo_transaction:
             guid_value = ctx.outputs.get("setup.gpo.guid")
             gpo_guid = guid_value
@@ -915,6 +985,8 @@ def execute_transaction(
                     "setup produced no gpo.guid output (scripts must emit guid=<id>)"
                 )
     except (RunSheetError, ExecTransactionError) as exc:
+        if isinstance(exc, RunSheetError) and exc.journal:
+            provenance.notes.append("setup manifest: " + _setup_manifest(exc.journal))
         abort_indeterminate(f"setup failed before prepare: {exc}")
         # Whatever setup managed to create before failing must still be
         # cleaned: salvage the guid if the create step got that far.
@@ -1078,6 +1150,30 @@ def execute_transaction(
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
+
+def _setup_manifest(journal: Sequence[object]) -> str:
+    """The setup phase's emitted output, one entry per step, as compact JSON.
+
+    Setup scripts report what they created and the digests they verified
+    (a GUID, a bundle hash, an imported file hash); the gesture journal never
+    carried them, so a record could not authenticate its own input.
+    """
+    entries: list[dict[str, object]] = []
+    for raw in journal:
+        if not isinstance(raw, Mapping):
+            continue
+        detail = raw.get("detail")
+        stdout = detail.get("stdout") if isinstance(detail, Mapping) else None
+        entries.append(
+            {
+                "step": raw.get("step"),
+                "ok": raw.get("ok"),
+                "stdout": stdout if isinstance(stdout, str) else None,
+                "error": raw.get("error"),
+            }
+        )
+    return json.dumps(entries, sort_keys=True, separators=(",", ":"))
 
 
 def _setup_sheet(sheet: RunSheet, ctx: SheetContext) -> RunSheet:

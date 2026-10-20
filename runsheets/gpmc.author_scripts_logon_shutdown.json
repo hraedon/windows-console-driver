@@ -297,18 +297,18 @@
     {
       "action": "guest",
       "phase": "cleanup",
-      "script": "gpo_backup",
+      "script": "gpo_backup_owned",
       "args": [
-        "{args.gpo_name}",
-        "{args.backup_dir}"
+        "{out.setup.gpo.guid}",
+        "{args.backup_name}"
       ]
     },
     {
       "action": "guest",
       "phase": "cleanup",
-      "script": "gpo_remove",
+      "script": "gpo_remove_owned",
       "args": [
-        "{args.gpo_name}"
+        "{out.setup.gpo.guid}"
       ]
     },
     {

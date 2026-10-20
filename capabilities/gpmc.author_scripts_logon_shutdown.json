@@ -2,8 +2,8 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.author_scripts_logon_shutdown",
   "surface": "gpmc-server2025",
-  "revision": 1,
-  "intent": "Author exactly one command shutdown script on the computer side and one command logon script on the user side of a disposable GPO through the GPME Scripts sheets, so the user-side Scripts extension pair, the per-side version movement and the scripts.ini shapes for the Shutdown and Logon triggers can be read off the capture (gpo-studio Plan 035 WP-1, WI-071). The user-side tool GUID is deliberately NOT asserted: it is the measurement.",
+  "revision": 2,
+  "intent": "Author exactly one command shutdown script on the computer side and one command logon script on the user side of a disposable GPO through the GPME Scripts sheets, so the user-side Scripts extension pair, the per-side version movement and the scripts.ini shapes for the Shutdown and Logon triggers can be read off the capture (gpo-studio Plan 035 WP-1, WI-071). Revision 2 re-runs the measurement with every measured value asserted exactly (window 19 r2 measured the user-side tool GUID unasserted).",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
@@ -14,16 +14,34 @@
       "shutdown_params",
       "logon_script",
       "logon_params",
-      "backup_dir"
+      "backup_name"
     ],
     "properties": {
-      "gpo_name": { "type": "string" },
-      "domain_dns": { "type": "string" },
-      "shutdown_script": { "type": "string" },
-      "shutdown_params": { "type": "string" },
-      "logon_script": { "type": "string" },
-      "logon_params": { "type": "string" },
-      "backup_dir": { "type": "string" }
+      "gpo_name": {
+        "type": "string",
+        "pattern": "^zz-studio-evidence-[A-Za-z0-9_.-]{1,64}$"
+      },
+      "domain_dns": {
+        "type": "string"
+      },
+      "shutdown_script": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "shutdown_params": {
+        "type": "string"
+      },
+      "logon_script": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "logon_params": {
+        "type": "string"
+      },
+      "backup_name": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      }
     }
   },
   "channel_contract": {
@@ -105,11 +123,19 @@
       },
       {
         "fact": "ad.gPCMachineExtensionNames",
-        "predicate": "'{42B5FAAE-6536-11D2-AE5A-0000F87571E3}' in post.ad.gPCMachineExtensionNames and '{40B6664F-4972-11D1-A7CA-0000F87571E3}' in post.ad.gPCMachineExtensionNames"
+        "predicate": "pre.ad.gPCMachineExtensionNames == None and post.ad.gPCMachineExtensionNames == '[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]'"
       },
       {
         "fact": "ad.gPCUserExtensionNames",
-        "predicate": "'{42B5FAAE-6536-11D2-AE5A-0000F87571E3}' in post.ad.gPCUserExtensionNames"
+        "predicate": "pre.ad.gPCUserExtensionNames == None and post.ad.gPCUserExtensionNames == '[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B66650-4972-11D1-A7CA-0000F87571E3}]'"
+      },
+      {
+        "fact": "scope.sysvol_relpaths",
+        "predicate": "pre.scope.sysvol_relpaths == ['GPO.cmt', 'GPT.INI', 'Machine', 'User'] and post.scope.sysvol_relpaths == ['GPO.cmt', 'GPT.INI', 'Machine', 'Machine/Scripts', 'Machine/Scripts/Shutdown', 'Machine/Scripts/Startup', 'Machine/Scripts/scripts.ini', 'User', 'User/Documents & Settings', 'User/Scripts', 'User/Scripts/Logoff', 'User/Scripts/Logon', 'User/Scripts/scripts.ini']"
+      },
+      {
+        "fact": "scripts_ini.ps.machine.present",
+        "predicate": "post.scripts_ini.ps.machine.present == False and post.scripts_ini.ps.user.present == False"
       }
     ],
     "allow": [
@@ -162,9 +188,6 @@
       },
       {
         "relation": "post.scope.extension_lists.user != pre.scope.extension_lists.user"
-      },
-      {
-        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
       }
     ],
     "convergence": {
@@ -179,8 +202,8 @@
       "checks": "The envelope requires exactly one scripts.ini Shutdown entry on the machine side and exactly one Logon entry on the user side, each name and parameter string matched against the flat capability arguments. Other sections (an empty Startup or Logoff, if GPME writes one) are recorded under the side's require prefix, not asserted: their presence is part of the scripts.ini shape this capability measures."
     },
     {
-      "id": "user_tool_guid_is_the_measurement",
-      "checks": "The user extension list must carry the Scripts CSE {42B5FAAE-...}; the tool half GPME pairs with it on the user side is deliberately unasserted and is read from the record's delta. The machine side asserts the R2-measured pair because the shutdown sheet is the same snap-in R2 measured on Startup."
+      "id": "both_extension_lists_are_the_measured_strings",
+      "checks": "Revision 1 left the user-side tool half unasserted and measured it (estate window 19, w19-r2: {40B66650-...}). Revision 2 asserts both extension lists as the exact measured strings, absent before, so any extra group, a different tool half on either side, or a list GPME rewrote disproves the run."
     },
     {
       "id": "version_relations_are_inequalities",
@@ -192,11 +215,19 @@
     },
     {
       "id": "byte_exact_backup_before_removal",
-      "checks": "scripts.ini bytes are not hashed by the observers (system relpaths), so cleanup runs Backup-GPO into backup_dir BEFORE removing the GPO; the operator collects that backup before any checkpoint revert to bank byte-exact fixtures, as R2 did."
+      "checks": "scripts.ini bytes are not hashed by the observers (system relpaths), so cleanup runs gpo_backup_owned: Backup-GPO of the OWNED GUID into a new leaf directory under the fixed C:\\gpo-studio\\wcd-backup root, before removal, emitting each INI's sha256, byte length and attributes into the cleanup journal. The record therefore binds the bytes the operator later collects."
     },
     {
       "id": "sysvol_paths_contained",
       "checks": "Every relative path in post.scope.sysvol_relpaths stays under this GPO's GUID directory. Backs the sysvol_contained fact the declarative forbid consumes; computed by the observer, asserted here."
+    },
+    {
+      "id": "exact_sysvol_delta",
+      "checks": "Revision 2 pins the exact pre and post scope.sysvol_relpaths lists measured by w19-r2 (the two scripts.ini files plus the Scripts trigger directories and User/Documents & Settings GPME lays down while browsing), and requires no psscripts.ini on either side."
+    },
+    {
+      "id": "owned_gpo_only",
+      "checks": "Cleanup removes and backs up only the GPO whose GUID setup captured from New-GPO ({out.setup.gpo.guid}); a setup that never created one (an existing name is refused) removes nothing. Never by display name."
     }
   ],
   "bindings": {

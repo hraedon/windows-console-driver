@@ -246,6 +246,7 @@
             "gpttmpl_inf",
             "fdeploy_ini",
             "fdeploy_marker",
+            "file_digest",
             "wmi_filter",
             "certtmpl",
             "officerrights"
@@ -257,6 +258,7 @@
           "properties": {
             "path": {"$ref": "#/$defs/non-empty-string"},
             "relpath": {"$ref": "#/$defs/non-empty-string"},
+            "label": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$"},
             "filter_name": {"$ref": "#/$defs/non-empty-string"},
             "template_name": {"$ref": "#/$defs/non-empty-string"},
             "domain_dns": {"$ref": "#/$defs/non-empty-string"},
@@ -306,6 +308,28 @@
               "params": {
                 "required": ["relpath"],
                 "not": {"required": ["path"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {"const": "file_digest"}
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "required": ["relpath", "label"],
+                "not": {"required": ["path"]}
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "params": {
+                "not": {"required": ["label"]}
               }
             }
           }
@@ -482,6 +506,8 @@
           "type": "integer",
           "minimum": 0
         },
+        "pattern": {"$ref": "#/$defs/non-empty-string"},
+        "minimum": {"type": "number"},
         "enum": {
           "type": "array",
           "minItems": 1,

@@ -10,3 +10,8 @@ tools/guest_scripts/read_iis_security_value.ps1 -text
 # SHA-256 of each file is banked in gpo-studio provenance and must not
 # drift through a checkout.
 docs/estate-window-3/captures/*.ini -text
+
+# Window-19 raw INI captures and their hash manifest (Plan 035 review).
+docs/estate-window-19/captures/*.ini -text
+docs/estate-window-19/captures/MANIFEST.sha256 -text
+docs/estate-window-19/captures/*.txt -text

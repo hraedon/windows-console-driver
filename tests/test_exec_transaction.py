@@ -332,7 +332,14 @@ def _make_repo(tmp_path: Path, sheet: dict[str, object]) -> TransactionPaths:
     (tmp_path / "profiles" / "zz-fake-surface.toml").write_text(_PROFILE_TOML, encoding="utf-8")
     scripts = tmp_path / "tools" / "guest_scripts"
     scripts.mkdir(parents=True)
-    for name in ("zz_gpo_create", "zz_mmc_kill", "zz_gpo_remove", "zz_requery"):
+    for name in (
+        "zz_gpo_create",
+        "zz_mmc_kill",
+        "zz_gpo_remove",
+        "zz_requery",
+        "zz_stage_import",
+        "zz_gpo_remove_owned",
+    ):
         marker = name.removeprefix("zz_")
         (scripts / f"{name}.ps1").write_text(f"# zzfake: {marker}\n", encoding="utf-8")
     (tmp_path / "runsheets").mkdir()
@@ -960,10 +967,36 @@ def test_dump_save_as_banks_the_full_payload_beside_the_screenshots(tmp_path: Pa
     )
 
     assert record["state"] == "verified"
-    saved = json.loads((evidence / "zz-tree.uia.json").read_text(encoding="utf-8"))
+    raw = (evidence / "zz-tree.uia.json").read_bytes()
+    saved = json.loads(raw.decode("utf-8"))
     assert saved["action"] == "uia_dump"
     assert len(saved["elements"]) == 2
-    assert str(evidence / "zz-tree.uia.json") in json.dumps(record["provenance"])
+    provenance = json.dumps(record["provenance"])
+    assert str(evidence / "zz-tree.uia.json") in provenance
+    # The journal binds the saved bytes: a later overwrite would not match.
+    assert hashlib.sha256(raw).hexdigest() in provenance
+
+
+def test_dump_save_as_refuses_to_overwrite_banked_evidence(tmp_path: Path) -> None:
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    (evidence / "zz-tree.uia.json").write_text("{}\n", encoding="utf-8")
+    transport = FakeTransport()
+    gesture = [
+        {"action": "dump", "profile_action": "zz_navigate", "depth": 12, "save_as": "zz-tree"},
+        *_commit_crossing_gesture(),
+    ]
+    record = _run(
+        tmp_path,
+        _sheet("zz_dump_overwrite", gesture),
+        _SATISFIED_ENVELOPE,
+        transport,
+        estate=_estate(evidence_dir=str(evidence)),
+    )
+
+    assert record["state"] == "indeterminate"
+    assert "refusing to overwrite" in str(record["verdict"])
+    assert (evidence / "zz-tree.uia.json").read_text(encoding="utf-8") == "{}\n"
 
 
 @pytest.mark.parametrize("bad_name", ["../escape", "", "a/b", 7])
@@ -987,6 +1020,102 @@ def test_dump_save_as_refuses_a_name_that_is_not_a_plain_stem(
     assert record["state"] == "indeterminate"
     assert "save_as must be a plain file stem" in str(record["verdict"])
     assert not evidence.exists() or not any(evidence.iterdir())
+
+
+def _owned_cleanup_sheet(name: str) -> dict[str, object]:
+    """Plan 035 review shape: create first (GUID captured), then a fallible
+    import, and a cleanup that removes ONLY the captured GUID."""
+    return {
+        "name": name,
+        "surface": "zz-fake-surface",
+        "steps": [
+            *_SETUP_STEPS,
+            {"action": "guest", "phase": "setup", "script": "zz_stage_import",
+             "args": ["{out.setup.gpo.guid}"]},
+            *_commit_crossing_gesture(),
+            {"action": "guest", "phase": "cleanup", "script": "zz_mmc_kill"},
+            {"action": "guest", "phase": "cleanup", "script": "zz_gpo_remove_owned",
+             "args": ["{out.setup.gpo.guid}"]},
+        ],
+    }
+
+
+def _removal_calls(transport: FakeTransport) -> list[dict[str, object]]:
+    return [
+        call for call in transport.guest_calls
+        if "zzfake: gpo_remove" in str(call["script"])
+    ]
+
+
+def test_existing_name_refusal_removes_no_gpo(tmp_path: Path) -> None:
+    """A setup that refuses because the name already exists created nothing,
+    so cleanup must not remove anything -- above all not a GPO it found."""
+    transport = FakeTransport()
+
+    def refuse(script: str, args: list[object]) -> str:
+        raise TransportError("GPO zz-studio-evidence-t already exists; cleanup discipline violated")
+
+    transport.guest_routes.insert(0, (lambda s: "zzfake: gpo_create" in s, refuse))
+    record = _run(
+        tmp_path, _owned_cleanup_sheet("zz_owned_refuse"), _SATISFIED_ENVELOPE, transport
+    )
+
+    assert record["state"] == "indeterminate"
+    assert _removal_calls(transport) == []
+    journal = _cleanup_of(record)["journal"]
+    assert isinstance(journal, list)
+    removal = [entry for entry in journal if "does not resolve" in str(entry)]
+    assert removal, journal
+    assert _cleanup_of(record).get("evidence_gpo_guid") is None
+
+
+def test_post_create_import_failure_removes_exactly_the_owned_guid(tmp_path: Path) -> None:
+    """The GUID is captured by the create step before the import can fail;
+    cleanup removes that GUID and nothing named."""
+    transport = FakeTransport()
+
+    def import_fails(script: str, args: list[object]) -> str:
+        raise TransportError("bundle hash mismatch")
+
+    transport.guest_routes.insert(0, (lambda s: "zzfake: stage_import" in s, import_fails))
+    record = _run(
+        tmp_path, _owned_cleanup_sheet("zz_owned_import"), _SATISFIED_ENVELOPE, transport
+    )
+
+    assert record["state"] == "indeterminate"
+    removals = _removal_calls(transport)
+    assert len(removals) == 1
+    assert removals[0]["args"] == [GPO_GUID]
+    notes = record["provenance"]["notes"]  # type: ignore[index]
+    assert any(str(note).startswith("setup manifest: ") for note in notes)
+
+
+def test_record_notes_bind_invocation_arguments_and_run_sheet(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    transport.guest_routes.append(
+        (lambda s: "zzfake: stage_import" in s, lambda s, a: "bundle_sha256=" + "a" * 64 + "\n")
+    )
+    transport.guest_routes.append(
+        (lambda s: "zzfake: gpo_remove_owned" in s, lambda s, a: f"removed_guid={a[0]}\n")
+    )
+    record = _run(
+        tmp_path, _owned_cleanup_sheet("zz_manifest"), _SATISFIED_ENVELOPE, transport
+    )
+
+    assert record["state"] == "verified"
+    notes = [str(note) for note in record["provenance"]["notes"]]  # type: ignore[index]
+    canonical = json.dumps(
+        {"gpo_name": "zz-studio-evidence-t"}, sort_keys=True, separators=(",", ":")
+    )
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    assert f"invocation arguments sha256={digest} {canonical}" in notes
+    assert any(
+        note.startswith("run_sheet sha256=") and note.endswith(" zz_manifest") for note in notes
+    )
+    manifest = next(note for note in notes if note.startswith("setup manifest: "))
+    entries = json.loads(manifest.removeprefix("setup manifest: "))
+    assert [entry["ok"] for entry in entries] == [True, True]
+    assert "bundle_sha256=" + "a" * 64 in entries[1]["stdout"]
 
 
 def test_malformed_screenshot_is_contained_recorded_and_cleaned_up(tmp_path: Path) -> None:

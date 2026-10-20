@@ -2,7 +2,7 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.observe_imported_firewall_rules",
   "surface": "gpmc-server2025",
-  "revision": 1,
+  "revision": 2,
   "intent": "Observe-only: import a GPMC backup bundle (gpo-studio's firewall export) into a disposable GPO, open it in GPME, walk to Windows Defender Firewall with Advanced Security > Inbound Rules, bank the full UIA tree and screenshots of the rules list and of one rule's Properties sheet, cancel and close -- so a person can review whether GPME displays and offers to edit the imported rules under the extension registration the export wrote (gpo-studio Plan 035 WP-2, WI-077). Surface evidence, not a certified claim: nothing here proves an edit persists.",
   "parameters": {
     "type": "object",
@@ -10,20 +10,49 @@
     "required": [
       "gpo_name",
       "domain_dns",
-      "bundle_path",
+      "bundle_name",
       "bundle_sha256",
-      "stage_dir",
+      "stage_name",
       "expected_machine_extensions",
+      "expected_gpttmpl_bytes",
+      "expected_gpttmpl_sha256",
       "rule_display_name"
     ],
     "properties": {
-      "gpo_name": { "type": "string" },
-      "domain_dns": { "type": "string" },
-      "bundle_path": { "type": "string" },
-      "bundle_sha256": { "type": "string" },
-      "stage_dir": { "type": "string" },
-      "expected_machine_extensions": { "type": "string" },
-      "rule_display_name": { "type": "string" }
+      "gpo_name": {
+        "type": "string",
+        "pattern": "^zz-studio-evidence-[A-Za-z0-9_.-]{1,64}$"
+      },
+      "domain_dns": {
+        "type": "string"
+      },
+      "bundle_name": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "bundle_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "stage_name": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "expected_machine_extensions": {
+        "type": "string"
+      },
+      "expected_gpttmpl_bytes": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "expected_gpttmpl_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "rule_display_name": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9 _-]{0,127}$"
+      }
     }
   },
   "channel_contract": {
@@ -64,6 +93,13 @@
         "params": {
           "relpath": "Machine\\Microsoft\\Windows NT\\SecEdit\\GptTmpl.inf"
         }
+      },
+      {
+        "name": "file_digest",
+        "params": {
+          "relpath": "Machine\\Microsoft\\Windows NT\\SecEdit\\GptTmpl.inf",
+          "label": "gpttmpl"
+        }
       }
     ]
   },
@@ -74,8 +110,16 @@
         "predicate": "pre.ad.gPCMachineExtensionNames == args['expected_machine_extensions'] and post.ad.gPCMachineExtensionNames == pre.ad.gPCMachineExtensionNames"
       },
       {
+        "fact": "filedigest.gpttmpl",
+        "predicate": "pre.filedigest.gpttmpl.present == False and post.filedigest.gpttmpl.present == True and post.filedigest.gpttmpl.bytes == args['expected_gpttmpl_bytes'] and post.filedigest.gpttmpl.sha256 == args['expected_gpttmpl_sha256']"
+      },
+      {
         "fact": "gpttmpl",
-        "predicate": "post.gpttmpl.present == True"
+        "predicate": "pre.gpttmpl.present == False and post.gpttmpl.present == True and post['gpttmpl.sections.0.name'] == 'Unicode' and post['gpttmpl.sections.1.name'] == 'Version'"
+      },
+      {
+        "fact": "scope.sysvol_relpaths",
+        "predicate": "pre.scope.sysvol_relpaths == ['GPO.cmt', 'Machine', 'Machine/registry.pol', 'User', 'gpt.ini'] and post.scope.sysvol_relpaths == ['GPO.cmt', 'Machine', 'Machine/Microsoft', 'Machine/Microsoft/Windows NT', 'Machine/Microsoft/Windows NT/SecEdit', 'Machine/Microsoft/Windows NT/SecEdit/GptTmpl.inf', 'Machine/Scripts', 'Machine/Scripts/Shutdown', 'Machine/Scripts/Startup', 'Machine/registry.pol', 'User', 'gpt.ini']"
       }
     ],
     "allow": [
@@ -121,9 +165,6 @@
       },
       {
         "relation": "post.ad.gPCUserExtensionNames == pre.ad.gPCUserExtensionNames"
-      },
-      {
-        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
       }
     ],
     "convergence": {
@@ -138,25 +179,29 @@
       "checks": "Both version halves, the packed AD versionNumber and both extension lists are equal before and after the GPME walk. The imported Registry.pol is not named in a clause because its per-file sha256/bytes facts are deliberately unclassified: any change to it, or any file appearing or vanishing outside the dedicated observers, is an unclassified change and disproves the run. That is the post-state rule this observe-only capability rests on."
     },
     {
-      "id": "registration_is_bound_to_the_import",
-      "checks": "The pre-state machine extension list must equal the expected_machine_extensions argument, so the record states which registration GPME was shown (the gpo-studio export's, read back from AD after Import-GPO), and the bundle's bytes are bound by bundle_sha256, which the setup script verifies before importing."
-    },
-    {
-      "id": "security_settings_writes_gpttmpl",
-      "checks": "MEASURED in the estate-window-19 recon on a fresh GPO: opening Security Settings in GPME writes Machine/Microsoft/Windows NT/SecEdit/GptTmpl.inf with no version bump. The envelope predicts that file (present, recorded through the gpttmpl observer) and the resulting sysvol_relpaths change, instead of pretending the walk touches nothing; the version and extension-list equalities above are what 'observe-only' means here."
-    },
-    {
       "id": "surface_evidence_for_review",
       "checks": "The run-sheet saves the full UIA dumps of the Inbound Rules view and of one rule's Properties sheet, plus screenshots, to the evidence directory. Whether GPME displays and offers to edit the imported rules is read off those by a person; the envelope certifies only that the walk left the policy as imported."
     },
     {
       "id": "sysvol_paths_contained",
       "checks": "Every relative path in post.scope.sysvol_relpaths stays under this GPO's GUID directory. Backs the sysvol_contained fact the declarative forbid consumes; computed by the observer, asserted here."
+    },
+    {
+      "id": "exact_permitted_delta",
+      "checks": "The walk's only permitted SYSVOL change is pinned exactly: the pre and post scope.sysvol_relpaths lists (measured by w19-r3: the GptTmpl.inf stub, its Microsoft/Windows NT/SecEdit parents, and the Machine/Scripts/{Startup,Shutdown} directories GPME lays down when Windows Settings lists), and the stub itself by exact length and SHA-256 through the file_digest observer, absent before. Any other path, any other stub byte, or a stub that was already there disproves the run."
+    },
+    {
+      "id": "registration_is_bound_to_the_import",
+      "checks": "The pre-state machine extension list must equal expected_machine_extensions. The bundle is bound by bundle_sha256, verified by gpo_stage_import before Import-GPO; that script's emitted backup_id, bundle hash and imported Registry.pol hash, and the invocation arguments themselves, are banked in the record's notes (setup manifest, invocation arguments sha256)."
+    },
+    {
+      "id": "owned_gpo_and_stage_only",
+      "checks": "gpo_create runs first, so the GPO GUID is captured before the import can fail; cleanup removes only that GUID, and only the staging leaf under C:\\gpo-studio\\wcd-stage whose .wcd-owner marker names it. Leaf names only; root, out-of-root and reparse-point targets are refused."
     }
   ],
   "bindings": {
     "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation.",
-    "fact_vocabulary": "Fact keys reference gpo_observers' declared scheme (gpo_identity.*, ad.*, version.*, scripts_ini.*, gpttmpl.*, sysvol.*, scope.*). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
+    "fact_vocabulary": "Fact keys reference gpo_observers' declared scheme (gpo_identity.*, ad.*, version.*, scripts_ini.*, gpttmpl.*, filedigest.*, sysvol.*, scope.*). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
   },
   "cleanup": {
     "strategy": "remove_gpo",

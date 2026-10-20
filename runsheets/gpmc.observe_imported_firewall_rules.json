@@ -10,15 +10,24 @@
     {
       "action": "guest",
       "phase": "setup",
-      "script": "gpo_import_backup",
+      "script": "gpo_create",
       "args": [
         "{args.gpo_name}",
-        "Plan 035 WP-2 observe-only GPME view of an imported firewall export",
-        "{args.bundle_path}",
-        "{args.bundle_sha256}",
-        "{args.stage_dir}"
+        "Plan 035 WP-2 observe-only GPME view of an imported firewall export"
       ],
       "output_as": "setup.gpo"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpo_stage_import",
+      "args": [
+        "{out.setup.gpo.guid}",
+        "{args.stage_name}",
+        "{args.bundle_name}",
+        "{args.bundle_sha256}"
+      ],
+      "output_as": "setup.import"
     },
     {
       "action": "guest",
@@ -227,9 +236,9 @@
     {
       "action": "guest",
       "phase": "cleanup",
-      "script": "gpo_remove",
+      "script": "gpo_remove_owned",
       "args": [
-        "{args.gpo_name}"
+        "{out.setup.gpo.guid}"
       ]
     },
     {
@@ -243,9 +252,10 @@
     {
       "action": "guest",
       "phase": "cleanup",
-      "script": "dir_clean",
+      "script": "dir_clean_owned",
       "args": [
-        "{args.stage_dir}"
+        "{args.stage_name}",
+        "{out.setup.gpo.guid}"
       ]
     },
     {

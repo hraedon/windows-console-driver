@@ -159,6 +159,17 @@ def _fixture_snapshot() -> dict[str, Fact]:
             fact = make_fact(entry["key"], entry["after"])
             snapshot[fact.key] = fact
 
+    # The file_digest collector (Plan 035 review) emits presence, length and
+    # SHA-256 per labelled file; pinned here in the post-state shape for the
+    # one label a shipped capability uses.
+    for key, value in {
+        "filedigest.gpttmpl.present": True,
+        "filedigest.gpttmpl.bytes": 142,
+        "filedigest.gpttmpl.sha256": "9" * 64,
+    }.items():
+        fact = make_fact(key, value)
+        snapshot[fact.key] = fact
+
     # The WMI-filter collector is transport-backed inside the executor; its
     # fact vocabulary is small and pinned here in the post-state shape (the
     # target present, one object, no residue). Every pre.* key the envelope

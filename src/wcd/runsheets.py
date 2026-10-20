@@ -924,22 +924,37 @@ class GestureExecutor:
             # payload, beside the screenshots, under the same anchored evidence
             # directory. The journal keeps only the first names; the saved
             # file is what a reviewer reads.
-            detail["saved"] = str(self._save_dump(save_as, result.payload))
+            saved_path, digest = self._save_dump(save_as, result.payload)
+            detail["saved"] = str(saved_path)
+            detail["sha256"] = digest
         return detail
 
-    def _save_dump(self, name: object, payload: Mapping[str, object]) -> Path:
+    def _save_dump(self, name: object, payload: Mapping[str, object]) -> tuple[Path, str]:
+        """Write the dump EXCLUSIVELY and return its path and SHA-256.
+
+        Exclusive creation refuses to replace evidence a previous run banked
+        under the same name, and the digest goes into the journal, so the
+        record binds the exact bytes a reviewer later reads.
+        """
+        import hashlib
+
         if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
             raise RunSheetError(f"dump save_as must be a plain file stem, got {name!r}")
         path = self._evidence_dir / f"{name}.uia.json"
         try:
+            data = (
+                json.dumps(payload, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+            ).encode("utf-8")
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                json.dumps(payload, indent=1, sort_keys=True, ensure_ascii=False) + "\n",
-                encoding="utf-8",
-            )
+            with path.open("xb") as handle:
+                handle.write(data)
+        except FileExistsError as exc:
+            raise RunSheetError(
+                f"dump save_as {path} already exists; refusing to overwrite banked evidence"
+            ) from exc
         except (OSError, TypeError, ValueError) as exc:
             raise RunSheetError(f"dump could not save evidence to {path}: {exc}") from exc
-        return path
+        return path, hashlib.sha256(data).hexdigest()
 
     def _click_element(self, params: dict[str, object], ctx: SheetContext) -> dict[str, object]:
         if params.get("fresh", True):
