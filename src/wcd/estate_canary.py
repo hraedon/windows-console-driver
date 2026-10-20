@@ -119,8 +119,11 @@ _HOST_UTC_SCRIPT = "[DateTime]::UtcNow.ToString('o')"
 
 _MEMBER_CLOCK_SCRIPT = r"""
 param([string]$HostUtc)
-$hostUtc = [DateTime]::Parse($HostUtc, $null, [Globalization.DateTimeStyles]::RoundtripKind)
-"member_clock_delta_s=$([int]([DateTime]::UtcNow - $hostUtc.ToUniversalTime()).TotalSeconds)"
+# A separate name: PowerShell variables are case-insensitive, so assigning
+# the parsed value to $hostUtc would coerce it back into the [string] param
+# (measured live, window 20's first canary run).
+$hostTime = [DateTime]::Parse($HostUtc, $null, [Globalization.DateTimeStyles]::RoundtripKind)
+"member_clock_delta_s=$([int]([DateTime]::UtcNow - $hostTime.ToUniversalTime()).TotalSeconds)"
 """
 
 _CHECKPOINT_CREATED_SCRIPT = r"""
