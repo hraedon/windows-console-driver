@@ -1,0 +1,774 @@
+{
+  "state": "verified",
+  "verdict": "transaction reached verified",
+  "envelope_result": {
+    "status": "satisfied",
+    "satisfied": [
+      "require[0] fact='scripts_ini.machine'",
+      "require[1] fact='scripts_ini.machine.Shutdown.entry_count'",
+      "require[2] fact='scripts_ini.machine.Shutdown.0.script'",
+      "require[3] fact='scripts_ini.machine.Shutdown.0.parameters'",
+      "require[4] fact='scripts_ini.user'",
+      "require[5] fact='scripts_ini.user.Logon.entry_count'",
+      "require[6] fact='scripts_ini.user.Logon.0.script'",
+      "require[7] fact='scripts_ini.user.Logon.0.parameters'",
+      "require[8] fact='scripts_ini.ps.machine'",
+      "require[9] fact='scripts_ini.ps.user'",
+      "require[10] fact='ad.gPCMachineExtensionNames'",
+      "require[11] fact='ad.gPCUserExtensionNames'",
+      "derive[0]",
+      "derive[1]",
+      "derive[2]",
+      "derive[3]",
+      "derive[4]",
+      "derive[5]",
+      "derive[6]",
+      "derive[7]",
+      "forbid[0] scope='ad.gPCMachineExtensionNames'",
+      "forbid[1] scope='ad.gPCUserExtensionNames'",
+      "forbid[2] scope='scope.sysvol_contained'",
+      "forbid[3] scope='scope.policies.gpc_guids'"
+    ],
+    "violated": [],
+    "unresolved": [],
+    "unclassified": [],
+    "characterization": "satisfied: 24 clause(s) held; 36 delta entries all covered; covered changed: ad.gPCMachineExtensionNames (category 'structural'); covered changed: ad.gPCUserExtensionNames (category 'structural'); covered changed: ad.uSNChanged (category 'replication_metadata'); covered changed: ad.versionNumber (category 'structural'); covered changed: ad.whenChanged (category 'timestamps'); covered changed: scope.extension_lists.machine (category 'structural'); covered changed: scope.extension_lists.user (category 'struct",
+    "delta": [
+      {
+        "key": "ad.gPCMachineExtensionNames",
+        "kind": "changed",
+        "before": null,
+        "after": "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]"
+      },
+      {
+        "key": "ad.gPCUserExtensionNames",
+        "kind": "changed",
+        "before": null,
+        "after": "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B66650-4972-11D1-A7CA-0000F87571E3}]"
+      },
+      {
+        "key": "ad.uSNChanged",
+        "kind": "changed",
+        "before": "59912",
+        "after": "60022"
+      },
+      {
+        "key": "ad.versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 65537
+      },
+      {
+        "key": "ad.whenChanged",
+        "kind": "changed",
+        "before": "2026-10-20T17:47:50.0000000+00:00",
+        "after": "2026-10-20T17:55:38.0000000+00:00"
+      },
+      {
+        "key": "scope.extension_lists.machine",
+        "kind": "changed",
+        "before": null,
+        "after": "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]"
+      },
+      {
+        "key": "scope.extension_lists.user",
+        "kind": "changed",
+        "before": null,
+        "after": "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B66650-4972-11D1-A7CA-0000F87571E3}]"
+      },
+      {
+        "key": "scope.sysvol_relpaths",
+        "kind": "changed",
+        "before": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "User"
+        ],
+        "after": [
+          "GPO.cmt",
+          "GPT.INI",
+          "Machine",
+          "Machine/Scripts",
+          "Machine/Scripts/Shutdown",
+          "Machine/Scripts/Startup",
+          "Machine/Scripts/scripts.ini",
+          "User",
+          "User/Documents & Settings",
+          "User/Scripts",
+          "User/Scripts/Logoff",
+          "User/Scripts/Logon",
+          "User/Scripts/scripts.ini"
+        ]
+      },
+      {
+        "key": "scripts_ini.machine.encoding.bom",
+        "kind": "changed",
+        "before": null,
+        "after": "utf-16le"
+      },
+      {
+        "key": "scripts_ini.machine.encoding.bom_width",
+        "kind": "changed",
+        "before": null,
+        "after": 2
+      },
+      {
+        "key": "scripts_ini.machine.encoding.cr_count",
+        "kind": "changed",
+        "before": null,
+        "after": 4
+      },
+      {
+        "key": "scripts_ini.machine.encoding.lf_count",
+        "kind": "changed",
+        "before": null,
+        "after": 4
+      },
+      {
+        "key": "scripts_ini.machine.encoding.total_bytes",
+        "kind": "changed",
+        "before": null,
+        "after": 158
+      },
+      {
+        "key": "scripts_ini.machine.present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "scripts_ini.user.encoding.bom",
+        "kind": "changed",
+        "before": null,
+        "after": "utf-16le"
+      },
+      {
+        "key": "scripts_ini.user.encoding.bom_width",
+        "kind": "changed",
+        "before": null,
+        "after": 2
+      },
+      {
+        "key": "scripts_ini.user.encoding.cr_count",
+        "kind": "changed",
+        "before": null,
+        "after": 4
+      },
+      {
+        "key": "scripts_ini.user.encoding.lf_count",
+        "kind": "changed",
+        "before": null,
+        "after": 4
+      },
+      {
+        "key": "scripts_ini.user.encoding.total_bytes",
+        "kind": "changed",
+        "before": null,
+        "after": 138
+      },
+      {
+        "key": "scripts_ini.user.present",
+        "kind": "changed",
+        "before": false,
+        "after": true
+      },
+      {
+        "key": "version.ad_versionNumber",
+        "kind": "changed",
+        "before": 0,
+        "after": 65537
+      },
+      {
+        "key": "version.machine",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "version.raw",
+        "kind": "changed",
+        "before": "0",
+        "after": "65537"
+      },
+      {
+        "key": "version.user",
+        "kind": "changed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "key": "scripts_ini.machine.Shutdown.0.parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "/c shutdown-alpha"
+      },
+      {
+        "key": "scripts_ini.machine.Shutdown.0.prop.CmdLine",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-shutdown.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Shutdown.0.prop.Parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "/c shutdown-alpha"
+      },
+      {
+        "key": "scripts_ini.machine.Shutdown.0.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "0CmdLine=zz-studio-shutdown.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Shutdown.0.script",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-shutdown.cmd"
+      },
+      {
+        "key": "scripts_ini.machine.Shutdown.entry_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 1
+      },
+      {
+        "key": "scripts_ini.user.Logon.0.parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "/c logon-beta"
+      },
+      {
+        "key": "scripts_ini.user.Logon.0.prop.CmdLine",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-logon.cmd"
+      },
+      {
+        "key": "scripts_ini.user.Logon.0.prop.Parameters",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "/c logon-beta"
+      },
+      {
+        "key": "scripts_ini.user.Logon.0.raw",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "0CmdLine=zz-studio-logon.cmd"
+      },
+      {
+        "key": "scripts_ini.user.Logon.0.script",
+        "kind": "added",
+        "before": "<missing>",
+        "after": "zz-studio-logon.cmd"
+      },
+      {
+        "key": "scripts_ini.user.Logon.entry_count",
+        "kind": "added",
+        "before": "<missing>",
+        "after": 1
+      }
+    ]
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability gpmc.author_scripts_logon_shutdown prepared over GPO 24c204f3-5c86-48ae-990c-bc68537272bd"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability gpmc.author_scripts_logon_shutdown invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'ok_child_dialog' (profile class 'potentially_mutating')"
+    },
+    {
+      "sequence": 4,
+      "from_state": "commit_attempted",
+      "to_state": "verified",
+      "reason": "converged after 2 polls, 2 reproductions"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v2.json",
+    "schema_version": 2,
+    "capability": "gpmc.author_scripts_logon_shutdown",
+    "run_sheet": "gpmc.author_scripts_logon_shutdown",
+    "transaction_id": "7bffe13c-02d8-4f99-b206-7a18bc0d04bd",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_gpo_editor]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Local Group Policy Editor",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "context[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 6008,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 786524
+            },
+            "asserted_window": "Local Group Policy Editor"
+          }
+        },
+        {
+          "index": 2,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "matched": false,
+            "soft": true
+          }
+        },
+        {
+          "index": 4,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "step": "shot[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/wp1-machine-scripts-node.png"
+          }
+        },
+        {
+          "index": 7,
+          "step": "click_element[open_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 8,
+          "step": "wait_foreground[open_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Shutdown Properties",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 9,
+          "step": "click_element[open_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              207,
+              237
+            ]
+          }
+        },
+        {
+          "index": 10,
+          "step": "click_element[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              348,
+              235
+            ]
+          }
+        },
+        {
+          "index": 11,
+          "step": "wait_foreground[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add a Script",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 12,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 22
+          }
+        },
+        {
+          "index": 13,
+          "step": "key[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 14,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 17
+          }
+        },
+        {
+          "index": 15,
+          "step": "click_element[ok_child_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              252,
+              175
+            ]
+          }
+        },
+        {
+          "index": 16,
+          "step": "shot[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/wp1-shutdown-entry-added.png"
+          }
+        },
+        {
+          "index": 17,
+          "step": "click_element[ok_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              200,
+              435
+            ]
+          }
+        },
+        {
+          "index": 18,
+          "step": "keys[navigate_scope_root] click the GPO root row of the UIA-invisible scope tree (offset measured from the tree's rect: the root is its first row), Escape any label edit, Home: lands on the root whichever node the click hit",
+          "ok": true,
+          "detail": {
+            "injected_events": 7
+          }
+        },
+        {
+          "index": 19,
+          "step": "wait_element[navigate_scope_root]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "attempts": 1,
+            "waited_s": 8.0,
+            "name": "User Configuration"
+          }
+        },
+        {
+          "index": 20,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 21,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "matched": false,
+            "soft": true
+          }
+        },
+        {
+          "index": 22,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 23,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 24,
+          "step": "shot[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/wp1-user-scripts-node.png"
+          }
+        },
+        {
+          "index": 25,
+          "step": "click_element[open_logon_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 26,
+          "step": "wait_foreground[open_logon_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Logon Properties",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 27,
+          "step": "click_element[open_logon_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              207,
+              237
+            ]
+          }
+        },
+        {
+          "index": 28,
+          "step": "click_element[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              348,
+              235
+            ]
+          }
+        },
+        {
+          "index": 29,
+          "step": "wait_foreground[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add a Script",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 30,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 19
+          }
+        },
+        {
+          "index": 31,
+          "step": "key[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 32,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 13
+          }
+        },
+        {
+          "index": 33,
+          "step": "click_element[ok_child_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              252,
+              175
+            ]
+          }
+        },
+        {
+          "index": 34,
+          "step": "shot[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/wp1-logon-entry-added.png"
+          }
+        },
+        {
+          "index": 35,
+          "step": "click_element[ok_logon_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              200,
+              435
+            ]
+          }
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "backup=C:\\gpo-studio\\manual\\plan035-wp1\\r2"
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "removed=zz-studio-evidence-plan035-wp1-r2"
+              }
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchGPME"
+              }
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence_gpo_guid": "24c204f3-5c86-48ae-990c-bc68537272bd",
+      "evidence_gpo_remaining": 0
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:mvmhyperv01.ad.hraedon.com:LabMS01",
+      "recovery checkpoint 'domain-joined' present: True",
+      "surface fingerprint gate: banked 9193a3dfa818... observed 9193a3dfa818...",
+      "baseline gate: ui_language banked en-US observed en-US",
+      "baseline gate: binary_version C:\\Windows\\System32\\mmc.exe banked 10.0.26100.32860 (WinBuild.160101.0800) observed 10.0.26100.32860 (WinBuild.160101.0800)"
+    ],
+    "capability_revision": 1,
+    "capability_sha256": "07174ef6d2bd8b897442306a0f3e8d871879db589bf106d7221569647a02848a"
+  }
+}

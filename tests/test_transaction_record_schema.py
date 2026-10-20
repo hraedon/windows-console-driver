@@ -256,10 +256,12 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     # the same lane re-run under a domain_operator-only backend; window 14
     # banked the seventh, certsrv officer-rights revision 2 live; window 15
     # banked the eighth, the baseline-gate armed gpmc run; window 16 banked
-    # the ninth and tenth, the certtmpl and certsrv baseline rollout runs.)
+    # the ninth and tenth, the certtmpl and certsrv baseline rollout runs;
+    # window 19 banked the eleventh to thirteenth, gpo-studio Plan 035: the
+    # WP-1 indeterminate r1, the verified WP-1 r2 and the verified WP-2 r3.)
     assert sum(version == 0 for version in versions.values()) == 8
     assert sum(version == 1 for version in versions.values()) == 8
-    assert sum(version == 2 for version in versions.values()) == 10
+    assert sum(version == 2 for version in versions.values()) == 13
     assert all(path.read_bytes() == content for path, content in before.items())
     assert all(
         ("schema_version" not in json.loads(path.read_text())["provenance"])

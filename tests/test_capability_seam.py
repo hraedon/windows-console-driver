@@ -23,6 +23,7 @@ from gpo_observers.collection import FileTransport
 from gpo_observers.facts import Fact, make_fact
 from gpo_observers.fdeploy_ini import fdeploy_fact_tree
 from gpo_observers.gpttmpl_inf import gpttmpl_fact_tree
+from gpo_observers.scripts_ini import parse_scripts_ini, scripts_ini_facts
 from gpo_observers.snapshots import GpoRef, capture_snapshot
 from wcd.envelope import compile_predicate, parse_envelope
 
@@ -103,7 +104,19 @@ def _fixture_snapshot() -> dict[str, Fact]:
         raise AssertionError(f"unexpected snippet {snippet!r}")
 
     transport = FileTransport(gpo.sysvol_path, fallback=fallback)
-    snapshot = capture_snapshot(transport, gpo)
+    # Both scripts sides, exactly as the executor's r2_core observer collects
+    # them (exec_transaction._r2_core_collect): a user-side key an envelope
+    # names must exist in the vocabulary the executor really emits.
+    snapshot = capture_snapshot(transport, gpo, scripts_sides=("machine", "user"))
+    # The fixture tree has no User/Scripts; a synthetic user-side Logon file
+    # (Plan 035 seam fixture, not an estate capture) supplies the per-trigger
+    # keys a user-side capability references, parsed by the same observer.
+    user_scripts = parse_scripts_ini(
+        (REPO_ROOT / "tests" / "fixtures" / "plan035" / "user-scripts-logon.ini").read_bytes()
+    )
+    for key, value in scripts_ini_facts(user_scripts, side="user").items():
+        fact = make_fact(key, value)
+        snapshot[fact.key] = fact
 
     def add_tree(prefix: str, tree: Mapping[str, Any]) -> None:
         def walk(path: str, value: object) -> None:

@@ -1,0 +1,154 @@
+{
+ "outcome": "ok",
+ "error": null,
+ "payload": {
+  "hwnd": 131680,
+  "action": "uia_dump",
+  "elements": [
+   {
+    "class": "#32770",
+    "control_type": "Window",
+    "rect": {
+     "left": 372,
+     "bottom": 479,
+     "top": 277,
+     "right": 766,
+     "height": 202,
+     "width": 394
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "Add a Script",
+    "control_type_id": 50032
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 392,
+     "bottom": 339,
+     "top": 326,
+     "right": 610,
+     "height": 13,
+     "width": 218
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Script Name:",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Edit",
+    "control_type": "Pane",
+    "rect": {
+     "left": 392,
+     "bottom": 365,
+     "top": 345,
+     "right": 658,
+     "height": 20,
+     "width": 266
+    },
+    "automation_id": "151",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 392,
+     "bottom": 396,
+     "top": 383,
+     "right": 613,
+     "height": 13,
+     "width": 221
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Script Parameters:",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Edit",
+    "control_type": "Pane",
+    "rect": {
+     "left": 392,
+     "bottom": 422,
+     "top": 402,
+     "right": 658,
+     "height": 20,
+     "width": 266
+    },
+    "automation_id": "152",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 671,
+     "bottom": 367,
+     "top": 344,
+     "right": 746,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "153",
+    "depth": 0,
+    "patterns": [],
+    "name": "Browse...",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 587,
+     "bottom": 464,
+     "top": 441,
+     "right": 662,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "1",
+    "depth": 0,
+    "patterns": [],
+    "name": "OK",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 673,
+     "bottom": 464,
+     "top": 441,
+     "right": 748,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "2",
+    "depth": 0,
+    "patterns": [],
+    "name": "Cancel",
+    "control_type_id": 50033
+   }
+  ],
+  "depth": 12,
+  "ok": true,
+  "element_count": 8,
+  "truncated": false,
+  "notes": []
+ }
+}

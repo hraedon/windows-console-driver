@@ -941,6 +941,54 @@ def test_screenshot_evidence_is_anchored_not_cwd_relative(
     assert "full" not in shot_request
 
 
+def test_dump_save_as_banks_the_full_payload_beside_the_screenshots(tmp_path: Path) -> None:
+    """Plan 035 WP-2: a dump step with ``save_as`` writes the whole helper
+    payload (every element, not the journal's first names) into the anchored
+    evidence directory, and the journal names where it went."""
+    evidence = tmp_path / "evidence"
+    transport = FakeTransport()
+    gesture = [
+        {"action": "dump", "profile_action": "zz_navigate", "depth": 12, "save_as": "zz-tree"},
+        *_commit_crossing_gesture(),
+    ]
+    record = _run(
+        tmp_path,
+        _sheet("zz_dump_save", gesture),
+        _SATISFIED_ENVELOPE,
+        transport,
+        estate=_estate(evidence_dir=str(evidence)),
+    )
+
+    assert record["state"] == "verified"
+    saved = json.loads((evidence / "zz-tree.uia.json").read_text(encoding="utf-8"))
+    assert saved["action"] == "uia_dump"
+    assert len(saved["elements"]) == 2
+    assert str(evidence / "zz-tree.uia.json") in json.dumps(record["provenance"])
+
+
+@pytest.mark.parametrize("bad_name", ["../escape", "", "a/b", 7])
+def test_dump_save_as_refuses_a_name_that_is_not_a_plain_stem(
+    tmp_path: Path, bad_name: object
+) -> None:
+    evidence = tmp_path / "evidence"
+    transport = FakeTransport()
+    gesture = [
+        {"action": "dump", "profile_action": "zz_navigate", "depth": 12, "save_as": bad_name},
+        *_commit_crossing_gesture(),
+    ]
+    record = _run(
+        tmp_path,
+        _sheet("zz_dump_bad", gesture),
+        _SATISFIED_ENVELOPE,
+        transport,
+        estate=_estate(evidence_dir=str(evidence)),
+    )
+
+    assert record["state"] == "indeterminate"
+    assert "save_as must be a plain file stem" in str(record["verdict"])
+    assert not evidence.exists() or not any(evidence.iterdir())
+
+
 def test_malformed_screenshot_is_contained_recorded_and_cleaned_up(tmp_path: Path) -> None:
     """A corrupt helper payload is a run-sheet failure, not an escape hatch
     around the executor's every-terminal-path record and cleanup invariant."""

@@ -1,0 +1,215 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.author_scripts_logon_shutdown",
+  "surface": "gpmc-server2025",
+  "revision": 1,
+  "intent": "Author exactly one command shutdown script on the computer side and one command logon script on the user side of a disposable GPO through the GPME Scripts sheets, so the user-side Scripts extension pair, the per-side version movement and the scripts.ini shapes for the Shutdown and Logon triggers can be read off the capture (gpo-studio Plan 035 WP-1, WI-071). The user-side tool GUID is deliberately NOT asserted: it is the measurement.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "gpo_name",
+      "domain_dns",
+      "shutdown_script",
+      "shutdown_params",
+      "logon_script",
+      "logon_params",
+      "backup_dir"
+    ],
+    "properties": {
+      "gpo_name": { "type": "string" },
+      "domain_dns": { "type": "string" },
+      "shutdown_script": { "type": "string" },
+      "shutdown_params": { "type": "string" },
+      "logon_script": { "type": "string" },
+      "logon_params": { "type": "string" },
+      "backup_dir": { "type": "string" }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "gpmc_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell",
+      "programmatic_requery"
+    ]
+  },
+  "first_commit_point": "ok_child_dialog",
+  "run_sheet": "gpmc.author_scripts_logon_shutdown",
+  "gpo_transaction": true,
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "r2_core",
+        "params": {}
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "scripts_ini.machine",
+        "predicate": "post.scripts_ini.machine.present == True and post.scripts_ini.machine.config_shape == 'none'"
+      },
+      {
+        "fact": "scripts_ini.machine.Shutdown.entry_count",
+        "predicate": "post.scripts_ini.machine.Shutdown.entry_count == 1"
+      },
+      {
+        "fact": "scripts_ini.machine.Shutdown.0.script",
+        "predicate": "post['scripts_ini.machine.Shutdown.0.script'] == args['shutdown_script']"
+      },
+      {
+        "fact": "scripts_ini.machine.Shutdown.0.parameters",
+        "predicate": "post['scripts_ini.machine.Shutdown.0.parameters'] == args['shutdown_params']"
+      },
+      {
+        "fact": "scripts_ini.user",
+        "predicate": "post.scripts_ini.user.present == True and post.scripts_ini.user.config_shape == 'none'"
+      },
+      {
+        "fact": "scripts_ini.user.Logon.entry_count",
+        "predicate": "post.scripts_ini.user.Logon.entry_count == 1"
+      },
+      {
+        "fact": "scripts_ini.user.Logon.0.script",
+        "predicate": "post['scripts_ini.user.Logon.0.script'] == args['logon_script']"
+      },
+      {
+        "fact": "scripts_ini.user.Logon.0.parameters",
+        "predicate": "post['scripts_ini.user.Logon.0.parameters'] == args['logon_params']"
+      },
+      {
+        "fact": "scripts_ini.ps.machine",
+        "predicate": "post.scripts_ini.ps.machine.config_shape == 'none'"
+      },
+      {
+        "fact": "scripts_ini.ps.user",
+        "predicate": "post.scripts_ini.ps.user.config_shape == 'none'"
+      },
+      {
+        "fact": "ad.gPCMachineExtensionNames",
+        "predicate": "'{42B5FAAE-6536-11D2-AE5A-0000F87571E3}' in post.ad.gPCMachineExtensionNames and '{40B6664F-4972-11D1-A7CA-0000F87571E3}' in post.ad.gPCMachineExtensionNames"
+      },
+      {
+        "fact": "ad.gPCUserExtensionNames",
+        "predicate": "'{42B5FAAE-6536-11D2-AE5A-0000F87571E3}' in post.ad.gPCUserExtensionNames"
+      }
+    ],
+    "allow": [
+      {
+        "category": "timestamps"
+      },
+      {
+        "category": "replication_metadata"
+      },
+      {
+        "category": "file_mtime"
+      }
+    ],
+    "forbid": [
+      {
+        "scope": "ad.gPCMachineExtensionNames",
+        "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and 'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope"
+      },
+      {
+        "scope": "ad.gPCUserExtensionNames",
+        "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and 'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope"
+      },
+      {
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
+      },
+      {
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.version.machine > pre.version.machine"
+      },
+      {
+        "relation": "post.version.user > pre.version.user"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
+      },
+      {
+        "relation": "post.ad.versionNumber == post.version.user * 65536 + post.version.machine"
+      },
+      {
+        "relation": "post.version.raw != pre.version.raw"
+      },
+      {
+        "relation": "post.scope.extension_lists.machine != pre.scope.extension_lists.machine"
+      },
+      {
+        "relation": "post.scope.extension_lists.user != pre.scope.extension_lists.user"
+      },
+      {
+        "relation": "post.scope.sysvol_relpaths != pre.scope.sysvol_relpaths"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 90,
+      "poll_seconds": 5,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "one_entry_per_trigger",
+      "checks": "The envelope requires exactly one scripts.ini Shutdown entry on the machine side and exactly one Logon entry on the user side, each name and parameter string matched against the flat capability arguments. Other sections (an empty Startup or Logoff, if GPME writes one) are recorded under the side's require prefix, not asserted: their presence is part of the scripts.ini shape this capability measures."
+    },
+    {
+      "id": "user_tool_guid_is_the_measurement",
+      "checks": "The user extension list must carry the Scripts CSE {42B5FAAE-...}; the tool half GPME pairs with it on the user side is deliberately unasserted and is read from the record's delta. The machine side asserts the R2-measured pair because the shutdown sheet is the same snap-in R2 measured on Startup."
+    },
+    {
+      "id": "version_relations_are_inequalities",
+      "checks": "Both version halves must move up (>), not by an asserted step: GPME's per-dialog bump has not been measured for two sheets in one session. The packed relation versionNumber = user*65536 + machine is asserted against both the GPT.INI-derived and the AD-read value."
+    },
+    {
+      "id": "no_powershell_order_config",
+      "checks": "No PowerShell entry is authored and the ordering dropdown is never touched, so both psscripts.ini sides must carry config_shape 'none' (true whether or not GPME writes the file); whether it writes one is recorded, not asserted."
+    },
+    {
+      "id": "byte_exact_backup_before_removal",
+      "checks": "scripts.ini bytes are not hashed by the observers (system relpaths), so cleanup runs Backup-GPO into backup_dir BEFORE removing the GPO; the operator collects that backup before any checkpoint revert to bank byte-exact fixtures, as R2 did."
+    },
+    {
+      "id": "sysvol_paths_contained",
+      "checks": "Every relative path in post.scope.sysvol_relpaths stays under this GPO's GUID directory. Backs the sysvol_contained fact the declarative forbid consumes; computed by the observer, asserted here."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation.",
+    "fact_vocabulary": "Fact keys reference gpo_observers' declared scheme (gpo_identity.*, ad.*, version.*, scripts_ini.*, sysvol.*, scope.*). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
+  },
+  "cleanup": {
+    "strategy": "remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

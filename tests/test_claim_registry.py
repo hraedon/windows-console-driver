@@ -37,6 +37,12 @@ UNCLAIMED_RECORDS: dict[str, str] = {
         "certifies nothing about certificate templates and is banked only as "
         "the surface evidence that sent window 10 into recon"
     ),
+    "w19-r1-record.json": (
+        "indeterminate: the Shutdown sheet committed, then the first scope-root "
+        "route opened a tree label edit and the Logon half never ran; banked "
+        "for the route measurement that shaped navigate_scope_root, and its "
+        "byte backup matches w19-r2's machine scripts.ini"
+    ),
     "w11-r1-record.json": (
         "indeterminate, aborted at step 12 of 36 with nothing written; it "
         "certifies nothing about certificate managers and is banked for the "

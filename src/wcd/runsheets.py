@@ -913,7 +913,33 @@ class GestureExecutor:
                 "uia_dump was truncated (element or time cap); raise depth or narrow the window"
             )
         names = [e.name for e in elements if e.name]
-        return {"elements": len(elements), "hwnd": ctx.last_dump_hwnd, "names": names[:60]}
+        detail: dict[str, object] = {
+            "elements": len(elements),
+            "hwnd": ctx.last_dump_hwnd,
+            "names": names[:60],
+        }
+        save_as = params.get("save_as")
+        if save_as is not None:
+            # Surface evidence for human review (Plan 035 WP-2): the FULL dump
+            # payload, beside the screenshots, under the same anchored evidence
+            # directory. The journal keeps only the first names; the saved
+            # file is what a reviewer reads.
+            detail["saved"] = str(self._save_dump(save_as, result.payload))
+        return detail
+
+    def _save_dump(self, name: object, payload: Mapping[str, object]) -> Path:
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
+            raise RunSheetError(f"dump save_as must be a plain file stem, got {name!r}")
+        path = self._evidence_dir / f"{name}.uia.json"
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(payload, indent=1, sort_keys=True, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            raise RunSheetError(f"dump could not save evidence to {path}: {exc}") from exc
+        return path
 
     def _click_element(self, params: dict[str, object], ctx: SheetContext) -> dict[str, object]:
         if params.get("fresh", True):

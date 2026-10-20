@@ -1,0 +1,337 @@
+{
+  "state": "indeterminate",
+  "verdict": "run-sheet aborted: step 19 (wait_element[navigate_scope_root]) failed: no element matching '^User Configuration$' appeared within 20s (1 attempts); last: selector '^User Configuration$' matched 0 element(s), wanted index 0; visible elements: [\"Window:'Local Group Policy Editor'@(154, 154, 922, 691)\", \"Pane:'Windows Se",
+  "envelope_result": {},
+  "events": [
+    {
+      "sequence": 1,
+      "from_state": null,
+      "to_state": "prepared",
+      "reason": "capability gpmc.author_scripts_logon_shutdown prepared over GPO d3ac5054-4bc2-450f-a327-7a34e8a9308e"
+    },
+    {
+      "sequence": 2,
+      "from_state": "prepared",
+      "to_state": "armed",
+      "reason": "capability gpmc.author_scripts_logon_shutdown invocation started"
+    },
+    {
+      "sequence": 3,
+      "from_state": "armed",
+      "to_state": "commit_attempted",
+      "reason": "run-sheet crosses 'ok_child_dialog' (profile class 'potentially_mutating')"
+    }
+  ],
+  "provenance": {
+    "$schema": "docs/transaction-record-schema-v2.json",
+    "schema_version": 2,
+    "capability": "gpmc.author_scripts_logon_shutdown",
+    "run_sheet": "gpmc.author_scripts_logon_shutdown",
+    "transaction_id": "bf2465fb-1047-4b4e-bdf3-7efb3b9b4a35",
+    "console": {
+      "mode": "controller_direct",
+      "state": "unlocked",
+      "helper_responds": true
+    },
+    "steps": [
+      [
+        {
+          "index": 0,
+          "step": "wait_foreground[open_gpo_editor]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Local Group Policy Editor",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 1,
+          "step": "context[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "foreground": {
+              "class": "ConsoleWindowClass",
+              "process_name": "powershell",
+              "pid": 3764,
+              "uia_digest": "9193a3dfa818177116222e6726568faf1e459eb031086f91eface84216a650ea",
+              "rect": {
+                "left": 0,
+                "bottom": 720,
+                "top": 0,
+                "right": 1024,
+                "height": 720,
+                "width": 1024
+              },
+              "title": "Administrator: C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "hwnd": 524316
+            },
+            "asserted_window": "Local Group Policy Editor"
+          }
+        },
+        {
+          "index": 2,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              143
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "matched": false,
+            "soft": true
+          }
+        },
+        {
+          "index": 4,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "step": "click_element[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "step": "shot[navigate_tree]",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/wp1-machine-scripts-node.png"
+          }
+        },
+        {
+          "index": 7,
+          "step": "click_element[open_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              471,
+              162
+            ]
+          }
+        },
+        {
+          "index": 8,
+          "step": "wait_foreground[open_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Shutdown Properties",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 9,
+          "step": "click_element[open_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              207,
+              237
+            ]
+          }
+        },
+        {
+          "index": 10,
+          "step": "click_element[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              348,
+              235
+            ]
+          }
+        },
+        {
+          "index": 11,
+          "step": "wait_foreground[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "matched": true,
+            "title": "Add a Script",
+            "surfaced": true
+          }
+        },
+        {
+          "index": 12,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 22
+          }
+        },
+        {
+          "index": 13,
+          "step": "key[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "injected_events": 2
+          }
+        },
+        {
+          "index": 14,
+          "step": "type_text[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "typed": 17
+          }
+        },
+        {
+          "index": 15,
+          "step": "click_element[ok_child_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              252,
+              175
+            ]
+          }
+        },
+        {
+          "index": 16,
+          "step": "shot[add_script_entry]",
+          "ok": true,
+          "detail": {
+            "saved": "/projects/windows-console-driver/runs/wp1-shutdown-entry-added.png"
+          }
+        },
+        {
+          "index": 17,
+          "step": "click_element[ok_shutdown_scripts_dialog]",
+          "ok": true,
+          "detail": {
+            "clicked": [
+              200,
+              435
+            ]
+          }
+        },
+        {
+          "index": 18,
+          "step": "keys[navigate_scope_root]",
+          "ok": true,
+          "detail": {
+            "injected_events": 5
+          }
+        },
+        {
+          "index": 19,
+          "step": "wait_element[navigate_scope_root]",
+          "ok": false,
+          "error": "no element matching '^User Configuration$' appeared within 20s (1 attempts); last: selector '^User Configuration$' matched 0 element(s), wanted index 0; visible elements: [\"Window:'Local Group Policy Editor'@(154, 154, 922, 691)\", \"Pane:'Windows Settings'@(220, 436, 327, 456)\", \"Pane:''@(162, 237, 914, 683)\", \"Window:'zz-studio-evidence-plan035-wp1-r1 [LabDC01.ad.labdomain.dev] Policy\\\\\\\\User Configuration\\\\\\\\Windows Settings'@(154, 206, 922, 691)\", \"Pane:'Console Embedded Windo"
+        }
+      ]
+    ],
+    "cleanup": {
+      "ran": true,
+      "journal": [
+        {
+          "index": 0,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "backup=C:\\gpo-studio\\manual\\plan035-wp1\\r1"
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "removed=zz-studio-evidence-plan035-wp1-r1"
+              }
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "unregistered=WCDLaunchGPME"
+              }
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "step": "guest",
+          "ok": true,
+          "detail": [
+            {
+              "index": 0,
+              "step": "guest",
+              "ok": true,
+              "detail": {
+                "stdout": "remaining=0"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence_gpo_guid": "d3ac5054-4bc2-450f-a327-7a34e8a9308e",
+      "evidence_gpo_remaining": 0
+    },
+    "notes": [
+      "interactive session lease held: wcd.console:mvmhyperv01.ad.hraedon.com:LabMS01",
+      "recovery checkpoint 'domain-joined' present: True",
+      "surface fingerprint gate: banked 9193a3dfa818... observed 9193a3dfa818...",
+      "baseline gate: ui_language banked en-US observed en-US",
+      "baseline gate: binary_version C:\\Windows\\System32\\mmc.exe banked 10.0.26100.32860 (WinBuild.160101.0800) observed 10.0.26100.32860 (WinBuild.160101.0800)"
+    ],
+    "capability_revision": 1,
+    "capability_sha256": "07174ef6d2bd8b897442306a0f3e8d871879db589bf106d7221569647a02848a"
+  }
+}

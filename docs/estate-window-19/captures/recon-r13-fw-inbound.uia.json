@@ -1,0 +1,460 @@
+{
+ "outcome": "ok",
+ "error": null,
+ "payload": {
+  "hwnd": 131374,
+  "action": "uia_dump",
+  "elements": [
+   {
+    "class": "MMCMainFrame",
+    "control_type": "Window",
+    "rect": {
+     "left": 154,
+     "bottom": 691,
+     "top": 154,
+     "right": 922,
+     "height": 537,
+     "width": 768
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "Local Group Policy Editor",
+    "control_type_id": 50032
+   },
+   {
+    "class": "MDIClient",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 683,
+     "top": 237,
+     "right": 914,
+     "height": 446,
+     "width": 752
+    },
+    "automation_id": "59648",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "MMCChildFrm",
+    "control_type": "Window",
+    "rect": {
+     "left": 154,
+     "bottom": 691,
+     "top": 206,
+     "right": 922,
+     "height": 485,
+     "width": 768
+    },
+    "automation_id": "65280",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "zz-studio-evidence-recon035 [LabDC01.ad.labdomain.dev] Policy\\Computer Configuration\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security - LDAP://CN={32C1647D-7810-4FE9-A5F6-4ADAE3208D33},CN=POLICIES,CN=SYSTEM,DC=AD,DC=LABDOMAIN,DC=DEV\\Inbound Rules",
+    "control_type_id": 50032
+   },
+   {
+    "class": "MMCViewWindow",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 660,
+     "top": 237,
+     "right": 914,
+     "height": 423,
+     "width": 752
+    },
+    "automation_id": "59648",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Window",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SysTreeView32",
+    "control_type": "Tree",
+    "rect": {
+     "left": 162,
+     "bottom": 660,
+     "top": 237,
+     "right": 318,
+     "height": 423,
+     "width": 156
+    },
+    "automation_id": "12785",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Scope",
+    "control_type_id": 50023
+   },
+   {
+    "class": "SysListView32",
+    "control_type": "List",
+    "rect": {
+     "left": 321,
+     "bottom": 660,
+     "top": 237,
+     "right": 914,
+     "height": 423,
+     "width": 593
+    },
+    "automation_id": "12786",
+    "depth": 0,
+    "patterns": [
+     "Grid",
+     "Table"
+    ],
+    "name": "Console Embedded Window Results",
+    "control_type_id": 50008
+   },
+   {
+    "class": "SysHeader32",
+    "control_type": "Header",
+    "rect": {
+     "left": 323,
+     "bottom": 263,
+     "top": 239,
+     "right": 912,
+     "height": 24,
+     "width": 589
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Results Header",
+    "control_type_id": 50034
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 323,
+     "bottom": 263,
+     "top": 239,
+     "right": 573,
+     "height": 24,
+     "width": 250
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Name",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 573,
+     "bottom": 263,
+     "top": 239,
+     "right": 743,
+     "height": 24,
+     "width": 170
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Group",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 743,
+     "bottom": 263,
+     "top": 239,
+     "right": 802,
+     "height": 24,
+     "width": 59
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Profile",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 802,
+     "bottom": 263,
+     "top": 239,
+     "right": 869,
+     "height": 24,
+     "width": 67
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Enabled",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 869,
+     "bottom": 263,
+     "top": 239,
+     "right": 912,
+     "height": 24,
+     "width": 43
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Action",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Override",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Program",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Local Address",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Remote Address",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Protocol",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Local Port",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Remote Port",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Authorized Users",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Authorized Computers",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Authorized Local Principals",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Local User Owner",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "PolicyAppId",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": null,
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Application Package",
+    "control_type_id": 50035
+   },
+   {
+    "class": "msctls_statusbar32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 683,
+     "top": 660,
+     "right": 914,
+     "height": 23,
+     "width": 752
+    },
+    "automation_id": "4099",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 829,
+     "bottom": 681,
+     "top": 664,
+     "right": 908,
+     "height": 17,
+     "width": 79
+    },
+    "automation_id": "4097",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SizeableRebar",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 237,
+     "top": 185,
+     "right": 914,
+     "height": 52,
+     "width": 752
+    },
+    "automation_id": "13341",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ReBarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 231,
+     "top": 185,
+     "right": 914,
+     "height": 46,
+     "width": 752
+    },
+    "automation_id": "4096",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ToolbarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 164,
+     "bottom": 231,
+     "top": 209,
+     "right": 914,
+     "height": 22,
+     "width": 750
+    },
+    "automation_id": "4098",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ToolbarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 164,
+     "bottom": 207,
+     "top": 185,
+     "right": 914,
+     "height": 22,
+     "width": 750
+    },
+    "automation_id": "4097",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   }
+  ],
+  "depth": 12,
+  "ok": true,
+  "element_count": 31,
+  "truncated": false,
+  "notes": []
+ }
+}

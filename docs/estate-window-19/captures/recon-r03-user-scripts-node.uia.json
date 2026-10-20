@@ -1,0 +1,440 @@
+{
+ "outcome": "ok",
+ "error": null,
+ "payload": {
+  "hwnd": 131374,
+  "action": "uia_dump",
+  "elements": [
+   {
+    "class": "MMCMainFrame",
+    "control_type": "Window",
+    "rect": {
+     "left": 154,
+     "bottom": 691,
+     "top": 154,
+     "right": 922,
+     "height": 537,
+     "width": 768
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "Local Group Policy Editor",
+    "control_type_id": 50032
+   },
+   {
+    "class": "MDIClient",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 683,
+     "top": 237,
+     "right": 914,
+     "height": 446,
+     "width": 752
+    },
+    "automation_id": "59648",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "MMCChildFrm",
+    "control_type": "Window",
+    "rect": {
+     "left": 154,
+     "bottom": 691,
+     "top": 206,
+     "right": 922,
+     "height": 485,
+     "width": 768
+    },
+    "automation_id": "65280",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "zz-studio-evidence-recon035 [LabDC01.ad.labdomain.dev] Policy\\User Configuration\\Windows Settings\\Scripts (Logon/Logoff)",
+    "control_type_id": 50032
+   },
+   {
+    "class": "MMCViewWindow",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 660,
+     "top": 237,
+     "right": 914,
+     "height": 423,
+     "width": 752
+    },
+    "automation_id": "59648",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Window",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SysTreeView32",
+    "control_type": "Tree",
+    "rect": {
+     "left": 162,
+     "bottom": 660,
+     "top": 237,
+     "right": 318,
+     "height": 423,
+     "width": 156
+    },
+    "automation_id": "12785",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Scope",
+    "control_type_id": 50023
+   },
+   {
+    "class": "AMCCustomTab",
+    "control_type": "Pane",
+    "rect": {
+     "left": 321,
+     "bottom": 660,
+     "top": 641,
+     "right": 914,
+     "height": 19,
+     "width": 593
+    },
+    "automation_id": "12794",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "MMCOCXViewWindow",
+    "control_type": "Pane",
+    "rect": {
+     "left": 321,
+     "bottom": 641,
+     "top": 237,
+     "right": 914,
+     "height": 404,
+     "width": 593
+    },
+    "automation_id": "12795",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "AtlAxWinEx",
+    "control_type": "Pane",
+    "rect": {
+     "left": 321,
+     "bottom": 641,
+     "top": 237,
+     "right": 914,
+     "height": 404,
+     "width": 593
+    },
+    "automation_id": "2",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Shell Embedding",
+    "control_type": "Pane",
+    "rect": {
+     "left": 321,
+     "bottom": 641,
+     "top": 237,
+     "right": 914,
+     "height": 404,
+     "width": 593
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Shell DocObject View",
+    "control_type": "Pane",
+    "rect": {
+     "left": 321,
+     "bottom": 641,
+     "top": 237,
+     "right": 914,
+     "height": 404,
+     "width": 593
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Internet Explorer_Server",
+    "control_type": "Pane",
+    "rect": {
+     "left": 321,
+     "bottom": 641,
+     "top": 237,
+     "right": 914,
+     "height": 404,
+     "width": 593
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SysListView32",
+    "control_type": "List",
+    "rect": {
+     "left": 535,
+     "bottom": 639,
+     "top": 264,
+     "right": 912,
+     "height": 375,
+     "width": 377
+    },
+    "automation_id": "12786",
+    "depth": 0,
+    "patterns": [
+     "Grid",
+     "Table"
+    ],
+    "name": "Console Embedded Window Results",
+    "control_type_id": 50008
+   },
+   {
+    "class": "SysHeader32",
+    "control_type": "Header",
+    "rect": {
+     "left": 535,
+     "bottom": 288,
+     "top": 264,
+     "right": 912,
+     "height": 24,
+     "width": 377
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Results Header",
+    "control_type_id": 50034
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 535,
+     "bottom": 288,
+     "top": 264,
+     "right": 715,
+     "height": 24,
+     "width": 180
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Name",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 535,
+     "bottom": 307,
+     "top": 288,
+     "right": 715,
+     "height": 19,
+     "width": 180
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Logon",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 535,
+     "bottom": 307,
+     "top": 288,
+     "right": 715,
+     "height": 19,
+     "width": 180
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Logon",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 535,
+     "bottom": 326,
+     "top": 307,
+     "right": 715,
+     "height": 19,
+     "width": 180
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Logoff",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 535,
+     "bottom": 326,
+     "top": 307,
+     "right": 715,
+     "height": 19,
+     "width": 180
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Logoff",
+    "control_type_id": 50004
+   },
+   {
+    "class": "msctls_statusbar32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 683,
+     "top": 660,
+     "right": 914,
+     "height": 23,
+     "width": 752
+    },
+    "automation_id": "4099",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 829,
+     "bottom": 681,
+     "top": 664,
+     "right": 908,
+     "height": 17,
+     "width": 79
+    },
+    "automation_id": "4097",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SizeableRebar",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 237,
+     "top": 185,
+     "right": 914,
+     "height": 52,
+     "width": 752
+    },
+    "automation_id": "13341",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ReBarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 231,
+     "top": 185,
+     "right": 914,
+     "height": 46,
+     "width": 752
+    },
+    "automation_id": "4096",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ToolbarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 164,
+     "bottom": 231,
+     "top": 209,
+     "right": 914,
+     "height": 22,
+     "width": 750
+    },
+    "automation_id": "4098",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ToolbarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 164,
+     "bottom": 207,
+     "top": 185,
+     "right": 914,
+     "height": 22,
+     "width": 750
+    },
+    "automation_id": "4097",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   }
+  ],
+  "depth": 12,
+  "ok": true,
+  "element_count": 24,
+  "truncated": false,
+  "notes": []
+ }
+}
