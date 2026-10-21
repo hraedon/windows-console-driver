@@ -266,15 +266,18 @@ def _validate_invocation(value: object) -> None:
     manifest = invocation["setup_manifest"]
     if not isinstance(manifest, list):
         _fail(f"{where}.setup_manifest", "must be an array")
-    entry_keys = frozenset({"script", "stdout", "stdout_sha256"})
+    entry_keys = frozenset({"script", "stdout_lines", "stdout_sha256"})
     for index, raw in enumerate(manifest):
         at = f"{where}.setup_manifest[{index}]"
         entry = _object(raw, at)
         _keys(entry, entry_keys, at, required=entry_keys)
         _string(entry["script"], f"{at}.script")
-        stdout = entry["stdout"]
-        if not isinstance(stdout, str):
-            _fail(f"{at}.stdout", "must be a string")
+        lines = entry["stdout_lines"]
+        if not isinstance(lines, list) or not all(
+            isinstance(line, str) and "\n" not in line for line in lines
+        ):
+            _fail(f"{at}.stdout_lines", "must be an array of single-line strings")
+        stdout = "\n".join(lines)
         if hashlib.sha256(stdout.encode("utf-8")).hexdigest() != entry["stdout_sha256"]:
             _fail(f"{at}.stdout_sha256", "is not the SHA-256 of the recorded output")
 

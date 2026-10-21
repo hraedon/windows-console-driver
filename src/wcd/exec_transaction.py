@@ -1177,11 +1177,14 @@ def _setup_manifest(outputs: Sequence[tuple[str, str]]) -> list[dict[str, object
     GUID, a bundle hash, an imported file hash); the gesture journal never
     carried them, and the 512-character journal/notes caps would cut them.
     No cap: an output is either banked whole or not claimed (round-3 review).
+    The text travels as its lines (split on LF, joined back exactly by LF),
+    because the WEL seam refuses any record string carrying a line break;
+    the digest is over the exact text, so the lines reconstruct it.
     """
     return [
         {
             "script": script,
-            "stdout": stdout,
+            "stdout_lines": stdout.split("\n"),
             "stdout_sha256": hashlib.sha256(stdout.encode("utf-8")).hexdigest(),
         }
         for script, stdout in outputs

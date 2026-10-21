@@ -104,10 +104,10 @@
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["script", "stdout", "stdout_sha256"],
+                "required": ["script", "stdout_lines", "stdout_sha256"],
                 "properties": {
                   "script": { "type": "string", "minLength": 1 },
-                  "stdout": { "type": "string" },
+                  "stdout_lines": { "type": "array", "items": { "type": "string", "pattern": "^[^\\n]*$" } },
                   "stdout_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
                 }
               }

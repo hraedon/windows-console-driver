@@ -1121,7 +1121,7 @@ def test_post_create_import_failure_removes_exactly_the_owned_guid(tmp_path: Pat
     invocation = record["provenance"]["invocation"]  # type: ignore[index]
     # The create step's output is banked even though setup failed after it.
     assert [entry["script"] for entry in invocation["setup_manifest"]] == ["zz_gpo_create"]
-    assert f"guid={GPO_GUID}" in invocation["setup_manifest"][0]["stdout"]
+    assert f"guid={GPO_GUID}" in invocation["setup_manifest"][0]["stdout_lines"]
 
 
 def test_record_banks_untruncated_invocation_recomputable_from_the_record(
@@ -1157,7 +1157,8 @@ def test_record_banks_untruncated_invocation_recomputable_from_the_record(
     assert invocation["run_sheet_sha256"] == hashlib.sha256(sheet_bytes).hexdigest()
     entries = invocation["setup_manifest"]
     assert [entry["script"] for entry in entries] == ["zz_gpo_create", "zz_stage_import"]
-    assert entries[1]["stdout"] == long_stdout
+    assert "\n".join(entries[1]["stdout_lines"]) == long_stdout
+    assert all("\n" not in line for line in entries[1]["stdout_lines"])
     assert entries[1]["stdout_sha256"] == hashlib.sha256(long_stdout.encode()).hexdigest()
 
 

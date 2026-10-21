@@ -107,8 +107,11 @@ plus a REQUIRED `provenance.invocation`:
   and requires the setup manifest's script names to be the run sheet's own
   setup steps, in order. The CLI passes the bytes of the run sheet it just
   executed.
-- `setup_manifest`: every setup script's WHOLE output with its SHA-256. There
-  is no cap: an output is banked whole or not claimed.
+- `setup_manifest`: every setup script's WHOLE output with its SHA-256. It is
+  stored as `stdout_lines` (the text split on LF; joining them with LF gives
+  back the exact text the digest covers), because the windows-evidence-lab seam
+  refuses any record string that contains a line break. There is no cap: an
+  output is banked whole or not claimed.
 
 v3 is a new version, not an optional v2 field, because v2's provenance is
 closed. Window 21 briefly stamped v2 records that carried the field; frozen v2

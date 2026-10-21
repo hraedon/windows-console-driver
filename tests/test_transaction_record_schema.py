@@ -376,8 +376,8 @@ def _v3_record() -> dict[str, object]:
         "setup_manifest": [
             {
                 "script": "zz_gpo_create",
-                "stdout": "guid=zz",
-                "stdout_sha256": hashlib.sha256(b"guid=zz").hexdigest(),
+                "stdout_lines": ["guid=zz", "domain=zz.invalid"],
+                "stdout_sha256": hashlib.sha256(b"guid=zz\ndomain=zz.invalid").hexdigest(),
             }
         ],
     }
@@ -419,7 +419,7 @@ def test_v2_document_is_byte_identical_to_its_frozen_form() -> None:
 
 def test_v3_refuses_an_output_whose_digest_does_not_match() -> None:
     record = _v3_record()
-    record["provenance"]["invocation"]["setup_manifest"][0]["stdout"] = "guid=other"  # type: ignore[index]
+    record["provenance"]["invocation"]["setup_manifest"][0]["stdout_lines"] = ["guid=other"]  # type: ignore[index]
     with pytest.raises(RecordSchemaError, match="stdout_sha256"):
         validate_record(record)
 

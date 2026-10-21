@@ -518,7 +518,10 @@ class GestureExecutor:
                                     f"script {script_ref!r} emitted malformed GUID for {full_key}"
                                 ) from exc
                         ctx.outputs[full_key] = captured
-        return {"stdout": stdout[:512]}
+        # One line in the journal (the WEL seam refuses record strings that
+        # carry a line break); the whole text, line breaks and all, is kept in
+        # ctx.script_outputs for the v3 invocation manifest.
+        return {"stdout": " | ".join(stdout.splitlines())[:512]}
 
     def _find_window_by_class(self, window_class: str) -> dict[str, object] | None:
         result = self._t.helper({"action": "windows"}, timeout=self._helper_timeout)
