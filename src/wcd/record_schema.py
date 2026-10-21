@@ -282,13 +282,18 @@ def _validate_invocation(value: object) -> None:
             _fail(f"{at}.stdout_sha256", "is not the SHA-256 of the recorded output")
 
 
-def _verify_run_sheet_binding(provenance: Mapping[str, object], run_sheet_bytes: bytes) -> None:
+def _verify_run_sheet_binding(
+    provenance: Mapping[str, object], run_sheet_bytes: bytes, state: str
+) -> None:
     """Refuse a v3 record whose run-sheet claims disagree with the run sheet.
 
     The digest is recomputed from the bytes, and the setup manifest's script
-    names must be the run sheet's setup-phase guest/host steps, in order (a
-    prefix of them when setup stopped early). The record's ``run_sheet`` name
-    must be the document's own name.
+    names must be the run sheet's setup-phase guest/host steps, in order. A
+    ``verified`` or ``disproven`` record ran its whole setup, so it must carry
+    ALL of them; only an ``indeterminate`` record (setup may have stopped
+    early) may carry a proper prefix (round-4 review: an empty or shortened
+    manifest must not pass for a completed transaction). The record's
+    ``run_sheet`` name must be the document's own name.
     """
     invocation = provenance.get("invocation")
     if not isinstance(invocation, Mapping):
@@ -316,7 +321,14 @@ def _verify_run_sheet_binding(provenance: Mapping[str, object], run_sheet_bytes:
     ]
     manifest = invocation.get("setup_manifest")
     names = [entry.get("script") for entry in manifest] if isinstance(manifest, list) else []
-    if names != expected[: len(names)]:
+    if state in ("verified", "disproven"):
+        if names != expected:
+            _fail(
+                "provenance.invocation.setup_manifest",
+                f"a {state} record must carry every setup step of the run sheet "
+                f"{expected}, in order; it carries {names}",
+            )
+    elif names != expected[: len(names)]:
         _fail(
             "provenance.invocation.setup_manifest",
             f"script names {names} are not the run sheet's setup steps {expected}",
@@ -414,7 +426,7 @@ def validate_record(
     if run_sheet_bytes is not None:
         if version != 3:
             _fail("run_sheet_bytes", "only a v3 record binds its run sheet")
-        _verify_run_sheet_binding(provenance, run_sheet_bytes)
+        _verify_run_sheet_binding(provenance, run_sheet_bytes, state)
     return version
 
 

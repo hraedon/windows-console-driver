@@ -1194,7 +1194,7 @@ def test_v3_run_sheet_binding_refuses_a_tampered_digest_or_script_name(tmp_path:
 
     renamed = copy.deepcopy(record)
     renamed["provenance"]["invocation"]["setup_manifest"][1]["script"] = "zz_other"  # type: ignore[index]
-    with pytest.raises(RecordSchemaError, match="setup steps"):
+    with pytest.raises(RecordSchemaError, match="setup step"):
         validate_record(renamed, run_sheet_bytes=sheet_bytes)
 
     forged = copy.deepcopy(record)

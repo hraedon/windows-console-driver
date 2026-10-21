@@ -673,3 +673,78 @@ def test_window_22_v3_records_verify_against_capability_and_run_sheet_bytes() ->
         "bundle_sha256=3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f"
         in imported["stdout_lines"]
     )
+
+
+def _w22(name: str) -> tuple[dict[str, Any], str, bytes]:
+    import json as _json
+
+    record = _json.loads(
+        (REPO_ROOT / "docs" / "estate-window-22" / "records" / f"{name}-record.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    provenance = record["provenance"]
+    text = (REPO_ROOT / "capabilities" / f"{provenance['capability']}.json").read_text(
+        encoding="utf-8"
+    )
+    sheet = (REPO_ROOT / "runsheets" / f"{provenance['run_sheet']}.json").read_bytes()
+    return record, text, sheet
+
+
+@pytest.mark.parametrize("name", ["w22-r1", "w22-r2"])
+@pytest.mark.parametrize("shape", ["empty", "shortened", "first-dropped"])
+@pytest.mark.parametrize("state", ["verified", "disproven"])
+def test_a_completed_v3_record_must_carry_every_setup_step(
+    name: str, shape: str, state: str
+) -> None:
+    """Round-4 review (Sol B1): a verified or disproven record ran its whole
+    setup, so an empty or shortened manifest is a forgery, not a prefix."""
+    import copy
+
+    from wcd.record_schema import RecordSchemaError, validate_record
+
+    record, text, sheet = _w22(name)
+    assert validate_record(record, capability_text=text, run_sheet_bytes=sheet) == 3
+    forged = copy.deepcopy(record)
+    forged["state"] = state
+    manifest = forged["provenance"]["invocation"]["setup_manifest"]
+    if shape == "empty":
+        manifest.clear()
+    elif shape == "shortened":
+        del manifest[-1]
+    else:
+        del manifest[0]
+    with pytest.raises(RecordSchemaError, match="setup"):
+        validate_record(forged, capability_text=text, run_sheet_bytes=sheet)
+
+
+@pytest.mark.parametrize("name", ["w22-r1", "w22-r2"])
+def test_an_indeterminate_v3_record_may_carry_a_setup_prefix(name: str) -> None:
+    """Setup that stopped early leaves a prefix; that stays readable."""
+    import copy
+
+    from wcd.record_schema import validate_record
+
+    record, text, sheet = _w22(name)
+    for keep in range(len(record["provenance"]["invocation"]["setup_manifest"])):
+        early = copy.deepcopy(record)
+        early["state"] = "indeterminate"
+        early["envelope_result"] = {}
+        del early["provenance"]["invocation"]["setup_manifest"][keep:]
+        assert validate_record(early, capability_text=text, run_sheet_bytes=sheet) == 3
+
+
+def test_the_v3_document_refuses_an_empty_manifest_on_a_completed_record() -> None:
+    import copy
+    import json as _json
+
+    from jsonschema import Draft202012Validator
+
+    schema = _json.loads(
+        (REPO_ROOT / "docs" / "transaction-record-schema-v3.json").read_text(encoding="utf-8")
+    )
+    record, _text, _sheet = _w22("w22-r1")
+    assert not list(Draft202012Validator(schema).iter_errors(record))
+    forged = copy.deepcopy(record)
+    forged["provenance"]["invocation"]["setup_manifest"] = []
+    assert list(Draft202012Validator(schema).iter_errors(forged))

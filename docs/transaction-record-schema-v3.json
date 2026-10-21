@@ -30,6 +30,24 @@
       "then": {
         "properties": { "envelope_result": { "$ref": "#/$defs/envelope" } }
       }
+    },
+    {
+      "description": "A verified or disproven record ran its whole setup, so its manifest is never empty. EXACT equality with every setup step of the run sheet, in order, needs the run-sheet bytes and is enforced by the reader (wcd.record_schema.validate_record run_sheet_bytes); only an indeterminate record may carry a proper prefix.",
+      "if": {
+        "properties": { "state": { "enum": ["verified", "disproven"] } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "provenance": {
+            "properties": {
+              "invocation": {
+                "properties": { "setup_manifest": { "minItems": 1 } }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {

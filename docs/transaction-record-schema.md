@@ -105,7 +105,11 @@ plus a REQUIRED `provenance.invocation`:
 - `run_sheet_sha256`: the SHA-256 of the exact run-sheet file bytes.
   `validate_record(..., run_sheet_bytes=...)` recomputes it from those bytes
   and requires the setup manifest's script names to be the run sheet's own
-  setup steps, in order. The CLI passes the bytes of the run sheet it just
+  setup steps, in order. A `verified` or `disproven` record must carry ALL of
+  them (exact equality). Only an `indeterminate` record, whose setup may have
+  stopped early, may carry a proper prefix. The JSON document can express only
+  part of this (a non-empty manifest for completed records); the exact check
+  needs the run sheet. The CLI passes the bytes of the run sheet it just
   executed.
 - `setup_manifest`: every setup script's WHOLE output with its SHA-256. It is
   stored as `stdout_lines` (the text split on LF; joining them with LF gives
