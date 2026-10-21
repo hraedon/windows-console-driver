@@ -124,3 +124,13 @@ What is left is LabMS01 / LabCA01 `domain-joined` and LabCL01 `domain-joined`
 LabCAroot `offline-root`, which was out of scope and left in place. **LabDC01
 now has no checkpoint**, so the stale-DC-rollback hazard is gone with it.
 Canary after the prune: 10/10, exit 0.
+
+## Addendum, 2026-10-21 — the revert tool in later windows
+
+`tools/estate_revert_member.ps1` closed the next two windows (Plan 035
+windows 21 and 22, on the `plan035/wp1-wp2-captures` branch). Each time the
+pre-check passed (pwdLastSet 2026-10-20T18:27 before checkpoint 19:59,
+rotation disabled), the guest clock came back −9665 s and then −30841 s
+and was set to 0 immediately, the secure channel was True, bring-up was
+READY, and the canary was 10/10 including `member_clock` and
+`machine_password`.
