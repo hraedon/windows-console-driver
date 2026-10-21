@@ -273,6 +273,8 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     assert sum(version == 0 for version in versions.values()) == 8
     assert sum(version == 1 for version in versions.values()) == 8
     assert sum(version == 2 for version in versions.values()) == 15
+    # Window 22 banked the first record-schema-v3 records (Plan 035 revision 4).
+    assert sum(version == 3 for version in versions.values()) == 2
     assert all(path.read_bytes() == content for path, content in before.items())
     assert all(
         ("schema_version" not in json.loads(path.read_text())["provenance"])
@@ -281,7 +283,7 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     )
 
     validators = {}
-    for version in (0, 1, 2):
+    for version in (0, 1, 2, 3):
         schema = json.loads(
             (ROOT / "docs" / f"transaction-record-schema-v{version}.json").read_text(
                 encoding="utf-8"

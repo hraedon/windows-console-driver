@@ -24,3 +24,4 @@ docs/estate-window-21/captures/*.ini -text
 docs/estate-window-21/captures/*.txt -text
 docs/estate-window-21/captures/MANIFEST.sha256 -text
 docs/estate-window-*/captures/** -text
+docs/estate-window-22/captures/** -text

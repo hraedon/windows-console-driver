@@ -417,7 +417,9 @@ def test_new_guest_scripts_parse_under_windows_powershell_51(script: Path) -> No
     ps_scripts.parse_check(script)
 
 
-@pytest.mark.parametrize("window", ["estate-window-19", "estate-window-20", "estate-window-21"])
+@pytest.mark.parametrize(
+    "window", ["estate-window-19", "estate-window-20", "estate-window-21", "estate-window-22"]
+)
 def test_capture_manifest_matches_the_committed_bytes(window: str) -> None:
     """The WCD-side hash manifest (review, Sol 4) binds every banked capture,
     including the raw scripts.ini bytes gpo-studio's fixtures transcribe."""
@@ -432,7 +434,11 @@ def test_capture_manifest_matches_the_committed_bytes(window: str) -> None:
     assert set(entries) == on_disk
     for name, digest in entries.items():
         assert hashlib.sha256((captures / name).read_bytes()).hexdigest() == digest, name
-    prefix = {"estate-window-19": "w19-r2", "estate-window-20": "w20-r1"}.get(window, "w21-r1")
+    prefix = {
+        "estate-window-19": "w19-r2",
+        "estate-window-20": "w20-r1",
+        "estate-window-21": "w21-r1",
+    }.get(window, "w22-r1")
     assert entries[f"{prefix}-user-scripts.ini"].startswith("ba526db6")
     assert entries[f"{prefix}-machine-scripts.ini"].startswith("f8fa4009")
 
@@ -639,3 +645,31 @@ _WP2_ARGS = {
     "expected_gpttmpl_sha256": "07cba636ed9c1c30c4a4c228e555151f1fc43f7bfc941cbb221ed67297ea3dbc",
     "rule_display_name": "StudioFwLane in tcp allow",
 }
+
+
+def test_window_22_v3_records_verify_against_capability_and_run_sheet_bytes() -> None:
+    """The qualification evidence: record-schema v3, revision 4, verified, its
+    invocation recomputing from the record and its run-sheet binding from the
+    committed run-sheet bytes."""
+    import json as _json
+
+    from wcd.record_schema import validate_record
+
+    records = REPO_ROOT / "docs" / "estate-window-22" / "records"
+    for name, capability in (("w22-r1", WP1), ("w22-r2", WP2)):
+        record = _json.loads((records / f"{name}-record.json").read_text(encoding="utf-8"))
+        provenance = record["provenance"]
+        text = (REPO_ROOT / "capabilities" / f"{capability}.json").read_text(encoding="utf-8")
+        sheet = (REPO_ROOT / "runsheets" / f"{provenance['run_sheet']}.json").read_bytes()
+        assert validate_record(record, capability_text=text, run_sheet_bytes=sheet) == 3
+        assert record["state"] == "verified"
+        assert provenance["capability_revision"] == 4
+    wp2 = _json.loads((records / "w22-r2-record.json").read_text(encoding="utf-8"))
+    imported = next(
+        e for e in wp2["provenance"]["invocation"]["setup_manifest"]
+        if e["script"] == "gpo_stage_import"
+    )
+    assert (
+        "bundle_sha256=3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f"
+        in imported["stdout_lines"]
+    )
