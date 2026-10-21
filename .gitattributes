@@ -25,3 +25,9 @@ docs/estate-window-21/captures/*.txt -text
 docs/estate-window-21/captures/MANIFEST.sha256 -text
 docs/estate-window-*/captures/** -text
 docs/estate-window-22/captures/** -text
+
+# Digest-bound execution artifacts: record-schema v2/v3 bind the SHA-256 of the
+# exact capability and run-sheet bytes, so every checkout (Windows included)
+# must materialize them byte-identical to the blob.
+capabilities/*.json -text
+runsheets/*.json -text
