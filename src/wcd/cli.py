@@ -337,8 +337,20 @@ def main(argv: list[str] | None = None) -> int:
             # The record is validated against the capability text this process
             # actually executed, not merely against its own shape: a v2 record
             # whose binding disagrees with that content is refused before it
-            # can cross the WEL wire boundary.
-            validate_record(record, capability_text=capability_text)
+            # can cross the WEL wire boundary. A v3 record is also checked
+            # against the run-sheet bytes this checkout executed.
+            provenance = record.get("provenance") if isinstance(record, dict) else None
+            run_sheet_name = capability.get("run_sheet")
+            run_sheet_bytes = (
+                (paths.run_sheets / f"{run_sheet_name}.json").read_bytes()
+                if isinstance(provenance, dict)
+                and provenance.get("schema_version") == 3
+                and isinstance(run_sheet_name, str)
+                else None
+            )
+            validate_record(
+                record, capability_text=capability_text, run_sheet_bytes=run_sheet_bytes
+            )
         except RecordSchemaError as exc:
             print(f"record error: executor emitted an invalid record: {exc}", file=sys.stderr)
             return 2

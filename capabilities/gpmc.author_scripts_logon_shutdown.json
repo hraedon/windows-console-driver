@@ -2,7 +2,7 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.author_scripts_logon_shutdown",
   "surface": "gpmc-server2025",
-  "revision": 3,
+  "revision": 4,
   "intent": "Author exactly one command shutdown script on the computer side and one command logon script on the user side of a disposable GPO through the GPME Scripts sheets, so the user-side Scripts extension pair, the per-side version movement and the scripts.ini shapes for the Shutdown and Logon triggers can be read off the capture (gpo-studio Plan 035 WP-1, WI-071). Revisions 2 and 3 re-run the measurement with every measured value asserted exactly (revision 3: leaf by leaf, plus the INI bytes) (window 19 r2 measured the user-side tool GUID unasserted).",
   "parameters": {
     "type": "object",
@@ -48,19 +48,27 @@
       },
       "expected_machine_ini_bytes": {
         "type": "integer",
-        "minimum": 1
+        "enum": [
+          158
+        ]
       },
       "expected_machine_ini_sha256": {
         "type": "string",
-        "pattern": "^[0-9a-f]{64}$"
+        "enum": [
+          "f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489"
+        ]
       },
       "expected_user_ini_bytes": {
         "type": "integer",
-        "minimum": 1
+        "enum": [
+          138
+        ]
       },
       "expected_user_ini_sha256": {
         "type": "string",
-        "pattern": "^[0-9a-f]{64}$"
+        "enum": [
+          "ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5"
+        ]
       }
     }
   },
@@ -254,6 +262,10 @@
     {
       "id": "exact_ini_bytes",
       "checks": "Both scripts.ini files are pinned byte-for-byte through the file_digest observer: absent before, then exactly expected_<side>_ini_bytes long with SHA-256 expected_<side>_ini_sha256 (the window-19/20 measurement). The arguments carry the values, and the record's invocation field binds them."
+    },
+    {
+      "id": "expected_values_are_the_banked_measurement",
+      "checks": "Revision 4 (round-3 review, DS N4): every expected_* argument is constrained by the parameter schema to the single banked value (enum), so the capability cannot be re-qualified against a different artifact by passing different expectations. The values stay arguments only so the record's invocation names them explicitly."
     }
   ],
   "bindings": {

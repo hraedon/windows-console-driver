@@ -1,5 +1,13 @@
 # Estate window 21 — Plan 035 revision-3 requalification (2026-10-20)
 
+> **SUPERSEDED (round-3 review, Sol B1).** Both records below stamped
+> record-schema v2 but carried the retrofitted `provenance.invocation`
+> field. v2's provenance is closed, so a v2 reader refuses them, and frozen
+> v2 now does too. They are banked unchanged under `superseded/` (moved out of
+> `records/`, not deleted). The qualification evidence is window 22's
+> record-schema-v3 records at revision 4. The measurements themselves (bytes,
+> digests, deltas) are not in question.
+
 The round-2 review of the Plan 035 branches (Sol: request-changes; DeepSeek:
 pass) found that revision 2 could still verify a run that did something
 else. That is answered by revision 3 of both capabilities and by a record
@@ -41,7 +49,7 @@ UTC.**
 
 ## r1 — `gpmc.author_scripts_logon_shutdown` revision 3, verified
 
-`records/w21-r1-record.json`: 22 clauses satisfied, 42/42 deltas covered.
+`superseded/w21-r1-record.json`: 22 clauses satisfied, 42/42 deltas covered.
 That is 6 more deltas than revision 2, because the `file_digest` facts are
 now observed. Both INIs are absent→present with exactly 158 B `f8fa4009…`
 and 138 B `ba526db6…`, identical to windows 19 and 20 and to the backup the
@@ -51,7 +59,7 @@ arguments and all three setup outputs whole.
 
 ## r2 — `gpmc.observe_imported_firewall_rules` revision 3, verified
 
-`records/w21-r2-record.json`: 13 clauses, 15/15 deltas. The same exact
+`superseded/w21-r2-record.json`: 13 clauses, 15/15 deltas. The same exact
 delta as window 20 (stub 142 B `07cba636…`, parsed leaf by leaf, and the
 pinned relpath lists). `provenance.invocation` carries `gpo_stage_import`'s
 whole output: `backup_id=cb31b508-…`, `bundle_sha256=3f146885…`,
@@ -62,7 +70,9 @@ stage.
 
 ## Follow-ups (filed here; not fixed in this change)
 
-- **DS N1: legacy run-sheets still remove GPOs by display name.**
+- **DS N1: legacy run-sheets still remove GPOs by display name.** Tracked
+  with a closing condition as
+  [hraedon/windows-console-driver#35](https://github.com/hraedon/windows-console-driver/issues/35).
   `runsheets/gpmc.author_registry_security.json` (gpo_backup to a fixed
   caller path, gpo_remove by name) and
   `runsheets/gpmc.author_scripts_ps_order.json` (gpo_remove by name) still

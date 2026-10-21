@@ -2,7 +2,7 @@
   "$schema": "docs/capability-schema-v0.json",
   "id": "gpmc.observe_imported_firewall_rules",
   "surface": "gpmc-server2025",
-  "revision": 3,
+  "revision": 4,
   "intent": "Observe-only: import a GPMC backup bundle (gpo-studio's firewall export) into a disposable GPO, open it in GPME, walk to Windows Defender Firewall with Advanced Security > Inbound Rules, bank the full UIA tree and screenshots of the rules list and of one rule's Properties sheet, cancel and close -- so a person can review whether GPME displays and offers to edit the imported rules under the extension registration the export wrote (gpo-studio Plan 035 WP-2, WI-077). Surface evidence, not a certified claim: nothing here proves an edit persists.",
   "parameters": {
     "type": "object",
@@ -32,22 +32,31 @@
       },
       "bundle_sha256": {
         "type": "string",
-        "pattern": "^[0-9a-f]{64}$"
+        "enum": [
+          "3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f"
+        ]
       },
       "stage_name": {
         "type": "string",
         "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
       },
       "expected_machine_extensions": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "[{35378EAC-683F-11D2-A89A-00C04FBBCFA2}{B05566AC-FE9C-4368-BE01-7A4CBB6CBA11}]"
+        ]
       },
       "expected_gpttmpl_bytes": {
         "type": "integer",
-        "minimum": 1
+        "enum": [
+          142
+        ]
       },
       "expected_gpttmpl_sha256": {
         "type": "string",
-        "pattern": "^[0-9a-f]{64}$"
+        "enum": [
+          "07cba636ed9c1c30c4a4c228e555151f1fc43f7bfc941cbb221ed67297ea3dbc"
+        ]
       },
       "rule_display_name": {
         "type": "string",
@@ -201,6 +210,10 @@
     {
       "id": "leaf_exact_predictions",
       "checks": "Revision 3 (round-2 review): the GptTmpl.inf parse is asserted leaf by leaf (encoding, both sections' names, line counts and shape) under a leaf fact key, so a third section or any other parsed fact is unpredicted and disproves the run, independently of the byte digest."
+    },
+    {
+      "id": "expected_values_are_the_banked_measurement",
+      "checks": "Revision 4 (round-3 review, DS N4): every expected_* argument and the bundle digest is constrained by the parameter schema to the single banked value (enum), so the capability cannot be re-qualified against a different artifact by passing different expectations. The values stay arguments only so the record's invocation names them explicitly."
     }
   ],
   "bindings": {

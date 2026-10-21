@@ -6,10 +6,13 @@
 # here at cleanup time because the root could have been swapped for a
 # junction after setup checked it (round-2 review). Report, never throw.
 #
-# $Root is a TEST SEAM only: the run-sheets pass exactly two arguments, so a
-# transaction always cleans under C:\gpo-studio\wcd-stage.
-param([string]$StageName, [string]$Guid, [string]$Root = 'C:\gpo-studio\wcd-stage')
+# The root is a literal, never a parameter (round-3 review): no caller can
+# point this recursive delete anywhere else. Paths resolve through the
+# PowerShell provider (Get-Item), so the tests can substitute a temporary
+# C: drive without any production override.
+param([string]$StageName, [string]$Guid)
 $ErrorActionPreference = 'Continue'
+$root = 'C:\gpo-studio\wcd-stage'
 
 function Test-ReparseChain {
     # True when $Path or any existing ancestor of it is a reparse point.
@@ -31,8 +34,8 @@ $parsed = [Guid]::Empty
 if (-not [Guid]::TryParse($Guid, [ref]$parsed) -or $parsed -eq [Guid]::Empty) { "clean_skipped=no_owned_guid"; return }
 if ($StageName -notmatch '^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$' -or $StageName -match '^\.+$' -or $StageName -eq 'incoming') { "clean_refused=bad_leaf_name"; return }
 try {
-    if (-not (Test-Path -LiteralPath $Root)) { "clean_skipped=no_staging_root"; return }
-    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+    if (-not (Test-Path -LiteralPath $root)) { "clean_skipped=no_staging_root"; return }
+    $rootFull = (Get-Item -LiteralPath $root -Force).FullName.TrimEnd('\', '/')
     if (Test-ReparseChain $rootFull) { "clean_refused=root_reparse_point"; return }
     $stage = [IO.Path]::GetFullPath((Join-Path $rootFull $StageName))
     if ([IO.Path]::GetDirectoryName($stage).TrimEnd('\', '/') -ne $rootFull) { "clean_refused=outside_root"; return }

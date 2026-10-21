@@ -1077,13 +1077,13 @@ def test_existing_name_refusal_removes_no_gpo(tmp_path: Path) -> None:
     assert _cleanup_of(record).get("evidence_gpo_guid") is None
 
 
-def _run_v2(
+def _run_v3(
     tmp_path: Path,
     sheet: dict[str, object],
     transport: FakeTransport,
     arguments: dict[str, object] | None = None,
 ) -> dict[str, object]:
-    """Run with the capability TEXT supplied, so the record is schema v2."""
+    """Run with the capability TEXT supplied, so the record is schema v3."""
     capability = _capability(str(sheet["name"]), _SATISFIED_ENVELOPE)
     capability["revision"] = 1
     if arguments is not None:
@@ -1112,7 +1112,7 @@ def test_post_create_import_failure_removes_exactly_the_owned_guid(tmp_path: Pat
         raise TransportError("bundle hash mismatch")
 
     transport.guest_routes.insert(0, (lambda s: "zzfake: stage_import" in s, import_fails))
-    record = _run_v2(tmp_path, _owned_cleanup_sheet("zz_owned_import"), transport)
+    record = _run_v3(tmp_path, _owned_cleanup_sheet("zz_owned_import"), transport)
 
     assert record["state"] == "indeterminate"
     removals = _removal_calls(transport)
@@ -1127,10 +1127,11 @@ def test_post_create_import_failure_removes_exactly_the_owned_guid(tmp_path: Pat
 def test_record_banks_untruncated_invocation_recomputable_from_the_record(
     tmp_path: Path,
 ) -> None:
-    """Round-2 review (Sol B3): canonical arguments and setup output travel in
-    provenance.invocation WHOLE -- longer than the 512-character notes cap --
-    and the arguments hash is recomputable from the record alone."""
-    long_stdout = "bundle_sha256=" + "a" * 64 + "\n" + "line=" + "x" * 900 + "\n"
+    """Canonical arguments and setup output travel in a v3 record's
+    provenance.invocation WHOLE -- longer than the 512-character notes cap,
+    with no cap of their own -- and both the arguments hash and the run-sheet
+    binding recompute (the latter against the run-sheet bytes)."""
+    long_stdout = "bundle_sha256=" + "a" * 64 + "\n" + "line=" + "x" * 40000 + "\n"
     transport = FakeTransport()
     transport.guest_routes.append(
         (lambda s: "zzfake: stage_import" in s, lambda s, a: long_stdout)
@@ -1139,10 +1140,12 @@ def test_record_banks_untruncated_invocation_recomputable_from_the_record(
         (lambda s: "zzfake: gpo_remove_owned" in s, lambda s, a: f"removed_guid={a[0]}\n")
     )
     arguments = {"gpo_name": "zz-studio-evidence-t", "padding": "p" * 700}
-    record = _run_v2(tmp_path, _owned_cleanup_sheet("zz_manifest"), transport, arguments)
+    record = _run_v3(tmp_path, _owned_cleanup_sheet("zz_manifest"), transport, arguments)
 
     assert record["state"] == "verified"
-    assert validate_record(record) == 2
+    sheet_bytes = (tmp_path / "runsheets" / "zz_manifest.json").read_bytes()
+    assert validate_record(record, run_sheet_bytes=sheet_bytes) == 3
+    assert record["provenance"]["$schema"] == "docs/transaction-record-schema-v3.json"  # type: ignore[index]
     invocation = record["provenance"]["invocation"]  # type: ignore[index]
     recomputed = hashlib.sha256(
         json.dumps(
@@ -1151,14 +1154,11 @@ def test_record_banks_untruncated_invocation_recomputable_from_the_record(
     ).hexdigest()
     assert recomputed == invocation["arguments_sha256"]
     assert invocation["arguments"] == arguments
-    sheet_bytes = (tmp_path / "runsheets" / "zz_manifest.json").read_bytes()
     assert invocation["run_sheet_sha256"] == hashlib.sha256(sheet_bytes).hexdigest()
     entries = invocation["setup_manifest"]
     assert [entry["script"] for entry in entries] == ["zz_gpo_create", "zz_stage_import"]
-    assert entries[1]["stdout"] == long_stdout and entries[1]["truncated"] is False
+    assert entries[1]["stdout"] == long_stdout
     assert entries[1]["stdout_sha256"] == hashlib.sha256(long_stdout.encode()).hexdigest()
-    notes = [str(note) for note in record["provenance"]["notes"]]  # type: ignore[index]
-    assert any(note.startswith("invocation: arguments sha256=" + recomputed) for note in notes)
 
 
 def test_tampered_invocation_arguments_fail_record_validation(tmp_path: Path) -> None:
@@ -1167,10 +1167,39 @@ def test_tampered_invocation_arguments_fail_record_validation(tmp_path: Path) ->
     transport.guest_routes.append(
         (lambda s: "zzfake: gpo_remove_owned" in s, lambda s, a: "removed_guid=x\n")
     )
-    record = _run_v2(tmp_path, _owned_cleanup_sheet("zz_tamper"), transport)
+    record = _run_v3(tmp_path, _owned_cleanup_sheet("zz_tamper"), transport)
     record["provenance"]["invocation"]["arguments"]["gpo_name"] = "zz-other"  # type: ignore[index]
     with pytest.raises(RecordSchemaError, match="arguments_sha256"):
         validate_record(record)
+
+
+def test_v3_run_sheet_binding_refuses_a_tampered_digest_or_script_name(tmp_path: Path) -> None:
+    """Round-3 review (Sol B1, DS N1): run_sheet_sha256 is recomputed from the
+    run-sheet bytes, and the setup script names must be the sheet's own setup
+    steps."""
+    import copy
+
+    transport = FakeTransport()
+    transport.guest_routes.append((lambda s: "zzfake: stage_import" in s, lambda s, a: "ok=1\n"))
+    transport.guest_routes.append(
+        (lambda s: "zzfake: gpo_remove_owned" in s, lambda s, a: "removed_guid=x\n")
+    )
+    record = _run_v3(tmp_path, _owned_cleanup_sheet("zz_sheet_bind"), transport)
+    sheet_bytes = (tmp_path / "runsheets" / "zz_sheet_bind.json").read_bytes()
+    assert validate_record(record, run_sheet_bytes=sheet_bytes) == 3
+
+    with pytest.raises(RecordSchemaError, match="run_sheet_sha256"):
+        validate_record(record, run_sheet_bytes=sheet_bytes + b" ")
+
+    renamed = copy.deepcopy(record)
+    renamed["provenance"]["invocation"]["setup_manifest"][1]["script"] = "zz_other"  # type: ignore[index]
+    with pytest.raises(RecordSchemaError, match="setup steps"):
+        validate_record(renamed, run_sheet_bytes=sheet_bytes)
+
+    forged = copy.deepcopy(record)
+    forged["provenance"]["invocation"]["run_sheet_sha256"] = "1" * 64  # type: ignore[index]
+    with pytest.raises(RecordSchemaError, match="run_sheet_sha256"):
+        validate_record(forged, run_sheet_bytes=sheet_bytes)
 
 
 def test_malformed_screenshot_is_contained_recorded_and_cleaned_up(tmp_path: Path) -> None:
@@ -1680,7 +1709,7 @@ def test_no_baseline_rows_means_no_file_version_probe_and_no_gate_notes(
 # --- capability-spec binding (record-schema v2) ---------------------------------
 
 
-def test_capability_text_mints_a_v2_record_bound_to_that_content(
+def test_capability_text_mints_a_v3_record_bound_to_that_content(
     tmp_path: Path,
 ) -> None:
     """The record authenticates its capability content, not just its id.
@@ -1708,13 +1737,15 @@ def test_capability_text_mints_a_v2_record_bound_to_that_content(
     assert record["state"] == "verified"
     provenance = record["provenance"]
     assert isinstance(provenance, dict)
-    assert provenance["$schema"] == "docs/transaction-record-schema-v2.json"
-    assert provenance["schema_version"] == 2
+    # The executor now mints record-schema v3: the v2 binding plus the
+    # required invocation field (Plan 035 round-3 review).
+    assert provenance["$schema"] == "docs/transaction-record-schema-v3.json"
+    assert provenance["schema_version"] == 3
     assert provenance["capability_revision"] == 4
     assert provenance["capability_sha256"] == hashlib.sha256(
         capability_text.encode("utf-8")
     ).hexdigest()
-    assert validate_record(record, capability_text=capability_text) == 2
+    assert validate_record(record, capability_text=capability_text) == 3
 
 
 def test_no_capability_text_keeps_minting_frozen_v1_records(tmp_path: Path) -> None:

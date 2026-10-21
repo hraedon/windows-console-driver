@@ -124,16 +124,12 @@ class RunProvenance:
     console: dict[str, object] = field(default_factory=dict)
     cleanup: dict[str, object] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
-    # The UNTRUNCATED invocation binding (Plan 035 round-2 review): the
-    # canonical arguments and their SHA-256, the run-sheet digest, and every
-    # setup script's full output. Notes are capped at 512 characters, which
-    # cut both mid-JSON in window 20; this travels as its own record field.
+    # The v3 invocation binding (Plan 035 review): the canonical arguments
+    # and their SHA-256, the run-sheet digest, and every setup script's whole
+    # output. Notes are capped at 512 characters, which cut both mid-JSON in
+    # window 20; this travels as its own field of a record-schema-v3 record.
     invocation: dict[str, object] | None = None
 
-
-# One setup script's output is banked whole up to this size; beyond it the
-# entry keeps a prefix, says so, and still binds the full output by SHA-256.
-_SETUP_STDOUT_CAP = 16384
 
 
 def _truncate(value: object, limit: int = 1600) -> object:
@@ -732,6 +728,18 @@ def execute_transaction(
         truncated_plan = _truncate(plan_provenance)
         if isinstance(truncated_plan, dict):
             provenance.console.update(truncated_plan)
+    if capability_binding is not None:
+        # The v3 invocation binding, fixed before anything moves: what the
+        # capability was invoked WITH and which run-sheet bytes drive it.
+        # Setup output joins it once setup has run.
+        canonical_args = canonical_arguments(arguments)
+        sheet_bytes = (paths.run_sheets / f"{sheet_name}.json").read_bytes()
+        provenance.invocation = {
+            "arguments": json.loads(canonical_args),
+            "arguments_sha256": hashlib.sha256(canonical_args.encode("utf-8")).hexdigest(),
+            "run_sheet_sha256": hashlib.sha256(sheet_bytes).hexdigest(),
+            "setup_manifest": [],
+        }
 
     txn = Transaction(transaction_id=str(uuid.uuid4()))
     events_out: list[dict[str, object]] = []
@@ -973,24 +981,11 @@ def execute_transaction(
     # document by digest, but not what it was invoked WITH or which run-sheet
     # bytes drove it. Both go into the notes before anything moves, so a
     # record authenticates its own inputs.
-    canonical_args = canonical_arguments(arguments)
-    args_digest = hashlib.sha256(canonical_args.encode("utf-8")).hexdigest()
-    sheet_path = paths.run_sheets / f"{sheet_name}.json"
-    sheet_digest = hashlib.sha256(sheet_path.read_bytes()).hexdigest()
-    invocation: dict[str, object] = {
-        "arguments": json.loads(canonical_args),
-        "arguments_sha256": args_digest,
-        "run_sheet_sha256": sheet_digest,
-        "setup_manifest": [],
-    }
-    provenance.invocation = invocation
-    provenance.notes.append(
-        f"invocation: arguments sha256={args_digest}; run_sheet sha256={sheet_digest} "
-        f"{sheet_name} (full values in provenance.invocation)"
-    )
+    invocation = provenance.invocation if provenance.invocation is not None else {}
     try:
         executor.execute(setup_sheet, ctx)
-        invocation["setup_manifest"] = _setup_manifest(ctx.script_outputs)
+        if provenance.invocation is not None:
+            invocation["setup_manifest"] = _setup_manifest(ctx.script_outputs)
         if gpo_transaction:
             guid_value = ctx.outputs.get("setup.gpo.guid")
             gpo_guid = guid_value
@@ -999,7 +994,8 @@ def execute_transaction(
                     "setup produced no gpo.guid output (scripts must emit guid=<id>)"
                 )
     except (RunSheetError, ExecTransactionError) as exc:
-        invocation["setup_manifest"] = _setup_manifest(ctx.script_outputs)
+        if provenance.invocation is not None:
+            invocation["setup_manifest"] = _setup_manifest(ctx.script_outputs)
         abort_indeterminate(f"setup failed before prepare: {exc}")
         # Whatever setup managed to create before failing must still be
         # cleaned: salvage the guid if the create step got that far.
@@ -1175,26 +1171,21 @@ def canonical_arguments(arguments: Mapping[str, object]) -> str:
 
 
 def _setup_manifest(outputs: Sequence[tuple[str, str]]) -> list[dict[str, object]]:
-    """Every setup script's output, whole, with its SHA-256.
+    """Every setup script's output, WHOLE, with its SHA-256.
 
     Setup scripts report what they created and the digests they verified (a
     GUID, a bundle hash, an imported file hash); the gesture journal never
     carried them, and the 512-character journal/notes caps would cut them.
-    An output beyond :data:`_SETUP_STDOUT_CAP` keeps its prefix, says so,
-    and is still bound by the digest of the full text.
+    No cap: an output is either banked whole or not claimed (round-3 review).
     """
-    entries: list[dict[str, object]] = []
-    for script, stdout in outputs:
-        truncated = len(stdout) > _SETUP_STDOUT_CAP
-        entries.append(
-            {
-                "script": script,
-                "stdout": stdout[:_SETUP_STDOUT_CAP],
-                "stdout_sha256": hashlib.sha256(stdout.encode("utf-8")).hexdigest(),
-                "truncated": truncated,
-            }
-        )
-    return entries
+    return [
+        {
+            "script": script,
+            "stdout": stdout,
+            "stdout_sha256": hashlib.sha256(stdout.encode("utf-8")).hexdigest(),
+        }
+        for script, stdout in outputs
+    ]
 
 
 def _setup_sheet(sheet: RunSheet, ctx: SheetContext) -> RunSheet:
@@ -1517,8 +1508,9 @@ def _emit(
     if capability_binding is not None:
         provenance_block["capability_revision"] = capability_binding[0]
         provenance_block["capability_sha256"] = capability_binding[1]
-        if provenance.invocation is not None:
-            provenance_block["invocation"] = provenance.invocation
+        # v3: the invocation binding is REQUIRED; it is created with the
+        # capability binding, before any lease or estate work.
+        provenance_block["invocation"] = provenance.invocation or {}
     return {
         "state": state,
         "verdict": verdict[:512].replace("\n", " ").replace("\r", " "),

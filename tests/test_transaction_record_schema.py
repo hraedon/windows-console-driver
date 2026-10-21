@@ -12,11 +12,17 @@ from jsonschema import Draft202012Validator
 from wcd.envelope import AssertionResult, FactDelta
 from wcd.exec_transaction import RunProvenance, _emit
 from wcd.record_schema import (
-    RECORD_SCHEMA_REF,
+    RECORD_SCHEMA_REF as V3_RECORD_SCHEMA_REF,
+)
+from wcd.record_schema import (
     V1_RECORD_SCHEMA_REF,
     RecordSchemaError,
     load_record,
     validate_record,
+)
+from wcd.record_schema import (
+    # The v2 tests below exercise the FROZEN v2 document by name.
+    V2_RECORD_SCHEMA_REF as RECORD_SCHEMA_REF,
 )
 from wcd.transaction import Transaction
 
@@ -260,11 +266,13 @@ def test_committed_records_are_read_without_rewriting_them() -> None:
     # window 19 banked the eleventh to thirteenth, gpo-studio Plan 035: the
     # WP-1 indeterminate r1, the verified WP-1 r2 and the verified WP-2 r3;
     # window 20 banked the fourteenth and fifteenth, the revision-2 Plan 035
-    # requalification runs; window 21 banked the sixteenth and seventeenth,
-    # the revision-3 runs that carry provenance.invocation.)
+    # requalification runs. Window 21's two revision-3 records stamped v2 but
+    # carried the retrofitted invocation field, which frozen v2 refuses; they
+    # are banked as superseded under docs/estate-window-21/superseded/, outside
+    # this sweep, and window 22's v3 records replace them.)
     assert sum(version == 0 for version in versions.values()) == 8
     assert sum(version == 1 for version in versions.values()) == 8
-    assert sum(version == 2 for version in versions.values()) == 17
+    assert sum(version == 2 for version in versions.values()) == 15
     assert all(path.read_bytes() == content for path, content in before.items())
     assert all(
         ("schema_version" not in json.loads(path.read_text())["provenance"])
@@ -346,3 +354,83 @@ def test_legacy_auto_detection_is_scoped_to_repository_evidence(tmp_path: Path) 
     unknown_banked_name = RECORDS / "estate-window-2" / "records" / "unknown.json"
     with pytest.raises(RecordSchemaError, match="missing schema stamp"):
         validate_record(record, source=unknown_banked_name)
+
+
+# --- v3 (Plan 035 round-3 review) -------------------------------------------------
+
+_FROZEN_V2_SHA256 = "4a73d726130e9e6d0008201f19b6b014b06990ac4b2a062ba6f9f164a680c201"
+
+
+def _v3_record() -> dict[str, object]:
+    record = _bound_record()
+    provenance = record["provenance"]
+    assert isinstance(provenance, dict)
+    provenance["$schema"] = V3_RECORD_SCHEMA_REF
+    provenance["schema_version"] = 3
+    arguments = {"gpo_name": "zz-studio-evidence-t"}
+    canonical = json.dumps(arguments, sort_keys=True, separators=(",", ":"))
+    provenance["invocation"] = {
+        "arguments": arguments,
+        "arguments_sha256": hashlib.sha256(canonical.encode()).hexdigest(),
+        "run_sheet_sha256": "0" * 64,
+        "setup_manifest": [
+            {
+                "script": "zz_gpo_create",
+                "stdout": "guid=zz",
+                "stdout_sha256": hashlib.sha256(b"guid=zz").hexdigest(),
+            }
+        ],
+    }
+    return record
+
+
+def test_v3_record_validates_against_its_own_document() -> None:
+    record = _v3_record()
+    assert validate_record(record, capability_text=_CAPABILITY_TEXT) == 3
+    schema = json.loads((ROOT / V3_RECORD_SCHEMA_REF).read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(record)
+
+
+def test_v3_requires_the_invocation_field() -> None:
+    record = _v3_record()
+    record["provenance"].pop("invocation")  # type: ignore[union-attr]
+    with pytest.raises(RecordSchemaError, match="invocation"):
+        validate_record(record)
+
+
+def test_frozen_v2_still_refuses_an_invocation_field() -> None:
+    """The round-3 finding: v2 provenance is closed. A v2-stamped record that
+    carries invocation is refused by the v2 reader AND the v2 document."""
+    record = _bound_record()
+    record["provenance"]["invocation"] = _v3_record()["provenance"]["invocation"]  # type: ignore[index]
+    with pytest.raises(RecordSchemaError, match="invocation"):
+        validate_record(record)
+    schema = json.loads((ROOT / RECORD_SCHEMA_REF).read_text(encoding="utf-8"))
+    assert list(Draft202012Validator(schema).iter_errors(record))
+
+
+def test_v2_document_is_byte_identical_to_its_frozen_form() -> None:
+    """v2 is frozen exactly as banked at 9959480 (window 20)."""
+    # Line endings normalized: a Windows checkout may materialize CRLF.
+    data = (ROOT / RECORD_SCHEMA_REF).read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(data).hexdigest() == _FROZEN_V2_SHA256
+
+
+def test_v3_refuses_an_output_whose_digest_does_not_match() -> None:
+    record = _v3_record()
+    record["provenance"]["invocation"]["setup_manifest"][0]["stdout"] = "guid=other"  # type: ignore[index]
+    with pytest.raises(RecordSchemaError, match="stdout_sha256"):
+        validate_record(record)
+
+
+def test_v3_has_no_truncated_outputs() -> None:
+    record = _v3_record()
+    record["provenance"]["invocation"]["setup_manifest"][0]["truncated"] = True  # type: ignore[index]
+    with pytest.raises(RecordSchemaError, match="truncated"):
+        validate_record(record)
+
+
+def test_run_sheet_bytes_are_refused_for_a_v2_record() -> None:
+    with pytest.raises(RecordSchemaError, match="only a v3 record"):
+        validate_record(_bound_record(), run_sheet_bytes=b"{}")
