@@ -333,6 +333,10 @@ class SheetContext:
     hwnd_stack: list[int] = field(default_factory=list)
     last_context: dict[str, object] | None = None
     journal: list[dict[str, object]] = field(default_factory=list)
+    # Every guest/host script's FULL stdout, in execution order. The journal
+    # keeps only the first 512 characters; the executor's invocation manifest
+    # banks the setup phase's complete output from here (Plan 035 review).
+    script_outputs: list[tuple[str, str]] = field(default_factory=list)
 
     def interpolate(self, value: object) -> object:
         """Resolve ``{args.key}`` / ``{out.key}`` references inside strings.
@@ -496,6 +500,7 @@ class GestureExecutor:
             # Transport failures inside a sheet are reconciled, never crashed:
             # the transaction layer owns the indeterminate + cleanup path.
             raise RunSheetError(f"{remote} script {script_ref!r} transport failed: {exc}") from exc
+        ctx.script_outputs.append((script_ref, stdout))
         output_key = params.get("output_as")
         if isinstance(output_key, str) and output_key:
             for line in stdout.splitlines():
@@ -513,7 +518,10 @@ class GestureExecutor:
                                     f"script {script_ref!r} emitted malformed GUID for {full_key}"
                                 ) from exc
                         ctx.outputs[full_key] = captured
-        return {"stdout": stdout[:512]}
+        # One line in the journal (the WEL seam refuses record strings that
+        # carry a line break); the whole text, line breaks and all, is kept in
+        # ctx.script_outputs for the v3 invocation manifest.
+        return {"stdout": " | ".join(stdout.splitlines())[:512]}
 
     def _find_window_by_class(self, window_class: str) -> dict[str, object] | None:
         result = self._t.helper({"action": "windows"}, timeout=self._helper_timeout)
@@ -913,7 +921,48 @@ class GestureExecutor:
                 "uia_dump was truncated (element or time cap); raise depth or narrow the window"
             )
         names = [e.name for e in elements if e.name]
-        return {"elements": len(elements), "hwnd": ctx.last_dump_hwnd, "names": names[:60]}
+        detail: dict[str, object] = {
+            "elements": len(elements),
+            "hwnd": ctx.last_dump_hwnd,
+            "names": names[:60],
+        }
+        save_as = params.get("save_as")
+        if save_as is not None:
+            # Surface evidence for human review (Plan 035 WP-2): the FULL dump
+            # payload, beside the screenshots, under the same anchored evidence
+            # directory. The journal keeps only the first names; the saved
+            # file is what a reviewer reads.
+            saved_path, digest = self._save_dump(save_as, result.payload)
+            detail["saved"] = str(saved_path)
+            detail["sha256"] = digest
+        return detail
+
+    def _save_dump(self, name: object, payload: Mapping[str, object]) -> tuple[Path, str]:
+        """Write the dump EXCLUSIVELY and return its path and SHA-256.
+
+        Exclusive creation refuses to replace evidence a previous run banked
+        under the same name, and the digest goes into the journal, so the
+        record binds the exact bytes a reviewer later reads.
+        """
+        import hashlib
+
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
+            raise RunSheetError(f"dump save_as must be a plain file stem, got {name!r}")
+        path = self._evidence_dir / f"{name}.uia.json"
+        try:
+            data = (
+                json.dumps(payload, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+            ).encode("utf-8")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("xb") as handle:
+                handle.write(data)
+        except FileExistsError as exc:
+            raise RunSheetError(
+                f"dump save_as {path} already exists; refusing to overwrite banked evidence"
+            ) from exc
+        except (OSError, TypeError, ValueError) as exc:
+            raise RunSheetError(f"dump could not save evidence to {path}: {exc}") from exc
+        return path, hashlib.sha256(data).hexdigest()
 
     def _click_element(self, params: dict[str, object], ctx: SheetContext) -> dict[str, object]:
         if params.get("fresh", True):

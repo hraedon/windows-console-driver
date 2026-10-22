@@ -1,0 +1,232 @@
+{
+  "$schema": "docs/capability-schema-v0.json",
+  "id": "gpmc.observe_imported_firewall_rules",
+  "surface": "gpmc-server2025",
+  "revision": 4,
+  "intent": "Observe-only: import a GPMC backup bundle (gpo-studio's firewall export) into a disposable GPO, open it in GPME, walk to Windows Defender Firewall with Advanced Security > Inbound Rules, bank the full UIA tree and screenshots of the rules list and of one rule's Properties sheet, cancel and close -- so a person can review whether GPME displays and offers to edit the imported rules under the extension registration the export wrote (gpo-studio Plan 035 WP-2, WI-077). Surface evidence, not a certified claim: nothing here proves an edit persists.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "gpo_name",
+      "domain_dns",
+      "bundle_name",
+      "bundle_sha256",
+      "stage_name",
+      "expected_machine_extensions",
+      "expected_gpttmpl_bytes",
+      "expected_gpttmpl_sha256",
+      "rule_display_name"
+    ],
+    "properties": {
+      "gpo_name": {
+        "type": "string",
+        "pattern": "^zz-studio-evidence-[A-Za-z0-9_.-]{1,64}$"
+      },
+      "domain_dns": {
+        "type": "string"
+      },
+      "bundle_name": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "bundle_sha256": {
+        "type": "string",
+        "enum": [
+          "3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f"
+        ]
+      },
+      "stage_name": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "expected_machine_extensions": {
+        "type": "string",
+        "enum": [
+          "[{35378EAC-683F-11D2-A89A-00C04FBBCFA2}{B05566AC-FE9C-4368-BE01-7A4CBB6CBA11}]"
+        ]
+      },
+      "expected_gpttmpl_bytes": {
+        "type": "integer",
+        "enum": [
+          142
+        ]
+      },
+      "expected_gpttmpl_sha256": {
+        "type": "string",
+        "enum": [
+          "07cba636ed9c1c30c4a4c228e555151f1fc43f7bfc941cbb221ed67297ea3dbc"
+        ]
+      },
+      "rule_display_name": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9 _-]{0,127}$"
+      }
+    }
+  },
+  "channel_contract": {
+    "setup": [
+      "powershell"
+    ],
+    "operation_under_test": [
+      "gpmc_ui"
+    ],
+    "orientation": [
+      "uia",
+      "hwnd",
+      "screenshot"
+    ],
+    "input_delivery": [
+      "helper_input",
+      "hyperv_input"
+    ],
+    "oracle": [
+      "gpo_observers"
+    ],
+    "cleanup": [
+      "powershell",
+      "programmatic_requery"
+    ]
+  },
+  "first_commit_point": "navigate_security_settings",
+  "run_sheet": "gpmc.observe_imported_firewall_rules",
+  "gpo_transaction": true,
+  "fact_plan": {
+    "observers": [
+      {
+        "name": "r2_core",
+        "params": {}
+      },
+      {
+        "name": "gpttmpl_inf",
+        "params": {
+          "relpath": "Machine\\Microsoft\\Windows NT\\SecEdit\\GptTmpl.inf"
+        }
+      },
+      {
+        "name": "file_digest",
+        "params": {
+          "relpath": "Machine\\Microsoft\\Windows NT\\SecEdit\\GptTmpl.inf",
+          "label": "gpttmpl"
+        }
+      }
+    ]
+  },
+  "envelope": {
+    "require": [
+      {
+        "fact": "ad.gPCMachineExtensionNames",
+        "predicate": "pre.ad.gPCMachineExtensionNames == args['expected_machine_extensions'] and post.ad.gPCMachineExtensionNames == pre.ad.gPCMachineExtensionNames"
+      },
+      {
+        "fact": "filedigest.gpttmpl.sha256",
+        "predicate": "pre.filedigest.gpttmpl.present == False and post.filedigest.gpttmpl.present == True and post.filedigest.gpttmpl.bytes == args['expected_gpttmpl_bytes'] and post.filedigest.gpttmpl.sha256 == args['expected_gpttmpl_sha256']"
+      },
+      {
+        "fact": "gpttmpl.present",
+        "predicate": "pre.gpttmpl.present == False and post.gpttmpl.present == True and post['gpttmpl.encoding.bom'] == 'utf16le' and post['gpttmpl.encoding.cr_count'] == 5 and post['gpttmpl.encoding.lf_count'] == 5 and post['gpttmpl.encoding.crlf_only'] == True and post['gpttmpl.sections.0.name'] == 'Unicode' and post['gpttmpl.sections.0.line_count'] == 1 and post['gpttmpl.sections.0.key_value_shape'] == True and post['gpttmpl.sections.1.name'] == 'Version' and post['gpttmpl.sections.1.line_count'] == 2 and post['gpttmpl.sections.1.key_value_shape'] == True"
+      },
+      {
+        "fact": "scope.sysvol_relpaths",
+        "predicate": "pre.scope.sysvol_relpaths == ['GPO.cmt', 'Machine', 'Machine/registry.pol', 'User', 'gpt.ini'] and post.scope.sysvol_relpaths == ['GPO.cmt', 'Machine', 'Machine/Microsoft', 'Machine/Microsoft/Windows NT', 'Machine/Microsoft/Windows NT/SecEdit', 'Machine/Microsoft/Windows NT/SecEdit/GptTmpl.inf', 'Machine/Scripts', 'Machine/Scripts/Shutdown', 'Machine/Scripts/Startup', 'Machine/registry.pol', 'User', 'gpt.ini']"
+      }
+    ],
+    "allow": [
+      {
+        "category": "timestamps"
+      },
+      {
+        "category": "replication_metadata"
+      },
+      {
+        "category": "file_mtime"
+      }
+    ],
+    "forbid": [
+      {
+        "scope": "ad.gPCMachineExtensionNames",
+        "predicate": "'3125E937-EB16-4b4c-9934-544FC6D24D26' not in scope and 'A3CC7818-8A30-4e0c-91C5-A4EA4B5A8DAB' not in scope"
+      },
+      {
+        "scope": "scope.sysvol_contained",
+        "predicate": "scope == True"
+      },
+      {
+        "scope": "scope.policies.gpc_guids",
+        "predicate": "scope == pre.scope.policies.gpc_guids"
+      }
+    ],
+    "derive": [
+      {
+        "relation": "post.version.raw == pre.version.raw"
+      },
+      {
+        "relation": "post.version.machine == pre.version.machine"
+      },
+      {
+        "relation": "post.version.user == pre.version.user"
+      },
+      {
+        "relation": "post.version.ad_versionNumber == pre.version.ad_versionNumber"
+      },
+      {
+        "relation": "post.ad.versionNumber == pre.ad.versionNumber"
+      },
+      {
+        "relation": "post.ad.gPCUserExtensionNames == pre.ad.gPCUserExtensionNames"
+      }
+    ],
+    "convergence": {
+      "window_seconds": 90,
+      "poll_seconds": 5,
+      "reproduce": 2
+    }
+  },
+  "structured_checks": [
+    {
+      "id": "post_equals_pre",
+      "checks": "Both version halves, the packed AD versionNumber and both extension lists are equal before and after the GPME walk. The imported Registry.pol is not named in a clause because its per-file sha256/bytes facts are deliberately unclassified: any change to it, or any file appearing or vanishing outside the dedicated observers, is an unclassified change and disproves the run. That is the post-state rule this observe-only capability rests on."
+    },
+    {
+      "id": "surface_evidence_for_review",
+      "checks": "The run-sheet saves the full UIA dumps of the Inbound Rules view and of one rule's Properties sheet, plus screenshots, to the evidence directory. Whether GPME displays and offers to edit the imported rules is read off those by a person; the envelope certifies only that the walk left the policy as imported."
+    },
+    {
+      "id": "sysvol_paths_contained",
+      "checks": "Every relative path in post.scope.sysvol_relpaths stays under this GPO's GUID directory. Backs the sysvol_contained fact the declarative forbid consumes; computed by the observer, asserted here."
+    },
+    {
+      "id": "exact_permitted_delta",
+      "checks": "The walk's only permitted SYSVOL change is pinned exactly: the pre and post scope.sysvol_relpaths lists (measured by w19-r3: the GptTmpl.inf stub, its Microsoft/Windows NT/SecEdit parents, and the Machine/Scripts/{Startup,Shutdown} directories GPME lays down when Windows Settings lists), and the stub itself by exact length and SHA-256 through the file_digest observer, absent before. Any other path, any other stub byte, or a stub that was already there disproves the run."
+    },
+    {
+      "id": "registration_is_bound_to_the_import",
+      "checks": "The pre-state machine extension list must equal expected_machine_extensions. The bundle is bound by bundle_sha256, verified by gpo_stage_import before Import-GPO; that script's emitted backup_id, bundle hash and imported Registry.pol hash, and the invocation arguments themselves, are banked in the record's notes (setup manifest, invocation arguments sha256)."
+    },
+    {
+      "id": "owned_gpo_and_stage_only",
+      "checks": "gpo_create runs first, so the GPO GUID is captured before the import can fail; cleanup removes only that GUID, and only the staging leaf under C:\\gpo-studio\\wcd-stage whose .wcd-owner marker names it. Leaf names only; root, out-of-root and reparse-point targets are refused."
+    },
+    {
+      "id": "leaf_exact_predictions",
+      "checks": "Revision 3 (round-2 review): the GptTmpl.inf parse is asserted leaf by leaf (encoding, both sections' names, line counts and shape) under a leaf fact key, so a third section or any other parsed fact is unpredicted and disproves the run, independently of the byte digest."
+    },
+    {
+      "id": "expected_values_are_the_banked_measurement",
+      "checks": "Revision 4 (round-3 review, DS N4): every expected_* argument and the bundle digest is constrained by the parameter schema to the single banked value (enum), so the capability cannot be re-qualified against a different artifact by passing different expectations. The values stay arguments only so the record's invocation names them explicitly."
+    }
+  ],
+  "bindings": {
+    "args": "Capability arguments are flat and shared by the run-sheet placeholders and envelope predicates; the executor substitutes args['...'] references as JSON literals before evaluation.",
+    "fact_vocabulary": "Fact keys reference gpo_observers' declared scheme (gpo_identity.*, ad.*, version.*, scripts_ini.*, gpttmpl.*, filedigest.*, sysvol.*, scope.*). Forbid clauses receive `scope` bound to the named fact's value and `scope_key` to its name, per wcd.envelope._build_bindings."
+  },
+  "cleanup": {
+    "strategy": "remove_gpo",
+    "requery": "strict_absence",
+    "residual_accounting": true
+  },
+  "recovery": {
+    "kind": "checkpoint_revert",
+    "demonstration": "estate baseline checkpoint existence asserted at prepare"
+  }
+}

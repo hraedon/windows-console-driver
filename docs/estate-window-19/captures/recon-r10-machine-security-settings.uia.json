@@ -1,0 +1,1159 @@
+{
+ "outcome": "ok",
+ "error": null,
+ "payload": {
+  "hwnd": 131374,
+  "action": "uia_dump",
+  "elements": [
+   {
+    "class": "MMCMainFrame",
+    "control_type": "Window",
+    "rect": {
+     "left": 154,
+     "bottom": 691,
+     "top": 154,
+     "right": 922,
+     "height": 537,
+     "width": 768
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "Local Group Policy Editor",
+    "control_type_id": 50032
+   },
+   {
+    "class": "MDIClient",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 683,
+     "top": 237,
+     "right": 914,
+     "height": 446,
+     "width": 752
+    },
+    "automation_id": "59648",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "MMCChildFrm",
+    "control_type": "Window",
+    "rect": {
+     "left": 154,
+     "bottom": 691,
+     "top": 206,
+     "right": 922,
+     "height": 485,
+     "width": 768
+    },
+    "automation_id": "65280",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "zz-studio-evidence-recon035 [LabDC01.ad.labdomain.dev] Policy\\Computer Configuration\\Windows Settings\\Security Settings",
+    "control_type_id": 50032
+   },
+   {
+    "class": "MMCViewWindow",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 660,
+     "top": 237,
+     "right": 914,
+     "height": 423,
+     "width": 752
+    },
+    "automation_id": "59648",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Window",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SysTreeView32",
+    "control_type": "Tree",
+    "rect": {
+     "left": 162,
+     "bottom": 660,
+     "top": 237,
+     "right": 318,
+     "height": 423,
+     "width": 156
+    },
+    "automation_id": "12785",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Scope",
+    "control_type_id": 50023
+   },
+   {
+    "class": "SysListView32",
+    "control_type": "List",
+    "rect": {
+     "left": 321,
+     "bottom": 660,
+     "top": 237,
+     "right": 914,
+     "height": 423,
+     "width": 593
+    },
+    "automation_id": "12786",
+    "depth": 0,
+    "patterns": [
+     "Grid",
+     "Table"
+    ],
+    "name": "Console Embedded Window Results",
+    "control_type_id": 50008
+   },
+   {
+    "class": "SysHeader32",
+    "control_type": "Header",
+    "rect": {
+     "left": 323,
+     "bottom": 263,
+     "top": 239,
+     "right": 912,
+     "height": 24,
+     "width": 589
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Console Embedded Results Header",
+    "control_type_id": 50034
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 323,
+     "bottom": 263,
+     "top": 239,
+     "right": 573,
+     "height": 24,
+     "width": 250
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Name",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "HeaderItem",
+    "rect": {
+     "left": 573,
+     "bottom": 263,
+     "top": 239,
+     "right": 843,
+     "height": 24,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Description",
+    "control_type_id": 50035
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 282,
+     "top": 263,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Account Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 282,
+     "top": 263,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Account Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 282,
+     "top": 263,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Password and account lockout policies",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 301,
+     "top": 282,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Local Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 301,
+     "top": 282,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Local Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 301,
+     "top": 282,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Auditing, user rights and security options policies",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 320,
+     "top": 301,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Event Log",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 320,
+     "top": 301,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Event Log",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 320,
+     "top": 301,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Event Log",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 339,
+     "top": 320,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Restricted Groups",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 339,
+     "top": 320,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Restricted Groups",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 339,
+     "top": 320,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Restricted Groups",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 358,
+     "top": 339,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "System Services",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 358,
+     "top": 339,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "System Services",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 358,
+     "top": 339,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "System service settings",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 377,
+     "top": 358,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Registry",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 377,
+     "top": 358,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Registry",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 377,
+     "top": 358,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Registry security settings",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 396,
+     "top": 377,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "File System",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 396,
+     "top": 377,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "File System",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 396,
+     "top": 377,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "File system security settings",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 415,
+     "top": 396,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Wired Network (IEEE 802.3) Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 415,
+     "top": 396,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Wired Network (IEEE 802.3) Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 415,
+     "top": 396,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Wired Network Policy Administration. Manage Wired Auto Configuration settings and IEEE 802.3 Security Settings for IEEE 802.3 Network clients",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 434,
+     "top": 415,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Windows Defender Firewall with Advanced Security",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 434,
+     "top": 415,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Windows Defender Firewall with Advanced Security",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 434,
+     "top": 415,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Windows Defender Firewall with Advanced Security",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 453,
+     "top": 434,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Network List Manager Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 453,
+     "top": 434,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Network List Manager Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 453,
+     "top": 434,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Network name, icon and location group policies.",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 472,
+     "top": 453,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Wireless Network (IEEE 802.11) Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 472,
+     "top": 453,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Wireless Network (IEEE 802.11) Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 472,
+     "top": 453,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Wireless Network Policy Administration. Manage WLAN AutoConfig settings and IEEE 802.1X Security Settings for IEEE 802.11 Network clients",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 491,
+     "top": 472,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Public Key Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 491,
+     "top": 472,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Public Key Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 491,
+     "top": 472,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 510,
+     "top": 491,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Software Restriction Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 510,
+     "top": 491,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Software Restriction Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 510,
+     "top": 491,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 529,
+     "top": 510,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Application Control Policies",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 529,
+     "top": 510,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Application Control Policies",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 529,
+     "top": 510,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Application Control Policies",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 548,
+     "top": 529,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "IP Security Policies on Active Directory (AD.LABDOMAIN.DEV)",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 548,
+     "top": 529,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "IP Security Policies on Active Directory (AD.LABDOMAIN.DEV)",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 548,
+     "top": 529,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Internet Protocol Security (IPsec) Administration. Manage IPsec policies for secure communication with other computers.\r\n\r\n\r\nPortions of IPsec and related services were jointly developed by Microsoft Corporation and Cisco Systems, Inc.",
+    "control_type_id": 50020
+   },
+   {
+    "class": "",
+    "control_type": "ListItem",
+    "rect": {
+     "left": 323,
+     "bottom": 567,
+     "top": 548,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Invoke",
+     "SelectionItem",
+     "ScrollItem"
+    ],
+    "name": "Advanced Audit Policy Configuration",
+    "control_type_id": 50007
+   },
+   {
+    "class": "",
+    "control_type": "Edit",
+    "rect": {
+     "left": 323,
+     "bottom": 567,
+     "top": 548,
+     "right": 843,
+     "height": 19,
+     "width": 520
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Advanced Audit Policy Configuration",
+    "control_type_id": 50004
+   },
+   {
+    "class": "",
+    "control_type": "Text",
+    "rect": {
+     "left": 573,
+     "bottom": 567,
+     "top": 548,
+     "right": 843,
+     "height": 19,
+     "width": 270
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Advanced Audit Policy Configuration",
+    "control_type_id": 50020
+   },
+   {
+    "class": "msctls_statusbar32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 683,
+     "top": 660,
+     "right": 914,
+     "height": 23,
+     "width": 752
+    },
+    "automation_id": "4099",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 829,
+     "bottom": 681,
+     "top": 664,
+     "right": 908,
+     "height": 17,
+     "width": 79
+    },
+    "automation_id": "4097",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SizeableRebar",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 237,
+     "top": 185,
+     "right": 914,
+     "height": 52,
+     "width": 752
+    },
+    "automation_id": "13341",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ReBarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 162,
+     "bottom": 231,
+     "top": 185,
+     "right": 914,
+     "height": 46,
+     "width": 752
+    },
+    "automation_id": "4096",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ToolbarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 164,
+     "bottom": 231,
+     "top": 209,
+     "right": 914,
+     "height": 22,
+     "width": 750
+    },
+    "automation_id": "4098",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "ToolbarWindow32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 164,
+     "bottom": 207,
+     "top": 185,
+     "right": 914,
+     "height": 22,
+     "width": 750
+    },
+    "automation_id": "4097",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   }
+  ],
+  "depth": 12,
+  "ok": true,
+  "element_count": 63,
+  "truncated": false,
+  "notes": []
+ }
+}

@@ -1,0 +1,14 @@
+zip_sha256=494be98ca6c31b20079cf26ca2654a7466b7d9ec1ba2f599d28abb18429898ae
+file=\r1\manifest.xml attrs=Hidden, Archive sha256=8b51a62c4d5fec72a66e2fa6d644c3ccea98a46e7c8e0405c1b80d944305f1fb bytes=766
+file=\r1\{FC065B06-12EE-4F36-ACE1-061E6442B4DC}\Backup.xml attrs=Archive sha256=90380727ea36ab19cb8101dcd86120c665e2ec06902165163b7fc473c38db722 bytes=7431
+file=\r1\{FC065B06-12EE-4F36-ACE1-061E6442B4DC}\bkupInfo.xml attrs=Hidden sha256=2e8494e525b054f959d9f131470a2e4c2e6eda298e36b07dd2a7690fee910d1a bytes=657
+file=\r1\{FC065B06-12EE-4F36-ACE1-061E6442B4DC}\gpreport.xml attrs=Archive sha256=37baa504ad2a3aab54facb39621b01fa50a1852c86f8ca628464fdae87ddb239 bytes=15060
+file=\r1\{FC065B06-12EE-4F36-ACE1-061E6442B4DC}\DomainSysvol\GPO\GPO.cmt attrs=Archive sha256=17586b63b50d3b2c730e53eee25f24454120817769a4e42c002caafec474da6a bytes=118
+file=\r1\{FC065B06-12EE-4F36-ACE1-061E6442B4DC}\DomainSysvol\GPO\Machine\Scripts\scripts.ini attrs=Hidden, Archive sha256=f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489 bytes=158
+file=\r2\manifest.xml attrs=Hidden, Archive sha256=559d719ef67e1e76c84e2ed626754f70c1691e35d7a44f7bb3bff289bf940d79 bytes=766
+file=\r2\{E4D86590-BF36-4406-A029-CCF5B4048701}\Backup.xml attrs=Archive sha256=171017f9e3b10577c4d24e7896e3bf89c63476bbe67901343a7d79e3716d876a bytes=7861
+file=\r2\{E4D86590-BF36-4406-A029-CCF5B4048701}\bkupInfo.xml attrs=Hidden sha256=933787e0b6b79c9b0019490b01064d9214d8e991b9f8ea1d0631139bd6fe597d bytes=657
+file=\r2\{E4D86590-BF36-4406-A029-CCF5B4048701}\gpreport.xml attrs=Archive sha256=64d8acd398949097fc493a54ced803fc9f39e7e7cf5d044f896b423c4e5f4d1e bytes=16012
+file=\r2\{E4D86590-BF36-4406-A029-CCF5B4048701}\DomainSysvol\GPO\GPO.cmt attrs=Archive sha256=17586b63b50d3b2c730e53eee25f24454120817769a4e42c002caafec474da6a bytes=118
+file=\r2\{E4D86590-BF36-4406-A029-CCF5B4048701}\DomainSysvol\GPO\Machine\Scripts\scripts.ini attrs=Hidden, Archive sha256=f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489 bytes=158
+file=\r2\{E4D86590-BF36-4406-A029-CCF5B4048701}\DomainSysvol\GPO\User\Scripts\scripts.ini attrs=Hidden, Archive sha256=ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5 bytes=138

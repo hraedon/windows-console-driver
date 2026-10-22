@@ -93,3 +93,34 @@ itself, authenticate which revision of a mutable capability file produced it
 machine/identity, which execution ignored in favour of the estate file. Both
 are bound as of version 2, above. The qualification matrix stays in
 `docs/capability-qualification.md`.
+
+## Version 3: the invocation binding (2026-10-20)
+
+[transaction-record-schema-v3.json](transaction-record-schema-v3.json) is v2
+plus a REQUIRED `provenance.invocation`:
+
+- `arguments` and `arguments_sha256`: the SHA-256 of the canonical JSON
+  (sorted keys, separators `,` and `:`, UTF-8). It is recomputable from the
+  record alone.
+- `run_sheet_sha256`: the SHA-256 of the exact run-sheet file bytes.
+  `validate_record(..., run_sheet_bytes=...)` recomputes it from those bytes
+  and requires the setup manifest's script names to be the run sheet's own
+  setup steps, in order. A `verified` or `disproven` record must carry ALL of
+  them (exact equality). Only an `indeterminate` record, whose setup may have
+  stopped early, may carry a proper prefix. The JSON document can express only
+  part of this (a non-empty manifest for completed records); the exact check
+  needs the run sheet. The CLI passes the bytes of the run sheet it just
+  executed.
+- `setup_manifest`: every setup script's WHOLE output with its SHA-256. It is
+  stored as `stdout_lines` (the text split on LF; joining them with LF gives
+  back the exact text the digest covers), because the windows-evidence-lab seam
+  refuses any record string that contains a line break. There is no cap: an
+  output is banked whole or not claimed.
+
+v3 is a new version, not an optional v2 field, because v2's provenance is
+closed. Window 21 briefly stamped v2 records that carried the field; frozen v2
+refuses them, and they are banked under `estate-window-21/superseded/`. v2
+itself is byte-identical to its window-20 form. The executor mints v3 whenever
+the capability text is supplied (v1 otherwise, unchanged). Consumers pinned to
+v2 must add an intentional v3 reader path; windows-evidence-lab's is the
+`wcd-record-v3` branch.

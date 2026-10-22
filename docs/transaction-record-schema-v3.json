@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/transaction-record-schema-v3.json",
+  "title": "Windows Console Driver transaction record",
+  "description": "Version 3 of the five-key transaction wire record. Everything in version 2, plus a REQUIRED provenance.invocation: the canonical arguments and their SHA-256 (sorted keys, separators , and :, UTF-8), the SHA-256 of the exact run-sheet bytes, and every setup script's whole output with its SHA-256. A new version, not an optional v2 field, because v2 provenance is closed (Plan 035 round-3 review).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "verdict", "envelope_result", "events", "provenance"],
+  "properties": {
+    "state": {
+      "type": "string",
+      "enum": ["verified", "disproven", "indeterminate"]
+    },
+    "verdict": { "type": "string", "maxLength": 512 },
+    "envelope_result": {
+      "oneOf": [
+        { "type": "object", "maxProperties": 0 },
+        { "$ref": "#/$defs/envelope" }
+      ]
+    },
+    "events": { "$ref": "#/$defs/events" },
+    "provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "state": { "enum": ["verified", "disproven"] } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": { "envelope_result": { "$ref": "#/$defs/envelope" } }
+      }
+    },
+    {
+      "description": "A verified or disproven record ran its whole setup, so its manifest is never empty. EXACT equality with every setup step of the run sheet, in order, needs the run-sheet bytes and is enforced by the reader (wcd.record_schema.validate_record run_sheet_bytes); only an indeterminate record may carry a proper prefix.",
+      "if": {
+        "properties": { "state": { "enum": ["verified", "disproven"] } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "provenance": {
+            "properties": {
+              "invocation": {
+                "properties": { "setup_manifest": { "minItems": 1 } }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "satisfied", "violated", "unresolved", "unclassified", "characterization", "delta"],
+      "properties": {
+        "status": { "type": "string", "enum": ["satisfied", "disproven", "indeterminate"] },
+        "satisfied": { "type": "array", "items": { "type": "string" } },
+        "violated": { "type": "array", "items": { "type": "string" } },
+        "unresolved": { "type": "array", "items": { "type": "string" } },
+        "unclassified": { "type": "array", "items": { "type": "string" } },
+        "characterization": { "type": "string" },
+        "delta": { "$ref": "#/$defs/delta" }
+      }
+    },
+    "delta": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "kind", "before", "after"],
+        "properties": {
+          "key": { "type": "string" },
+          "kind": { "type": "string", "enum": ["added", "changed", "removed"] },
+          "before": {},
+          "after": {}
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sequence", "from_state", "to_state", "reason"],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1 },
+          "from_state": { "type": ["string", "null"], "enum": [null, "prepared", "armed", "commit_attempted", "verified", "disproven", "indeterminate"] },
+          "to_state": { "type": "string", "enum": ["prepared", "armed", "commit_attempted", "verified", "disproven", "indeterminate"] },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$schema", "schema_version", "capability", "capability_revision", "capability_sha256", "run_sheet", "transaction_id", "console", "steps", "cleanup", "notes", "invocation"],
+      "properties": {
+        "$schema": { "const": "docs/transaction-record-schema-v3.json" },
+        "schema_version": { "const": 3 },
+        "capability": { "type": "string" },
+        "capability_revision": { "type": "integer", "minimum": 1 },
+        "capability_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "run_sheet": { "type": "string" },
+        "transaction_id": { "type": "string" },
+        "console": { "type": "object" },
+        "steps": { "type": "array" },
+        "cleanup": { "type": "object" },
+        "notes": { "type": "array", "items": { "type": "string" } },
+        "invocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "arguments_sha256", "run_sheet_sha256", "setup_manifest"],
+          "properties": {
+            "arguments": { "type": "object" },
+            "arguments_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "run_sheet_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "setup_manifest": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["script", "stdout_lines", "stdout_sha256"],
+                "properties": {
+                  "script": { "type": "string", "minLength": 1 },
+                  "stdout_lines": { "type": "array", "items": { "type": "string", "pattern": "^[^\\n]*$" } },
+                  "stdout_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3916 @@
+{
+ "action": "uia_dump",
+ "depth": 12,
+ "element_count": 331,
+ "elements": [
+  {
+   "automation_id": "",
+   "class": "MMCMainFrame",
+   "control_type": "Window",
+   "control_type_id": 50032,
+   "depth": 0,
+   "name": "Local Group Policy Editor",
+   "patterns": [
+    "Window",
+    "Transform"
+   ],
+   "rect": {
+    "bottom": 691,
+    "height": 537,
+    "left": 154,
+    "right": 922,
+    "top": 154,
+    "width": 768
+   }
+  },
+  {
+   "automation_id": "59648",
+   "class": "MDIClient",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 683,
+    "height": 446,
+    "left": 162,
+    "right": 914,
+    "top": 237,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "65280",
+   "class": "MMCChildFrm",
+   "control_type": "Window",
+   "control_type_id": 50032,
+   "depth": 0,
+   "name": "zz-studio-evidence-plan035-wp2-w22 [LabDC01.ad.labdomain.dev] Policy\\Computer Configuration\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security - LDAP://CN={959E824E-583C-486E-9D49-BE1773E60D5D},CN=POLICIES,CN=SYSTEM,DC=AD,DC=LABDOMAIN,DC=DEV\\Inbound Rules",
+   "patterns": [
+    "Window",
+    "Transform"
+   ],
+   "rect": {
+    "bottom": 691,
+    "height": 485,
+    "left": 154,
+    "right": 922,
+    "top": 206,
+    "width": 768
+   }
+  },
+  {
+   "automation_id": "59648",
+   "class": "MMCViewWindow",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Console Embedded Window",
+   "patterns": [],
+   "rect": {
+    "bottom": 660,
+    "height": 423,
+    "left": 162,
+    "right": 914,
+    "top": 237,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "12785",
+   "class": "SysTreeView32",
+   "control_type": "Tree",
+   "control_type_id": 50023,
+   "depth": 0,
+   "name": "Console Embedded Scope",
+   "patterns": [],
+   "rect": {
+    "bottom": 660,
+    "height": 423,
+    "left": 162,
+    "right": 318,
+    "top": 237,
+    "width": 156
+   }
+  },
+  {
+   "automation_id": "12786",
+   "class": "SysListView32",
+   "control_type": "List",
+   "control_type_id": 50008,
+   "depth": 0,
+   "name": "Console Embedded Window Results",
+   "patterns": [
+    "Grid",
+    "Table"
+   ],
+   "rect": {
+    "bottom": 660,
+    "height": 423,
+    "left": 321,
+    "right": 914,
+    "top": 237,
+    "width": 593
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "SysHeader32",
+   "control_type": "Header",
+   "control_type_id": 50034,
+   "depth": 0,
+   "name": "Console Embedded Results Header",
+   "patterns": [],
+   "rect": {
+    "bottom": 263,
+    "height": 24,
+    "left": 323,
+    "right": 912,
+    "top": 239,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Name",
+   "patterns": [],
+   "rect": {
+    "bottom": 263,
+    "height": 24,
+    "left": 323,
+    "right": 573,
+    "top": 239,
+    "width": 250
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Group",
+   "patterns": [],
+   "rect": {
+    "bottom": 263,
+    "height": 24,
+    "left": 573,
+    "right": 743,
+    "top": 239,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Profile",
+   "patterns": [],
+   "rect": {
+    "bottom": 263,
+    "height": 24,
+    "left": 743,
+    "right": 802,
+    "top": 239,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Enabled",
+   "patterns": [],
+   "rect": {
+    "bottom": 263,
+    "height": 24,
+    "left": 802,
+    "right": 869,
+    "top": 239,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Action",
+   "patterns": [],
+   "rect": {
+    "bottom": 263,
+    "height": 24,
+    "left": 869,
+    "right": 912,
+    "top": 239,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Override",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Program",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Local Address",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Remote Address",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Protocol",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Local Port",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Remote Port",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Authorized Users",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Authorized Computers",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Authorized Local Principals",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Local User Owner",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "PolicyAppId",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "HeaderItem",
+   "control_type_id": 50035,
+   "depth": 0,
+   "name": "Application Package",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane any protocol addresses",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 282,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 263,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane any protocol addresses",
+   "patterns": [],
+   "rect": {
+    "bottom": 282,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 263,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 282,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 263,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 282,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 263,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 282,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 263,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Block",
+   "patterns": [],
+   "rect": {
+    "bottom": 282,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 263,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "198.51.100.7",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "192.0.2.0/24, 2001:db8::/32",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane edge and interface",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 301,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 282,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane edge and interface",
+   "patterns": [],
+   "rect": {
+    "bottom": 301,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 282,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 301,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 282,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 301,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 282,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 301,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 282,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 301,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 282,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "UDP",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "65006",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane icmpv4 echo",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 320,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 301,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane icmpv4 echo",
+   "patterns": [],
+   "rect": {
+    "bottom": 320,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 301,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 320,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 301,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 320,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 301,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 320,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 301,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 320,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 301,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "ICMPv4",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane icmpv6 any",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 339,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 320,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane icmpv6 any",
+   "patterns": [],
+   "rect": {
+    "bottom": 339,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 320,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 339,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 320,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 339,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 320,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 339,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 320,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 339,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 320,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "ICMPv6",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane in tcp allow",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 358,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 339,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane in tcp allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 358,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 339,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 358,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 339,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Domain",
+   "patterns": [],
+   "rect": {
+    "bottom": 358,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 339,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 358,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 339,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 358,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 339,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "TCP",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "65001",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane override block",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 377,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 358,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane override block",
+   "patterns": [],
+   "rect": {
+    "bottom": 377,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 358,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 377,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 358,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 377,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 358,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 377,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 358,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Secure",
+   "patterns": [],
+   "rect": {
+    "bottom": 377,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 358,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "TCP",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "65007",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Everyone",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane rpc epmap",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 396,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 377,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane rpc epmap",
+   "patterns": [],
+   "rect": {
+    "bottom": 396,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 377,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 396,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 377,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 396,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 377,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 396,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 377,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 396,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 377,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "TCP",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "RPC Endpoint Mapper",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane rpc keyword",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 415,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 396,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane rpc keyword",
+   "patterns": [],
+   "rect": {
+    "bottom": 415,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 396,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 415,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 396,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 415,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 396,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 415,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 396,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 415,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 396,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Local subnet",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "TCP",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "RPC Dynamic Ports",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane service",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 434,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 415,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane service",
+   "patterns": [],
+   "rect": {
+    "bottom": 434,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 415,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 434,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 415,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 434,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 415,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Yes",
+   "patterns": [],
+   "rect": {
+    "bottom": 434,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 415,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 434,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 415,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "TCP",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "65004",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "ListItem",
+   "control_type_id": 50007,
+   "depth": 0,
+   "name": "StudioFwLane disabled grouped",
+   "patterns": [
+    "Invoke",
+    "SelectionItem",
+    "ScrollItem"
+   ],
+   "rect": {
+    "bottom": 453,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 434,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Edit",
+   "control_type_id": 50004,
+   "depth": 0,
+   "name": "StudioFwLane disabled grouped",
+   "patterns": [],
+   "rect": {
+    "bottom": 453,
+    "height": 19,
+    "left": 323,
+    "right": 912,
+    "top": 434,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "StudioFwLane Group",
+   "patterns": [],
+   "rect": {
+    "bottom": 453,
+    "height": 19,
+    "left": 573,
+    "right": 743,
+    "top": 434,
+    "width": 170
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "All",
+   "patterns": [],
+   "rect": {
+    "bottom": 453,
+    "height": 19,
+    "left": 743,
+    "right": 802,
+    "top": 434,
+    "width": 59
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": {
+    "bottom": 453,
+    "height": 19,
+    "left": 802,
+    "right": 869,
+    "top": 434,
+    "width": 67
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 453,
+    "height": 19,
+    "left": 869,
+    "right": 912,
+    "top": 434,
+    "width": 43
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "No",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "TCP",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "65005",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "None",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Any",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "",
+   "class": "",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": null
+  },
+  {
+   "automation_id": "4099",
+   "class": "msctls_statusbar32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 683,
+    "height": 23,
+    "left": 162,
+    "right": 914,
+    "top": 660,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "4097",
+   "class": "Static",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 681,
+    "height": 17,
+    "left": 829,
+    "right": 908,
+    "top": 664,
+    "width": 79
+   }
+  },
+  {
+   "automation_id": "13341",
+   "class": "SizeableRebar",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 237,
+    "height": 52,
+    "left": 162,
+    "right": 914,
+    "top": 185,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "4096",
+   "class": "ReBarWindow32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 231,
+    "height": 46,
+    "left": 162,
+    "right": 914,
+    "top": 185,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "4098",
+   "class": "ToolbarWindow32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 231,
+    "height": 22,
+    "left": 164,
+    "right": 914,
+    "top": 209,
+    "width": 750
+   }
+  },
+  {
+   "automation_id": "4097",
+   "class": "ToolbarWindow32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 207,
+    "height": 22,
+    "left": 164,
+    "right": 914,
+    "top": 185,
+    "width": 750
+   }
+  }
+ ],
+ "hwnd": 1048664,
+ "notes": [],
+ "ok": true,
+ "truncated": false
+}

@@ -11,6 +11,15 @@ repository's committed estate evidence locations as legacy input and validates
 them against v0.  Version 1 records validate exactly as they always have; the
 v2 fields are required only when the record stamps itself v2.
 
+Version 3 (2026-10-20, Plan 035 round-3 review) adds ``provenance.invocation``:
+the canonical arguments and their SHA-256, the run-sheet SHA-256, and every
+setup script's whole output with its SHA-256. It is a NEW version rather than
+an optional v2 field because v2's provenance is closed: a reader pinned to v2
+must keep refusing what v2 never allowed. v2 itself is frozen exactly as it
+was. A v3 record is checked against the run-sheet bytes when the caller
+supplies them (``run_sheet_bytes``): the digest is recomputed and the setup
+script names must be the run sheet's own setup steps, in order.
+
 This module intentionally has no third-party dependency.  The JSON Schema
 documents under ``docs/`` are the machine-readable contract; these checks are
 the small runtime compatibility harness used by tests and importers that
@@ -26,10 +35,14 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Final, Literal, NoReturn
 
-RecordVersion = Literal[0, 1, 2]
+RecordVersion = Literal[0, 1, 2, 3]
 
-RECORD_SCHEMA_VERSION: Final[int] = 2
-RECORD_SCHEMA_REF: Final[str] = "docs/transaction-record-schema-v2.json"
+# The version the executor mints today.
+RECORD_SCHEMA_VERSION: Final[int] = 3
+RECORD_SCHEMA_REF: Final[str] = "docs/transaction-record-schema-v3.json"
+# Version 2 is frozen exactly as banked (windows 10-21 records).
+V2_RECORD_SCHEMA_VERSION: Final[int] = 2
+V2_RECORD_SCHEMA_REF: Final[str] = "docs/transaction-record-schema-v2.json"
 # Version 1 is frozen: the eight banked native-v1 records keep validating
 # against their own document with their own stamp, exactly as committed.
 V1_RECORD_SCHEMA_VERSION: Final[int] = 1
@@ -59,6 +72,8 @@ _BASE_PROVENANCE_KEYS: Final[frozenset[str]] = frozenset(
 _V2_PROVENANCE_KEYS: Final[frozenset[str]] = frozenset(
     {"capability_revision", "capability_sha256"}
 )
+# The v3 invocation binding.
+_V3_PROVENANCE_KEYS: Final[frozenset[str]] = frozenset({"invocation"})
 _REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 _LEGACY_RECORDS: Final[frozenset[Path]] = frozenset(
     (_REPO_ROOT / "docs" / window / "records" / name).resolve()
@@ -179,17 +194,25 @@ def _validate_provenance(value: object, *, legacy: bool, version: RecordVersion)
     provenance = _object(value, "provenance")
     allowed = _BASE_PROVENANCE_KEYS | frozenset({"$schema", "schema_version"})
     required = _BASE_PROVENANCE_KEYS if legacy else allowed
-    if version == 2:
+    if version in (2, 3):
         allowed = allowed | _V2_PROVENANCE_KEYS
         required = required | _V2_PROVENANCE_KEYS
+    if version == 3:
+        allowed = allowed | _V3_PROVENANCE_KEYS
+        required = required | _V3_PROVENANCE_KEYS
     _keys(provenance, allowed, "provenance", required=required)
     if legacy:
         if "$schema" in provenance or "schema_version" in provenance:
             _fail("provenance", "legacy records must not carry a partial schema stamp")
-    elif version == 2:
+    elif version == 3:
         if provenance.get("$schema") != RECORD_SCHEMA_REF:
             _fail("provenance.$schema", f"must be {RECORD_SCHEMA_REF!r}")
         if provenance.get("schema_version") != RECORD_SCHEMA_VERSION:
+            _fail("provenance.schema_version", "must be 3")
+    elif version == 2:
+        if provenance.get("$schema") != V2_RECORD_SCHEMA_REF:
+            _fail("provenance.$schema", f"must be {V2_RECORD_SCHEMA_REF!r}")
+        if provenance.get("schema_version") != V2_RECORD_SCHEMA_VERSION:
             _fail("provenance.schema_version", "must be 2")
     else:
         if provenance.get("$schema") != V1_RECORD_SCHEMA_REF:
@@ -197,7 +220,7 @@ def _validate_provenance(value: object, *, legacy: bool, version: RecordVersion)
         if provenance.get("schema_version") != V1_RECORD_SCHEMA_VERSION:
             _fail("provenance.schema_version", "must be 1")
     _string(provenance["capability"], "provenance.capability")
-    if version == 2:
+    if version in (2, 3):
         revision = provenance["capability_revision"]
         if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
             _fail("provenance.capability_revision", "must be a positive integer")
@@ -211,6 +234,105 @@ def _validate_provenance(value: object, *, legacy: bool, version: RecordVersion)
         _fail("provenance.steps", "must be an array")
     _object(provenance["cleanup"], "provenance.cleanup")
     _string_list(provenance["notes"], "provenance.notes")
+    if version == 3:
+        _validate_invocation(provenance["invocation"])
+
+
+def canonical_arguments_text(arguments: Mapping[str, object]) -> str:
+    """The canonical JSON whose SHA-256 a v3 invocation binds."""
+    return json.dumps(arguments, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _validate_invocation(value: object) -> None:
+    """The v3 invocation binding, checked against the record's own bytes.
+
+    The arguments' digest must recompute from their canonical JSON as carried
+    here, and every setup output is whole (no cap) and must hash to its own
+    recorded digest. The run-sheet digest needs the run sheet itself: see
+    :func:`_verify_run_sheet_binding`.
+    """
+    where = "provenance.invocation"
+    invocation = _object(value, where)
+    keys = frozenset({"arguments", "arguments_sha256", "run_sheet_sha256", "setup_manifest"})
+    _keys(invocation, keys, where, required=keys)
+    arguments = _object(invocation["arguments"], f"{where}.arguments")
+    for name in ("arguments_sha256", "run_sheet_sha256"):
+        digest = invocation[name]
+        if not isinstance(digest, str) or not _CAPABILITY_SHA256.fullmatch(digest):
+            _fail(f"{where}.{name}", "must be a lowercase SHA-256 digest")
+    canonical = canonical_arguments_text(arguments)
+    if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != invocation["arguments_sha256"]:
+        _fail(f"{where}.arguments_sha256", "is not the SHA-256 of the recorded arguments")
+    manifest = invocation["setup_manifest"]
+    if not isinstance(manifest, list):
+        _fail(f"{where}.setup_manifest", "must be an array")
+    entry_keys = frozenset({"script", "stdout_lines", "stdout_sha256"})
+    for index, raw in enumerate(manifest):
+        at = f"{where}.setup_manifest[{index}]"
+        entry = _object(raw, at)
+        _keys(entry, entry_keys, at, required=entry_keys)
+        _string(entry["script"], f"{at}.script")
+        lines = entry["stdout_lines"]
+        if not isinstance(lines, list) or not all(
+            isinstance(line, str) and "\n" not in line for line in lines
+        ):
+            _fail(f"{at}.stdout_lines", "must be an array of single-line strings")
+        stdout = "\n".join(lines)
+        if hashlib.sha256(stdout.encode("utf-8")).hexdigest() != entry["stdout_sha256"]:
+            _fail(f"{at}.stdout_sha256", "is not the SHA-256 of the recorded output")
+
+
+def _verify_run_sheet_binding(
+    provenance: Mapping[str, object], run_sheet_bytes: bytes, state: str
+) -> None:
+    """Refuse a v3 record whose run-sheet claims disagree with the run sheet.
+
+    The digest is recomputed from the bytes, and the setup manifest's script
+    names must be the run sheet's setup-phase guest/host steps, in order. A
+    ``verified`` or ``disproven`` record ran its whole setup, so it must carry
+    ALL of them; only an ``indeterminate`` record (setup may have stopped
+    early) may carry a proper prefix (round-4 review: an empty or shortened
+    manifest must not pass for a completed transaction). The record's
+    ``run_sheet`` name must be the document's own name.
+    """
+    invocation = provenance.get("invocation")
+    if not isinstance(invocation, Mapping):
+        _fail("provenance.invocation", "is required to check a run-sheet binding")
+    digest = hashlib.sha256(run_sheet_bytes).hexdigest()
+    if invocation.get("run_sheet_sha256") != digest:
+        _fail(
+            "provenance.invocation.run_sheet_sha256",
+            f"does not match the run-sheet content (computed {digest})",
+        )
+    try:
+        document = json.loads(run_sheet_bytes.decode("utf-8-sig"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        _fail("run_sheet_bytes", f"is not a JSON run sheet: {exc}")
+    if not isinstance(document, dict) or not isinstance(document.get("steps"), list):
+        _fail("run_sheet_bytes", "is not a run sheet (no steps array)")
+    if provenance.get("run_sheet") != document.get("name"):
+        _fail("provenance.run_sheet", "does not name the supplied run sheet")
+    expected = [
+        step.get("script")
+        for step in document["steps"]
+        if isinstance(step, dict)
+        and step.get("phase") == "setup"
+        and step.get("action") in ("guest", "host")
+    ]
+    manifest = invocation.get("setup_manifest")
+    names = [entry.get("script") for entry in manifest] if isinstance(manifest, list) else []
+    if state in ("verified", "disproven"):
+        if names != expected:
+            _fail(
+                "provenance.invocation.setup_manifest",
+                f"a {state} record must carry every setup step of the run sheet "
+                f"{expected}, in order; it carries {names}",
+            )
+    elif names != expected[: len(names)]:
+        _fail(
+            "provenance.invocation.setup_manifest",
+            f"script names {names} are not the run sheet's setup steps {expected}",
+        )
 
 
 def _is_committed_legacy_source(source: str | Path | None) -> bool:
@@ -231,11 +353,18 @@ def _record_version(provenance: Mapping[str, object]) -> RecordVersion:
         if schema_version != V1_RECORD_SCHEMA_VERSION:
             _fail("provenance.schema_version", "must be 1")
         return 1
-    if schema_ref == RECORD_SCHEMA_REF:
-        if schema_version != RECORD_SCHEMA_VERSION:
+    if schema_ref == V2_RECORD_SCHEMA_REF:
+        if schema_version != V2_RECORD_SCHEMA_VERSION:
             _fail("provenance.schema_version", "must be 2")
         return 2
-    _fail("provenance.$schema", f"must be {V1_RECORD_SCHEMA_REF!r} or {RECORD_SCHEMA_REF!r}")
+    if schema_ref == RECORD_SCHEMA_REF:
+        if schema_version != RECORD_SCHEMA_VERSION:
+            _fail("provenance.schema_version", "must be 3")
+        return 3
+    _fail(
+        "provenance.$schema",
+        f"must be {V1_RECORD_SCHEMA_REF!r}, {V2_RECORD_SCHEMA_REF!r} or {RECORD_SCHEMA_REF!r}",
+    )
 
 
 def validate_record(
@@ -244,17 +373,21 @@ def validate_record(
     source: str | Path | None = None,
     allow_legacy: bool = False,
     capability_text: str | None = None,
+    run_sheet_bytes: bytes | None = None,
 ) -> RecordVersion:
     """Validate a record and return its version.
 
-    A record is v1 or v2 when its provenance contains the complete schema
+    A record is v1, v2 or v3 when its provenance contains the complete schema
     stamp for that version.  Unstamped records are accepted only when
     ``allow_legacy`` is explicit or when ``source`` identifies committed
     estate-window-2/3 evidence.  This prevents an arbitrary unversioned
     payload from quietly becoming a legacy record while retaining read access
     to immutable evidence.
 
-    ``capability_text`` is the v2 content check: the exact capability
+    ``run_sheet_bytes`` is the v3 run-sheet check: the exact run-sheet file
+    bytes the record claims (see :func:`_verify_run_sheet_binding`).
+
+    ``capability_text`` is the v2/v3 content check: the exact capability
     document text the caller believes produced the record.  A v2 record whose
     ``capability_sha256`` is not the SHA-256 of that text, or whose
     ``capability_revision`` disagrees with the document the text parses to, is
@@ -288,8 +421,12 @@ def validate_record(
     _validate_envelope(record["envelope_result"], legacy=version == 0, state=state)
     _validate_events(record["events"])
     _validate_provenance(record["provenance"], legacy=version == 0, version=version)
-    if version == 2 and capability_text is not None:
+    if version in (2, 3) and capability_text is not None:
         _verify_capability_binding(provenance, capability_text)
+    if run_sheet_bytes is not None:
+        if version != 3:
+            _fail("run_sheet_bytes", "only a v3 record binds its run sheet")
+        _verify_run_sheet_binding(provenance, run_sheet_bytes, state)
     return version
 
 

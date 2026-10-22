@@ -37,6 +37,12 @@ UNCLAIMED_RECORDS: dict[str, str] = {
         "certifies nothing about certificate templates and is banked only as "
         "the surface evidence that sent window 10 into recon"
     ),
+    "w19-r1-record.json": (
+        "indeterminate: the Shutdown sheet committed, then the first scope-root "
+        "route opened a tree label edit and the Logon half never ran; banked "
+        "for the route measurement that shaped navigate_scope_root, and its "
+        "byte backup matches w19-r2's machine scripts.ini"
+    ),
     "w11-r1-record.json": (
         "indeterminate, aborted at step 12 of 36 with nothing written; it "
         "certifies nothing about certificate managers and is banked for the "
@@ -72,6 +78,19 @@ def test_every_committed_record_is_claimed_or_declared_unclaimed() -> None:
         f"committed records with no registry reference and no UNCLAIMED_RECORDS "
         f"entry: {sorted(unaccounted)}"
     )
+
+
+def test_unclaimed_records_are_absent_from_the_registry() -> None:
+    """An unclaimed record must stay unclaimed: if the registry starts citing
+    it, either the claim or the UNCLAIMED_RECORDS entry is wrong."""
+    text = REGISTRY_PATH.read_text(encoding="utf-8")
+    # Whole-filename match: r3-record.json must not match w19-r3-record.json.
+    cited = [
+        name
+        for name in UNCLAIMED_RECORDS
+        if re.search(r"(?<![A-Za-z0-9_.-])" + re.escape(name), text)
+    ]
+    assert not cited, f"unclaimed records cited by the registry: {cited}"
 
 
 def test_unclaimed_reasons_are_stated() -> None:

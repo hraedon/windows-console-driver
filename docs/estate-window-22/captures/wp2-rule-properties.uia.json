@@ -1,0 +1,388 @@
+{
+ "action": "uia_dump",
+ "depth": 12,
+ "element_count": 22,
+ "elements": [
+  {
+   "automation_id": "",
+   "class": "#32770",
+   "control_type": "Window",
+   "control_type_id": 50032,
+   "depth": 0,
+   "name": "StudioFwLane in tcp allow Properties",
+   "patterns": [
+    "Window",
+    "Transform"
+   ],
+   "rect": {
+    "bottom": 716,
+    "height": 588,
+    "left": 315,
+    "right": 762,
+    "top": 128,
+    "width": 447
+   }
+  },
+  {
+   "automation_id": "66254",
+   "class": "#32770",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 668,
+    "height": 462,
+    "left": 333,
+    "right": 744,
+    "top": 206,
+    "width": 411
+   }
+  },
+  {
+   "automation_id": "66262",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 668,
+    "height": 462,
+    "left": 333,
+    "right": 744,
+    "top": 206,
+    "width": 411
+   }
+  },
+  {
+   "automation_id": "66264",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 630,
+    "height": 424,
+    "left": 333,
+    "right": 711,
+    "top": 206,
+    "width": 378
+   }
+  },
+  {
+   "automation_id": "66266",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 537,
+    "height": 322,
+    "left": 342,
+    "right": 701,
+    "top": 215,
+    "width": 359
+   }
+  },
+  {
+   "automation_id": "66268",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Group",
+   "control_type_id": 50026,
+   "depth": 0,
+   "name": "General",
+   "patterns": [],
+   "rect": {
+    "bottom": 370,
+    "height": 152,
+    "left": 345,
+    "right": 698,
+    "top": 218,
+    "width": 353
+   }
+  },
+  {
+   "automation_id": "66270",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Description:",
+   "patterns": [],
+   "rect": {
+    "bottom": 293,
+    "height": 13,
+    "left": 393,
+    "right": 689,
+    "top": 280,
+    "width": 296
+   }
+  },
+  {
+   "automation_id": "66272",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Name:",
+   "patterns": [],
+   "rect": {
+    "bottom": 251,
+    "height": 13,
+    "left": 393,
+    "right": 689,
+    "top": 238,
+    "width": 296
+   }
+  },
+  {
+   "automation_id": "66274",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 270,
+    "height": 32,
+    "left": 357,
+    "right": 389,
+    "top": 238,
+    "width": 32
+   }
+  },
+  {
+   "automation_id": "66276",
+   "class": "WindowsForms10.BUTTON.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Enabled",
+   "patterns": [],
+   "rect": {
+    "bottom": 364,
+    "height": 17,
+    "left": 396,
+    "right": 692,
+    "top": 347,
+    "width": 296
+   }
+  },
+  {
+   "automation_id": "66278",
+   "class": "WindowsForms10.EDIT.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 340,
+    "height": 43,
+    "left": 396,
+    "right": 689,
+    "top": 297,
+    "width": 293
+   }
+  },
+  {
+   "automation_id": "66280",
+   "class": "WindowsForms10.EDIT.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "StudioFwLane in tcp allow",
+   "patterns": [],
+   "rect": {
+    "bottom": 274,
+    "height": 20,
+    "left": 396,
+    "right": 689,
+    "top": 254,
+    "width": 293
+   }
+  },
+  {
+   "automation_id": "66282",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Group",
+   "control_type_id": 50026,
+   "depth": 0,
+   "name": "Action",
+   "patterns": [],
+   "rect": {
+    "bottom": 500,
+    "height": 124,
+    "left": 345,
+    "right": 698,
+    "top": 376,
+    "width": 353
+   }
+  },
+  {
+   "automation_id": "66284",
+   "class": "WindowsForms10.BUTTON.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Customize...",
+   "patterns": [],
+   "rect": {
+    "bottom": 460,
+    "height": 23,
+    "left": 416,
+    "right": 491,
+    "top": 437,
+    "width": 75
+   }
+  },
+  {
+   "automation_id": "66286",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 428,
+    "height": 32,
+    "left": 357,
+    "right": 389,
+    "top": 396,
+    "width": 32
+   }
+  },
+  {
+   "automation_id": "66288",
+   "class": "WindowsForms10.BUTTON.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Block the connection",
+   "patterns": [],
+   "rect": {
+    "bottom": 485,
+    "height": 17,
+    "left": 396,
+    "right": 689,
+    "top": 468,
+    "width": 293
+   }
+  },
+  {
+   "automation_id": "66290",
+   "class": "WindowsForms10.BUTTON.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Allow the connection if it is secure",
+   "patterns": [],
+   "rect": {
+    "bottom": 431,
+    "height": 17,
+    "left": 396,
+    "right": 689,
+    "top": 414,
+    "width": 293
+   }
+  },
+  {
+   "automation_id": "66292",
+   "class": "WindowsForms10.BUTTON.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Allow the connection",
+   "patterns": [],
+   "rect": {
+    "bottom": 411,
+    "height": 17,
+    "left": 396,
+    "right": 689,
+    "top": 394,
+    "width": 293
+   }
+  },
+  {
+   "automation_id": "1",
+   "class": "Button",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "OK",
+   "patterns": [],
+   "rect": {
+    "bottom": 701,
+    "height": 23,
+    "left": 511,
+    "right": 586,
+    "top": 678,
+    "width": 75
+   }
+  },
+  {
+   "automation_id": "2",
+   "class": "Button",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Cancel",
+   "patterns": [],
+   "rect": {
+    "bottom": 701,
+    "height": 23,
+    "left": 592,
+    "right": 667,
+    "top": 678,
+    "width": 75
+   }
+  },
+  {
+   "automation_id": "12321",
+   "class": "Button",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Apply",
+   "patterns": [],
+   "rect": {
+    "bottom": 701,
+    "height": 23,
+    "left": 673,
+    "right": 748,
+    "top": 678,
+    "width": 75
+   }
+  },
+  {
+   "automation_id": "12320",
+   "class": "SysTabControl32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 672,
+    "height": 506,
+    "left": 329,
+    "right": 748,
+    "top": 166,
+    "width": 419
+   }
+  }
+ ],
+ "hwnd": 131778,
+ "notes": [],
+ "ok": true,
+ "truncated": false
+}

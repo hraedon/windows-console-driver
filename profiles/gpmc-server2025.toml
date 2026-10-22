@@ -107,6 +107,39 @@ notes = "OK inside the WMI Query child dialog: unverified whether GPMC flushes t
 class = "commit_point"
 notes = "Save on the New WMI Filter dialog (MEASURED window 7 run 6: the dialog's commit button is 'Save', not 'OK'; buttons are Add/Remove/Edit + Save/Cancel): writes the msWMI-Som object to AD directly with no parent dialog -- the commit boundary the window correlates with the certified AD representation"
 
+# Actions added 2026-10-20 for gpo-studio Plan 035 (estate window 19). The
+# dialog names and the scope-tree route below were MEASURED in that window's
+# observe-only recon pass on a disposable GPO before any capability was
+# written (UIA dumps + screenshots under docs/estate-window-19/captures/).
+
+[actions.open_shutdown_scripts_dialog]
+class = "orientation_only"
+notes = "double-clicks Shutdown under Computer Configuration > Windows Settings > Scripts (Startup/Shutdown); recon measured the sheet as 'Shutdown Properties' with the same Scripts/PowerShell Scripts layout as Startup"
+
+[actions.ok_shutdown_scripts_dialog]
+class = "commit_point"
+notes = "parent OK on 'Shutdown Properties'; the Startup sheet's OK is the measured analogue (R2), the Shutdown sheet's durability edge is qualified by the Plan 035 WP-1 run"
+
+[actions.open_logon_scripts_dialog]
+class = "orientation_only"
+notes = "double-clicks Logon under User Configuration > Windows Settings > Scripts (Logon/Logoff); recon measured the sheet as 'Logon Properties', identical control set to Startup/Shutdown"
+
+[actions.ok_logon_scripts_dialog]
+class = "commit_point"
+notes = "parent OK on 'Logon Properties': the first user-side Scripts commit any capability crosses"
+
+[actions.navigate_scope_root]
+class = "orientation_only"
+notes = "clicks the GPO root row of the UIA-invisible scope tree, presses Escape then Home, in ONE helper invocation, selecting the GPO root node. Measured in window 19: Backspace walks up only to the side node and Alt+Left does not move; Tab+Home from the results pane does nothing; a click on the tree's CENTER can land on the already-selected node and open a label edit that swallows Home (run r1). The root-row click + Escape + Home route was re-measured in both directions before r2"
+
+[actions.navigate_security_settings]
+class = "potentially_mutating"
+notes = "opens Computer Configuration > Windows Settings > Security Settings. MEASURED in the window-19 recon: merely opening this node writes Machine/Microsoft/Windows NT/SecEdit/GptTmpl.inf (142 bytes on a fresh GPO) with no version bump, so it is classified as mutating, not orientation"
+
+[actions.navigate_firewall_rules]
+class = "orientation_only"
+notes = "keyboard walk inside the Windows Defender Firewall with Advanced Security snap-in's scope subtree (Tab into the tree, Right/Down to the LDAP-named policy node, Right/Down to Inbound Rules); the overview's 'Inbound Rules' link sits below the fold, so the tree walk is the measured route"
+
 # Selectors added with the same action rows. Name-based criteria bind UI
 # language strongly (contract section 6); automation_ids replace these as
 # the captures observe them.
@@ -161,6 +194,17 @@ title_regex = "^New WMI Filter"
 
 [selectors.wmi_query_dialog]
 title_regex = "WMI Query"
+
+# Plan 035 selectors, measured in the estate-window-19 recon (titles from the
+# window enumeration, child names from hwnd-targeted UIA dumps).
+[selectors.shutdown_scripts_dialog]
+title_regex = "Shutdown Properties"
+
+[selectors.logon_scripts_dialog]
+title_regex = "Logon Properties"
+
+[selectors.firewall_rule_properties_dialog]
+title_regex = "Properties$"
 
 # Selector dependencies: what the compatibility predicate checks, per rung.
 # Title/name selectors bind UI language strongly. Once the spike observes
@@ -272,6 +316,32 @@ strength = "strong"
 [[selector_dependencies]]
 selector = "wmi_query_dialog"
 dependency = "dialog_fingerprint"
+strength = "strong"
+
+# Plan 035 dependencies (window-19 recon; display-name bound like the rest).
+[[selector_dependencies]]
+selector = "shutdown_scripts_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "shutdown_scripts_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "logon_scripts_dialog"
+dependency = "ui_language"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "logon_scripts_dialog"
+dependency = "dialog_fingerprint"
+strength = "strong"
+
+[[selector_dependencies]]
+selector = "firewall_rule_properties_dialog"
+dependency = "ui_language"
 strength = "strong"
 
 # WI-L5: the one runtime-enforced selector dependency. The prepared-context

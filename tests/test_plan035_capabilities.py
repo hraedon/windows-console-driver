@@ -1,0 +1,750 @@
+"""Static pins for the two gpo-studio Plan 035 capabilities, revision 2.
+
+Revision 1 qualified in estate window 19: ``gpmc.author_scripts_logon_shutdown``
+(WP-1) measured the user-side Scripts tool GUID with the envelope deliberately
+silent on it; ``gpmc.observe_imported_firewall_rules`` (WP-2) observed GPME's
+view of an imported firewall GPO. The window-19 review asked for revision 2:
+
+- every measured value asserted exactly (both extension lists, the exact
+  SYSVOL relpath delta, the GptTmpl.inf stub by length and SHA-256);
+- cleanup that removes only the GPO whose GUID setup captured, never by name;
+- staging and backup directories confined to fixed roots, by leaf name.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import ps_scripts
+import pytest
+
+from wcd.profiles import load_profile
+from wcd.runsheets import load_run_sheet
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS_CSE = "{42B5FAAE-6536-11D2-AE5A-0000F87571E3}"
+GPP_GROUPS = "3125E937-EB16-4b4c-9934-544FC6D24D26"
+IMPORT_SCRIPT = REPO_ROOT / "tools" / "guest_scripts" / "gpo_stage_import.ps1"
+
+
+def _capability(name: str) -> dict[str, Any]:
+    return json.loads((REPO_ROOT / "capabilities" / f"{name}.json").read_text(encoding="utf-8"))
+
+
+def _sheet_steps(name: str) -> list[dict[str, Any]]:
+    document = json.loads((REPO_ROOT / "runsheets" / f"{name}.json").read_text(encoding="utf-8"))
+    steps: list[dict[str, Any]] = document["steps"]
+    return steps
+
+
+# --- WP-1: logon + shutdown -------------------------------------------------------
+
+WP1 = "gpmc.author_scripts_logon_shutdown"
+
+
+MACHINE_PAIR = "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]"
+USER_PAIR = "[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B66650-4972-11D1-A7CA-0000F87571E3}]"
+
+
+def test_wp1_rev3_asserts_both_measured_extension_lists_exactly() -> None:
+    capability = _capability(WP1)
+    assert capability["revision"] == 4
+    require = {c["fact"]: c["predicate"] for c in capability["envelope"]["require"]}
+    assert f"post.ad.gPCMachineExtensionNames == '{MACHINE_PAIR}'" in require[
+        "ad.gPCMachineExtensionNames"
+    ]
+    assert f"post.ad.gPCUserExtensionNames == '{USER_PAIR}'" in require["ad.gPCUserExtensionNames"]
+    assert "pre.ad.gPCUserExtensionNames == None" in require["ad.gPCUserExtensionNames"]
+
+
+def test_wp1_rev3_predicts_no_subtree_wholesale() -> None:
+    """Round-2 review (Sol B1): a require clause's fact key predicts every
+    key UNDER it, so no clause may name a scripts_ini side or a file as a
+    prefix -- only leaves."""
+    require = _capability(WP1)["envelope"]["require"]
+    facts = {clause["fact"] for clause in require}
+    for broad in (
+        "scripts_ini.machine",
+        "scripts_ini.user",
+        "scripts_ini.ps.machine",
+        "scripts_ini.ps.user",
+        "filedigest.machine_ini",
+        "filedigest.user_ini",
+    ):
+        assert broad not in facts
+    relpaths = next(c["predicate"] for c in require if c["fact"] == "scope.sysvol_relpaths")
+    assert "'User/Scripts/scripts.ini'" in relpaths
+    assert "'Machine/Scripts/scripts.ini'" in relpaths
+    relations = [d["relation"] for d in _capability(WP1)["envelope"]["derive"]]
+    assert not any("sysvol_relpaths !=" in relation for relation in relations)
+
+
+W20_ARGS = {
+    "gpo_name": "zz-studio-evidence-plan035-wp1-w20",
+    "domain_dns": "ad.labdomain.dev",
+    "shutdown_script": "zz-studio-shutdown.cmd",
+    "shutdown_params": "/c shutdown-alpha",
+    "logon_script": "zz-studio-logon.cmd",
+    "logon_params": "/c logon-beta",
+    "backup_name": "w20-r1",
+    "expected_machine_ini_bytes": 158,
+    "expected_machine_ini_sha256": (
+        "f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489"
+    ),
+    "expected_user_ini_bytes": 138,
+    "expected_user_ini_sha256": "ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5",
+}
+
+
+def _w20_wp1_states() -> tuple[dict[str, object], dict[str, object]]:
+    """Pre/post fact maps rebuilt from the banked w20-r1 delta, plus the
+    unchanged facts revision 3's clauses read and the file_digest facts it
+    adds (whose values window 20's cleanup journal measured)."""
+    import json as _json
+
+    from gpo_observers.scripts_ini import absent_psscripts_ini_facts
+
+    record = _json.loads(
+        (REPO_ROOT / "docs" / "estate-window-20" / "records" / "w20-r1-record.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    unchanged: dict[str, object] = {
+        "scope.sysvol_contained": True,
+        "scope.policies.gpc_guids": ["zz"],
+        "scripts_ini.machine.encoding.fallback_codec": None,
+        "scripts_ini.user.encoding.fallback_codec": None,
+        "scripts_ini.machine.config_shape": "none",
+        "scripts_ini.user.config_shape": "none",
+        **absent_psscripts_ini_facts("machine"),
+        **absent_psscripts_ini_facts("user"),
+    }
+    pre = dict(unchanged)
+    post = dict(unchanged)
+    for entry in record["envelope_result"]["delta"]:
+        if entry["before"] != "<missing>":
+            pre[entry["key"]] = entry["before"]
+        if entry["after"] != "<missing>":
+            post[entry["key"]] = entry["after"]
+    for side in ("machine", "user"):
+        pre[f"filedigest.{side}_ini.present"] = False
+        pre[f"filedigest.{side}_ini.bytes"] = None
+        pre[f"filedigest.{side}_ini.sha256"] = None
+        post[f"filedigest.{side}_ini.present"] = True
+        post[f"filedigest.{side}_ini.bytes"] = W20_ARGS[f"expected_{side}_ini_bytes"]
+        post[f"filedigest.{side}_ini.sha256"] = W20_ARGS[f"expected_{side}_ini_sha256"]
+    return pre, post
+
+
+def _assert_wp1(pre: dict[str, object], post: dict[str, object]):  # type: ignore[no-untyped-def]
+    from gpo_observers.facts import make_fact
+    from wcd.envelope import assert_envelope, parse_envelope
+    from wcd.exec_transaction import _envelope_dict
+
+    envelope = parse_envelope(_envelope_dict(_capability(WP1), W20_ARGS))
+    categories = {}
+    for key in set(pre) | set(post):
+        fact = make_fact(key, None)
+        categories[key] = fact.volatile_subcategory or fact.category
+    return assert_envelope(envelope, pre, post, categories)
+
+
+def test_wp1_rev3_accepts_the_banked_window_20_run() -> None:
+    pre, post = _w20_wp1_states()
+    result = _assert_wp1(pre, post)
+    assert result.status == "satisfied", result.characterization
+    assert result.unclassified == ()
+
+
+def test_wp1_rev3_disproves_an_extra_populated_startup_trigger() -> None:
+    """The round-2 attack: an added machine [Startup] entry with the file's
+    aggregate facts moved to match. Revision 2 verified it (25 clauses, no
+    unclassified delta); revision 3 must not."""
+    pre, post = _w20_wp1_states()
+    post.update(
+        {
+            "scripts_ini.machine.Startup.entry_count": 1,
+            "scripts_ini.machine.Startup.0.script": "zz-extra.cmd",
+            "scripts_ini.machine.Startup.0.parameters": "",
+            "scripts_ini.machine.Startup.0.raw": "0CmdLine=zz-extra.cmd",
+            "scripts_ini.machine.Startup.0.prop.CmdLine": "zz-extra.cmd",
+            "scripts_ini.machine.Startup.0.prop.Parameters": "",
+        }
+    )
+    result = _assert_wp1(pre, post)
+    assert result.status == "disproven"
+    assert "scripts_ini.machine.Startup.entry_count" in result.unclassified
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("scripts_ini.machine.encoding.total_bytes", 230),
+        ("scripts_ini.machine.encoding.cr_count", 6),
+        ("scripts_ini.user.encoding.lf_count", 6),
+        ("filedigest.machine_ini.sha256", "0" * 64),
+        ("filedigest.user_ini.bytes", 200),
+    ],
+)
+def test_wp1_rev3_disproves_altered_ini_measurements(key: str, value: object) -> None:
+    pre, post = _w20_wp1_states()
+    post[key] = value
+    result = _assert_wp1(pre, post)
+    assert result.status == "disproven", key
+
+
+def test_wp1_version_relations_are_inequalities_plus_the_packing() -> None:
+    relations = [d["relation"] for d in _capability(WP1)["envelope"]["derive"]]
+    assert "post.version.machine > pre.version.machine" in relations
+    assert "post.version.user > pre.version.user" in relations
+    assert not any("+ 1" in relation for relation in relations)
+    assert (
+        "post.version.ad_versionNumber == post.version.user * 65536 + post.version.machine"
+        in relations
+    )
+
+
+def test_wp1_forbids_gpp_clsids_on_both_extension_lists() -> None:
+    scopes = {
+        clause["scope"]
+        for clause in _capability(WP1)["envelope"]["forbid"]
+        if GPP_GROUPS in clause["predicate"]
+    }
+    assert scopes == {"ad.gPCMachineExtensionNames", "ad.gPCUserExtensionNames"}
+
+
+def test_wp1_requires_exactly_one_entry_per_trigger_from_the_arguments() -> None:
+    require = {c["fact"]: c["predicate"] for c in _capability(WP1)["envelope"]["require"]}
+    shutdown = require["scripts_ini.machine.Shutdown.entry_count"]
+    logon = require["scripts_ini.user.Logon.entry_count"]
+    assert "post['scripts_ini.machine.Shutdown.entry_count'] == 1" in shutdown
+    assert "args['shutdown_script']" in shutdown and "args['shutdown_params']" in shutdown
+    assert "post['scripts_ini.user.Logon.entry_count'] == 1" in logon
+    assert "args['logon_script']" in logon and "args['logon_params']" in logon
+
+
+def test_wp1_backs_up_and_removes_only_the_owned_guid() -> None:
+    cleanup = [s for s in _sheet_steps(WP1) if s.get("phase") == "cleanup"]
+    scripts = [s["script"] for s in cleanup]
+    assert "gpo_remove" not in scripts and "gpo_backup" not in scripts
+    assert scripts.index("gpo_backup_owned") < scripts.index("gpo_remove_owned")
+    backup = cleanup[scripts.index("gpo_backup_owned")]
+    assert backup["args"] == ["{out.setup.gpo.guid}", "{args.backup_name}"]
+    remove = cleanup[scripts.index("gpo_remove_owned")]
+    assert remove["args"] == ["{out.setup.gpo.guid}"]
+
+
+def test_wp1_crosses_to_the_user_side_through_the_measured_scope_root_route() -> None:
+    steps = _sheet_steps(WP1)
+    actions = [s.get("profile_action") for s in steps]
+    shutdown_ok = actions.index("ok_shutdown_scripts_dialog")
+    root = actions.index("navigate_scope_root")
+    logon_open = actions.index("open_logon_scripts_dialog")
+    assert shutdown_ok < root < logon_open
+    root_step = steps[root]
+    # Click into the scope tree and press Home in ONE invocation: focus does
+    # not survive between helper invocations (surface-onboarding runbook).
+    assert root_step["action"] == "keys"
+    assert root_step["steps"][-1] == {"vks": [{"vk": 36, "modifiers": []}]}
+
+
+def test_wp1_dialog_actions_are_declared_with_their_measured_classes() -> None:
+    profile = load_profile(REPO_ROOT / "profiles" / "gpmc-server2025.toml")
+    assert profile.classification("open_shutdown_scripts_dialog") == "orientation_only"
+    assert profile.classification("open_logon_scripts_dialog") == "orientation_only"
+    assert profile.classification("ok_shutdown_scripts_dialog") == "commit_point"
+    assert profile.classification("ok_logon_scripts_dialog") == "commit_point"
+    assert profile.classification("navigate_scope_root") == "orientation_only"
+
+
+# --- WP-2: observe-only firewall view -------------------------------------------
+
+WP2 = "gpmc.observe_imported_firewall_rules"
+
+
+def test_wp2_envelope_is_post_equals_pre_on_versions_and_registrations() -> None:
+    envelope = _capability(WP2)["envelope"]
+    relations = {d["relation"] for d in envelope["derive"]}
+    for key in (
+        "version.raw",
+        "version.machine",
+        "version.user",
+        "version.ad_versionNumber",
+        "ad.versionNumber",
+        "ad.gPCUserExtensionNames",
+    ):
+        assert f"post.{key} == pre.{key}" in relations
+    assert not any("sysvol_relpaths" in d["relation"] for d in envelope["derive"])
+    machine = next(c for c in envelope["require"] if c["fact"] == "ad.gPCMachineExtensionNames")
+    assert "pre.ad.gPCMachineExtensionNames == args['expected_machine_extensions']" in (
+        machine["predicate"]
+    )
+    assert "post.ad.gPCMachineExtensionNames == pre.ad.gPCMachineExtensionNames" in (
+        machine["predicate"]
+    )
+    # Nothing tolerated by a content/structural category: only volatile ones.
+    assert {a["category"] for a in envelope["allow"]} == {
+        "timestamps",
+        "replication_metadata",
+        "file_mtime",
+    }
+
+
+def test_wp2_first_crossing_is_the_measured_security_settings_write() -> None:
+    capability = _capability(WP2)
+    assert capability["first_commit_point"] == "navigate_security_settings"
+    profile = load_profile(REPO_ROOT / "profiles" / "gpmc-server2025.toml")
+    assert profile.classification("navigate_security_settings") == "potentially_mutating"
+
+
+def test_wp2_rev2_pins_the_stub_bytes_and_the_exact_relpath_delta() -> None:
+    capability = _capability(WP2)
+    assert capability["revision"] == 4
+    require = {c["fact"]: c["predicate"] for c in capability["envelope"]["require"]}
+    assert "gpttmpl" not in require and "filedigest.gpttmpl" not in require
+    assert "post['gpttmpl.sections.1.line_count'] == 2" in require["gpttmpl.present"]
+    stub = require["filedigest.gpttmpl.sha256"]
+    assert "pre.filedigest.gpttmpl.present == False" in stub
+    assert "post.filedigest.gpttmpl.bytes == args['expected_gpttmpl_bytes']" in stub
+    assert "post.filedigest.gpttmpl.sha256 == args['expected_gpttmpl_sha256']" in stub
+    relpaths = require["scope.sysvol_relpaths"]
+    assert relpaths.startswith("pre.scope.sysvol_relpaths == [")
+    assert "post.scope.sysvol_relpaths == [" in relpaths
+    assert "'Machine/Microsoft/Windows NT/SecEdit/GptTmpl.inf'" in relpaths
+    observers = [o["name"] for o in capability["fact_plan"]["observers"]]
+    assert "file_digest" in observers
+
+
+def test_wp2_banks_full_dumps_and_cancels_before_closing() -> None:
+    steps = _sheet_steps(WP2)
+    saved = [s["save_as"] for s in steps if s["action"] == "dump" and "save_as" in s]
+    assert {"wp2-inbound-rules", "wp2-rule-properties"} <= set(saved)
+    actions = [s.get("profile_action") for s in steps]
+    assert actions.index("cancel_dialog") < actions.index("close_editor_window")
+    # Observe-only: no OK/Apply is ever clicked on the surface.
+    for step in steps:
+        if step["action"] == "click_element":
+            assert step["name_regex"] not in ("^OK$", "^Apply$")
+
+
+def test_wp2_creates_before_importing_and_cleans_only_owned_targets() -> None:
+    steps = _sheet_steps(WP2)
+    setup = [s["script"] for s in steps if s.get("phase") == "setup"]
+    assert setup.index("gpo_create") < setup.index("gpo_stage_import")
+    cleanup = [s for s in steps if s.get("phase") == "cleanup"]
+    scripts = [s["script"] for s in cleanup]
+    assert "gpo_remove" not in scripts and "dir_clean" not in scripts
+    assert cleanup[scripts.index("gpo_remove_owned")]["args"] == ["{out.setup.gpo.guid}"]
+    assert cleanup[scripts.index("dir_clean_owned")]["args"] == [
+        "{args.stage_name}",
+        "{out.setup.gpo.guid}",
+    ]
+
+
+def test_wp2_import_verifies_the_bundle_hash_before_importing() -> None:
+    text = IMPORT_SCRIPT.read_text(encoding="utf-8")
+    verify = text.index("Get-FileHash -LiteralPath $bundle")
+    assert verify < text.index("Import-GPO -BackupId $backupId")
+    stage_created = text.index("New-Item -ItemType Directory -Path $stage")
+    assert text.index("bundle hash mismatch") < stage_created
+    assert "New-GPO" not in text
+
+
+@pytest.mark.parametrize(
+    "script", ["gpo_stage_import", "dir_clean_owned", "gpo_backup_owned"]
+)
+def test_confined_scripts_take_leaf_names_under_a_fixed_root(script: str) -> None:
+    text = (REPO_ROOT / "tools" / "guest_scripts" / f"{script}.ps1").read_text(encoding="utf-8")
+    assert "$root = 'C:\\gpo-studio\\wcd-" in text
+    assert "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$" in text
+    assert "GetDirectoryName" in text
+    # The reparse refusal is pinned behaviourally (dir_clean_owned below) and
+    # structurally here: every confined script walks the whole ancestor chain.
+    assert "function Test-ReparseChain" in text
+
+
+def test_owned_cleanup_requires_the_marker_and_never_removes_by_name() -> None:
+    clean = (REPO_ROOT / "tools" / "guest_scripts" / "dir_clean_owned.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert clean.index("foreign_owner") < clean.index("Remove-Item -LiteralPath $stage")
+    remove = (REPO_ROOT / "tools" / "guest_scripts" / "gpo_remove_owned.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "Remove-GPO -Guid $parsed" in remove
+    assert "-Name" not in remove
+
+
+def test_wp2_rule_name_parameter_cannot_carry_regex_metacharacters() -> None:
+    pattern = _capability(WP2)["parameters"]["properties"]["rule_display_name"]["pattern"]
+    assert pattern == "^[A-Za-z0-9][A-Za-z0-9 _-]{0,127}$"
+
+
+def test_wp2_run_sheet_loads() -> None:
+    sheet = load_run_sheet(REPO_ROOT / "runsheets" / f"{WP2}.json")
+    assert sheet.surface == "gpmc-server2025"
+
+
+# --- guest script structure (Windows PowerShell 5.1 on CI) --------------------------
+
+
+_NEW_SCRIPTS = [
+    REPO_ROOT / "tools" / "guest_scripts" / f"{name}.ps1"
+    for name in (
+        "gpo_stage_import",
+        "gpo_remove_owned",
+        "gpo_backup_owned",
+        "dir_clean_owned",
+    )
+]
+
+
+@pytest.mark.parametrize("script", _NEW_SCRIPTS, ids=lambda p: p.stem)
+def test_new_guest_scripts_are_pure_ascii(script: Path) -> None:
+    ps_scripts.assert_ascii_only(script)
+
+
+@pytest.mark.skipif(
+    not Path(ps_scripts.POWERSHELL).exists(), reason="Windows PowerShell 5.1 not present"
+)
+@pytest.mark.parametrize("script", _NEW_SCRIPTS, ids=lambda p: p.stem)
+def test_new_guest_scripts_parse_under_windows_powershell_51(script: Path) -> None:
+    ps_scripts.parse_check(script)
+
+
+@pytest.mark.parametrize(
+    "window", ["estate-window-19", "estate-window-20", "estate-window-21", "estate-window-22"]
+)
+def test_capture_manifest_matches_the_committed_bytes(window: str) -> None:
+    """The WCD-side hash manifest (review, Sol 4) binds every banked capture,
+    including the raw scripts.ini bytes gpo-studio's fixtures transcribe."""
+    import hashlib
+
+    captures = REPO_ROOT / "docs" / window / "captures"
+    entries = {}
+    for line in (captures / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
+        digest, _, name = line.partition("  ")
+        entries[name] = digest
+    on_disk = {p.name for p in captures.iterdir() if p.name != "MANIFEST.sha256"}
+    assert set(entries) == on_disk
+    for name, digest in entries.items():
+        assert hashlib.sha256((captures / name).read_bytes()).hexdigest() == digest, name
+    prefix = {
+        "estate-window-19": "w19-r2",
+        "estate-window-20": "w20-r1",
+        "estate-window-21": "w21-r1",
+    }.get(window, "w22-r1")
+    assert entries[f"{prefix}-user-scripts.ini"].startswith("ba526db6")
+    assert entries[f"{prefix}-machine-scripts.ini"].startswith("f8fa4009")
+
+
+def test_window_20_records_bind_what_window_19_left_unbound() -> None:
+    """Revision 2's records carry the invocation, the setup output and the
+    collected digests in themselves (review, Sol 4)."""
+    import json as _json
+
+    records = REPO_ROOT / "docs" / "estate-window-20" / "records"
+    wp1 = _json.loads((records / "w20-r1-record.json").read_text(encoding="utf-8"))
+    wp2 = _json.loads((records / "w20-r2-record.json").read_text(encoding="utf-8"))
+    assert wp1["state"] == wp2["state"] == "verified"
+    assert wp1["provenance"]["capability_revision"] == wp2["provenance"]["capability_revision"] == 2
+    wp1_text = _json.dumps(wp1)
+    assert "sha256=f8fa40097ac3335282934200cacb2fba33deda6dbc1c8ab6876dabc14f6db489" in wp1_text
+    assert "sha256=ba526db64be0bbd4daf72d51083e7f91f4f36a81798fb68a3ce63d47a2182cf5" in wp1_text
+    notes = "\n".join(wp2["provenance"]["notes"])
+    assert "bundle_sha256=3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f" in notes
+    assert "invocation arguments sha256=" in notes
+    captures = REPO_ROOT / "docs" / "estate-window-20" / "captures"
+    wp2_text = _json.dumps(wp2)
+    for name in ("wp2-inbound-rules", "wp2-rule-properties", "wp2-firewall-overview"):
+        digest = hashlib_sha256((captures / f"{name}.uia.json").read_bytes())
+        assert digest in wp2_text, name
+
+
+def hashlib_sha256(data: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
+
+
+# --- dir_clean_owned, behaviourally (round-2 review Sol B2; round-3 Sol B2) -----
+#
+# Runs the SHIPPED script, whose root is the literal C:\gpo-studio\wcd-stage,
+# under PowerShell 7 with a temporary PSDrive named C: mapped onto a temporary
+# directory -- no production override exists. .NET reports a symbolic link's
+# attributes as ReparsePoint, so a symlinked root or ancestor is the refusal a
+# junction gets on the guest. A real Windows host already has a C: drive, so
+# these run where pwsh has none to shadow (Linux CI); the Windows CI job still
+# parse-checks the script.
+
+_PWSH = shutil.which("pwsh")
+_CLEAN = REPO_ROOT / "tools" / "guest_scripts" / "dir_clean_owned.ps1"
+_OWNER = "11111111-2222-3333-4444-555555555555"
+
+
+def _clean(drive: Path, stage: str, guid: str = _OWNER) -> str:
+    assert _PWSH is not None
+    command = (
+        "New-PSDrive -Name C -PSProvider FileSystem -Root "
+        + ps_scripts.ps_single_quote(str(drive))
+        + " -Scope Global | Out-Null; & "
+        + ps_scripts.ps_single_quote(str(_CLEAN))
+        + " "
+        + ps_scripts.ps_single_quote(stage)
+        + " "
+        + ps_scripts.ps_single_quote(guid)
+    )
+    completed = subprocess.run(
+        [_PWSH, "-NoProfile", "-NonInteractive", "-Command", command],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return completed.stdout.strip()
+
+
+def _root(drive: Path) -> Path:
+    return drive / "gpo-studio" / "wcd-stage"
+
+
+def _owned_stage(root: Path, name: str = "w-stage", owner: str = _OWNER) -> Path:
+    stage = root / name
+    (stage / "expanded").mkdir(parents=True)
+    (stage / "expanded" / "payload.bin").write_bytes(b"zz")
+    (stage / ".wcd-owner").write_text(owner + "\n", encoding="ascii")
+    return stage
+
+
+needs_pwsh = pytest.mark.skipif(
+    _PWSH is None or sys.platform == "win32",
+    reason="needs pwsh on a host with no real C: drive to shadow",
+)
+
+
+def test_dir_clean_owned_has_no_root_parameter() -> None:
+    """Round-3 review (Sol B2): the destructive root is not caller-selectable."""
+    text = _CLEAN.read_text(encoding="utf-8")
+    assert "param([string]$StageName, [string]$Guid)" in text
+    assert "$root = 'C:\\gpo-studio\\wcd-stage'" in text
+    assert "$Root" not in text.replace("$root", "")
+
+
+@needs_pwsh
+def test_dir_clean_owned_removes_an_owned_leaf(tmp_path: Path) -> None:
+    stage = _owned_stage(_root(tmp_path))
+    assert _clean(tmp_path, "w-stage") == "removed_dir=w-stage"
+    assert not stage.exists() and _root(tmp_path).exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_foreign_owner(tmp_path: Path) -> None:
+    stage = _owned_stage(_root(tmp_path), owner="99999999-2222-3333-4444-555555555555")
+    assert _clean(tmp_path, "w-stage") == "clean_refused=foreign_owner"
+    assert stage.exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_root_swapped_for_a_link(tmp_path: Path) -> None:
+    """The cleanup-time substitution: the fixed root now points elsewhere,
+    where a leaf with a matching marker waits. Nothing may be deleted."""
+    victim = _owned_stage(tmp_path / "elsewhere")
+    (tmp_path / "gpo-studio").mkdir()
+    _root(tmp_path).symlink_to(tmp_path / "elsewhere", target_is_directory=True)
+    assert _clean(tmp_path, "w-stage") == "clean_refused=root_reparse_point"
+    assert victim.exists() and (victim / "expanded" / "payload.bin").exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_linked_ancestor_of_the_root(tmp_path: Path) -> None:
+    victim = _owned_stage(tmp_path / "real" / "wcd-stage")
+    (tmp_path / "gpo-studio").symlink_to(tmp_path / "real", target_is_directory=True)
+    assert _clean(tmp_path, "w-stage") == "clean_refused=root_reparse_point"
+    assert victim.exists()
+
+
+@needs_pwsh
+def test_dir_clean_owned_refuses_a_linked_leaf(tmp_path: Path) -> None:
+    elsewhere = _owned_stage(tmp_path / "elsewhere", name="target")
+    _root(tmp_path).mkdir(parents=True)
+    (_root(tmp_path) / "w-stage").symlink_to(elsewhere, target_is_directory=True)
+    assert _clean(tmp_path, "w-stage") == "clean_refused=reparse_point"
+    assert elsewhere.exists()
+
+
+@needs_pwsh
+@pytest.mark.parametrize("stage", ["..", "a/b", "incoming", ""])
+def test_dir_clean_owned_refuses_names_that_are_not_owned_leaves(
+    tmp_path: Path, stage: str
+) -> None:
+    _owned_stage(_root(tmp_path))
+    assert _clean(tmp_path, stage).startswith("clean_refused=")
+    assert (_root(tmp_path) / "w-stage").exists()
+
+
+def test_window_21_records_are_superseded_because_frozen_v2_refuses_them() -> None:
+    """Round-3 review (Sol B1): window 21 stamped v2 records with the
+    retrofitted invocation field. Frozen v2 refuses them, so they are banked
+    under superseded/ and window 22's v3 records are the evidence."""
+    import json as _json
+
+    from wcd.record_schema import RecordSchemaError, validate_record
+
+    superseded = REPO_ROOT / "docs" / "estate-window-21" / "superseded"
+    assert not (REPO_ROOT / "docs" / "estate-window-21" / "records").exists()
+    for name in ("w21-r1", "w21-r2"):
+        record = _json.loads((superseded / f"{name}-record.json").read_text(encoding="utf-8"))
+        assert record["provenance"]["schema_version"] == 2
+        assert "invocation" in record["provenance"]
+        with pytest.raises(RecordSchemaError, match="invocation"):
+            validate_record(record)
+
+
+@pytest.mark.parametrize(
+    ("capability", "key", "other"),
+    [
+        (WP1, "expected_machine_ini_bytes", 159),
+        (WP1, "expected_user_ini_sha256", "0" * 64),
+        (WP2, "expected_gpttmpl_sha256", "0" * 64),
+        (WP2, "bundle_sha256", "1" * 64),
+    ],
+)
+def test_rev4_expected_values_are_pinned_to_the_banked_measurement(
+    capability: str, key: str, other: object
+) -> None:
+    """Round-3 review (DS N4): a run cannot requalify a different artifact by
+    passing different expectations -- the parameter schema refuses them."""
+    from wcd.capability_schema import CapabilitySchemaError, validate_capability_arguments
+
+    document = _capability(capability)
+    assert document["revision"] == 4
+    assert len(document["parameters"]["properties"][key]["enum"]) == 1
+    banked = dict(W20_ARGS) if capability == WP1 else dict(_WP2_ARGS)
+    validate_capability_arguments(document, banked)  # the banked set passes
+    banked[key] = other
+    with pytest.raises(CapabilitySchemaError, match=key):
+        validate_capability_arguments(document, banked)
+
+
+_WP2_ARGS = {
+    "gpo_name": "zz-studio-evidence-plan035-wp2-w22",
+    "domain_dns": "ad.labdomain.dev",
+    "bundle_name": "studio-firewall-backup.zip",
+    "bundle_sha256": "3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f",
+    "stage_name": "w22-r2",
+    "expected_machine_extensions": (
+        "[{35378EAC-683F-11D2-A89A-00C04FBBCFA2}{B05566AC-FE9C-4368-BE01-7A4CBB6CBA11}]"
+    ),
+    "expected_gpttmpl_bytes": 142,
+    "expected_gpttmpl_sha256": "07cba636ed9c1c30c4a4c228e555151f1fc43f7bfc941cbb221ed67297ea3dbc",
+    "rule_display_name": "StudioFwLane in tcp allow",
+}
+
+
+def test_window_22_v3_records_verify_against_capability_and_run_sheet_bytes() -> None:
+    """The qualification evidence: record-schema v3, revision 4, verified, its
+    invocation recomputing from the record and its run-sheet binding from the
+    committed run-sheet bytes."""
+    import json as _json
+
+    from wcd.record_schema import validate_record
+
+    records = REPO_ROOT / "docs" / "estate-window-22" / "records"
+    for name, capability in (("w22-r1", WP1), ("w22-r2", WP2)):
+        record = _json.loads((records / f"{name}-record.json").read_text(encoding="utf-8"))
+        provenance = record["provenance"]
+        text = (REPO_ROOT / "capabilities" / f"{capability}.json").read_text(encoding="utf-8")
+        sheet = (REPO_ROOT / "runsheets" / f"{provenance['run_sheet']}.json").read_bytes()
+        assert validate_record(record, capability_text=text, run_sheet_bytes=sheet) == 3
+        assert record["state"] == "verified"
+        assert provenance["capability_revision"] == 4
+    wp2 = _json.loads((records / "w22-r2-record.json").read_text(encoding="utf-8"))
+    imported = next(
+        e for e in wp2["provenance"]["invocation"]["setup_manifest"]
+        if e["script"] == "gpo_stage_import"
+    )
+    assert (
+        "bundle_sha256=3f146885bb8e362e4d178582cc5710cd8067980cb9413a5411c75e2edf651e0f"
+        in imported["stdout_lines"]
+    )
+
+
+def _w22(name: str) -> tuple[dict[str, Any], str, bytes]:
+    import json as _json
+
+    record = _json.loads(
+        (REPO_ROOT / "docs" / "estate-window-22" / "records" / f"{name}-record.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    provenance = record["provenance"]
+    text = (REPO_ROOT / "capabilities" / f"{provenance['capability']}.json").read_text(
+        encoding="utf-8"
+    )
+    sheet = (REPO_ROOT / "runsheets" / f"{provenance['run_sheet']}.json").read_bytes()
+    return record, text, sheet
+
+
+@pytest.mark.parametrize("name", ["w22-r1", "w22-r2"])
+@pytest.mark.parametrize("shape", ["empty", "shortened", "first-dropped"])
+@pytest.mark.parametrize("state", ["verified", "disproven"])
+def test_a_completed_v3_record_must_carry_every_setup_step(
+    name: str, shape: str, state: str
+) -> None:
+    """Round-4 review (Sol B1): a verified or disproven record ran its whole
+    setup, so an empty or shortened manifest is a forgery, not a prefix."""
+    import copy
+
+    from wcd.record_schema import RecordSchemaError, validate_record
+
+    record, text, sheet = _w22(name)
+    assert validate_record(record, capability_text=text, run_sheet_bytes=sheet) == 3
+    forged = copy.deepcopy(record)
+    forged["state"] = state
+    manifest = forged["provenance"]["invocation"]["setup_manifest"]
+    if shape == "empty":
+        manifest.clear()
+    elif shape == "shortened":
+        del manifest[-1]
+    else:
+        del manifest[0]
+    with pytest.raises(RecordSchemaError, match="setup"):
+        validate_record(forged, capability_text=text, run_sheet_bytes=sheet)
+
+
+@pytest.mark.parametrize("name", ["w22-r1", "w22-r2"])
+def test_an_indeterminate_v3_record_may_carry_a_setup_prefix(name: str) -> None:
+    """Setup that stopped early leaves a prefix; that stays readable."""
+    import copy
+
+    from wcd.record_schema import validate_record
+
+    record, text, sheet = _w22(name)
+    for keep in range(len(record["provenance"]["invocation"]["setup_manifest"])):
+        early = copy.deepcopy(record)
+        early["state"] = "indeterminate"
+        early["envelope_result"] = {}
+        del early["provenance"]["invocation"]["setup_manifest"][keep:]
+        assert validate_record(early, capability_text=text, run_sheet_bytes=sheet) == 3
+
+
+def test_the_v3_document_refuses_an_empty_manifest_on_a_completed_record() -> None:
+    import copy
+    import json as _json
+
+    from jsonschema import Draft202012Validator
+
+    schema = _json.loads(
+        (REPO_ROOT / "docs" / "transaction-record-schema-v3.json").read_text(encoding="utf-8")
+    )
+    record, _text, _sheet = _w22("w22-r1")
+    assert not list(Draft202012Validator(schema).iter_errors(record))
+    forged = copy.deepcopy(record)
+    forged["provenance"]["invocation"]["setup_manifest"] = []
+    assert list(Draft202012Validator(schema).iter_errors(forged))

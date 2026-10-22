@@ -1,0 +1,267 @@
+{
+  "name": "gpmc.observe_imported_firewall_rules",
+  "surface": "gpmc-server2025",
+  "steps": [
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpo_create",
+      "args": [
+        "{args.gpo_name}",
+        "Plan 035 WP-2 observe-only GPME view of an imported firewall export"
+      ],
+      "output_as": "setup.gpo"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpo_stage_import",
+      "args": [
+        "{out.setup.gpo.guid}",
+        "{args.stage_name}",
+        "{args.bundle_name}",
+        "{args.bundle_sha256}"
+      ],
+      "output_as": "setup.import"
+    },
+    {
+      "action": "guest",
+      "phase": "setup",
+      "script": "gpme_launch",
+      "args": [
+        "{out.setup.gpo.guid}",
+        "{args.domain_dns}"
+      ]
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_gpo_editor",
+      "title_regex": "Group Policy",
+      "timeout_ms": 90000
+    },
+    {
+      "action": "context",
+      "profile_action": "navigate_tree",
+      "assert_window_regex": "Group Policy"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Computer Configuration$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Policies$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000,
+      "soft": true
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_tree",
+      "name_regex": "^Windows Settings$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_security_settings",
+      "name_regex": "^Security Settings$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2500
+    },
+    {
+      "action": "click_element",
+      "profile_action": "navigate_firewall_rules",
+      "name_regex": "^Windows Defender Firewall with Advanced Security$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 2000
+    },
+    {
+      "action": "keys",
+      "profile_action": "navigate_firewall_rules",
+      "label": "Tab into the scope tree (the firewall node is selected), expand it, step to the LDAP-named policy node",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 9,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 39,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 800
+    },
+    {
+      "action": "wait_element",
+      "profile_action": "navigate_firewall_rules",
+      "name_regex": "^Inbound Rules$",
+      "timeout_ms": 60000
+    },
+    {
+      "action": "dump",
+      "profile_action": "navigate_firewall_rules",
+      "depth": 12,
+      "save_as": "wp2-firewall-overview"
+    },
+    {
+      "action": "shot",
+      "profile_action": "navigate_firewall_rules",
+      "name": "wp2-firewall-overview"
+    },
+    {
+      "action": "keys",
+      "profile_action": "navigate_firewall_rules",
+      "label": "expand the policy node and step to Inbound Rules (the overview link sits below the fold)",
+      "steps": [
+        {
+          "vks": [
+            {
+              "vk": 39,
+              "modifiers": []
+            }
+          ]
+        },
+        {
+          "vks": [
+            {
+              "vk": 40,
+              "modifiers": []
+            }
+          ]
+        }
+      ],
+      "delay_ms": 800
+    },
+    {
+      "action": "wait_element",
+      "profile_action": "navigate_firewall_rules",
+      "name_regex": "^{args.rule_display_name}$",
+      "control_type": "ListItem",
+      "timeout_ms": 60000
+    },
+    {
+      "action": "dump",
+      "profile_action": "navigate_firewall_rules",
+      "depth": 12,
+      "save_as": "wp2-inbound-rules"
+    },
+    {
+      "action": "shot",
+      "profile_action": "navigate_firewall_rules",
+      "name": "wp2-inbound-rules"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "open_property_dialog",
+      "name_regex": "^{args.rule_display_name}$",
+      "control_type": "ListItem",
+      "double": true,
+      "settle_ms": 3000
+    },
+    {
+      "action": "wait_foreground",
+      "profile_action": "open_property_dialog",
+      "title_regex": "^{args.rule_display_name} Properties$",
+      "timeout_ms": 60000
+    },
+    {
+      "action": "dump",
+      "profile_action": "open_property_dialog",
+      "depth": 12,
+      "save_as": "wp2-rule-properties"
+    },
+    {
+      "action": "shot",
+      "profile_action": "open_property_dialog",
+      "name": "wp2-rule-properties"
+    },
+    {
+      "action": "click_element",
+      "profile_action": "cancel_dialog",
+      "name_regex": "^Cancel$"
+    },
+    {
+      "action": "shot",
+      "profile_action": "cancel_dialog",
+      "name": "wp2-after-cancel"
+    },
+    {
+      "action": "key",
+      "profile_action": "close_editor_window",
+      "vks": [
+        {
+          "vk": 115,
+          "modifiers": [
+            "alt"
+          ]
+        }
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "mmc_kill"
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "gpo_remove_owned",
+      "args": [
+        "{out.setup.gpo.guid}"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "task_unregister",
+      "args": [
+        "WCDLaunchGPME"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "dir_clean_owned",
+      "args": [
+        "{args.stage_name}",
+        "{out.setup.gpo.guid}"
+      ]
+    },
+    {
+      "action": "guest",
+      "phase": "cleanup",
+      "script": "zz_requery"
+    }
+  ]
+}

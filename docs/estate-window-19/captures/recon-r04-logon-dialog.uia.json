@@ -1,0 +1,341 @@
+{
+ "outcome": "ok",
+ "error": null,
+ "payload": {
+  "hwnd": 2424886,
+  "action": "uia_dump",
+  "elements": [
+   {
+    "class": "#32770",
+    "control_type": "Window",
+    "rect": {
+     "left": 331,
+     "bottom": 653,
+     "top": 191,
+     "right": 745,
+     "height": 462,
+     "width": 414
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [
+     "Window",
+     "Transform"
+    ],
+    "name": "Logon Properties",
+    "control_type_id": 50032
+   },
+   {
+    "class": "#32770",
+    "control_type": "Pane",
+    "rect": {
+     "left": 349,
+     "bottom": 605,
+     "top": 251,
+     "right": 727,
+     "height": 354,
+     "width": 378
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "Scripts",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 360,
+     "bottom": 294,
+     "top": 262,
+     "right": 392,
+     "height": 32,
+     "width": 32
+    },
+    "automation_id": "65535",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 418,
+     "bottom": 297,
+     "top": 271,
+     "right": 714,
+     "height": 26,
+     "width": 296
+    },
+    "automation_id": "101",
+    "depth": 0,
+    "patterns": [],
+    "name": "Logon Scripts for zz-studio-evidence-recon035",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 360,
+     "bottom": 308,
+     "top": 306,
+     "right": 717,
+     "height": 2,
+     "width": 357
+    },
+    "automation_id": "65535",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SysListView32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 360,
+     "bottom": 497,
+     "top": 321,
+     "right": 632,
+     "height": 176,
+     "width": 272
+    },
+    "automation_id": "103",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SysHeader32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 362,
+     "bottom": 347,
+     "top": 323,
+     "right": 630,
+     "height": 24,
+     "width": 268
+    },
+    "automation_id": "",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 642,
+     "bottom": 363,
+     "top": 340,
+     "right": 717,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "104",
+    "depth": 0,
+    "patterns": [],
+    "name": "Up",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 642,
+     "bottom": 386,
+     "top": 363,
+     "right": 717,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "105",
+    "depth": 0,
+    "patterns": [],
+    "name": "Down",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 642,
+     "bottom": 438,
+     "top": 415,
+     "right": 717,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "106",
+    "depth": 0,
+    "patterns": [],
+    "name": "Add...",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 642,
+     "bottom": 467,
+     "top": 444,
+     "right": 717,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "107",
+    "depth": 0,
+    "patterns": [],
+    "name": "Edit...",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 642,
+     "bottom": 497,
+     "top": 474,
+     "right": 717,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "108",
+    "depth": 0,
+    "patterns": [],
+    "name": "Remove",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 360,
+     "bottom": 524,
+     "top": 522,
+     "right": 717,
+     "height": 2,
+     "width": 357
+    },
+    "automation_id": "65535",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Static",
+    "control_type": "Pane",
+    "rect": {
+     "left": 360,
+     "bottom": 558,
+     "top": 532,
+     "right": 656,
+     "height": 26,
+     "width": 296
+    },
+    "automation_id": "65535",
+    "depth": 0,
+    "patterns": [],
+    "name": "To view the script files stored in this Group Policy Object, press the button below.",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 360,
+     "bottom": 591,
+     "top": 568,
+     "right": 480,
+     "height": 23,
+     "width": 120
+    },
+    "automation_id": "109",
+    "depth": 0,
+    "patterns": [],
+    "name": "Show Files...",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 494,
+     "bottom": 638,
+     "top": 615,
+     "right": 569,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "1",
+    "depth": 0,
+    "patterns": [],
+    "name": "OK",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 575,
+     "bottom": 638,
+     "top": 615,
+     "right": 650,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "2",
+    "depth": 0,
+    "patterns": [],
+    "name": "Cancel",
+    "control_type_id": 50033
+   },
+   {
+    "class": "Button",
+    "control_type": "Pane",
+    "rect": {
+     "left": 656,
+     "bottom": 638,
+     "top": 615,
+     "right": 731,
+     "height": 23,
+     "width": 75
+    },
+    "automation_id": "12321",
+    "depth": 0,
+    "patterns": [],
+    "name": "Apply",
+    "control_type_id": 50033
+   },
+   {
+    "class": "SysTabControl32",
+    "control_type": "Pane",
+    "rect": {
+     "left": 345,
+     "bottom": 609,
+     "top": 229,
+     "right": 731,
+     "height": 380,
+     "width": 386
+    },
+    "automation_id": "12320",
+    "depth": 0,
+    "patterns": [],
+    "name": "",
+    "control_type_id": 50033
+   }
+  ],
+  "depth": 12,
+  "ok": true,
+  "element_count": 19,
+  "truncated": false,
+  "notes": []
+ }
+}

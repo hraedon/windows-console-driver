@@ -23,6 +23,8 @@ upgrade that record.
 | `gpmc.author_wmi_filter` | 1 | Qualified; exact msWMI-* representation incl. the measured Parm2 wire format, SOM-container blast radius frozen at +1, clean cleanup | `estate-window-7/records/w7-record.json` |
 | `certtmpl.duplicate_template` | 1 | Qualified; exact validity duration, blast radius frozen at one added object, clean cleanup with independent strict-absence confirmation. The same qualified bytes also verified through WEL's hosted lane (estate window 12) and again under the domain_operator-only re-pointed lane (estate window 13, the PR #36 identity-resolution proof) | `estate-window-10/records/w10-r2-record.json` (the pre-commit abort that preceded it is at `estate-window-10/records/w10-r1-record.json`); WEL-hosted: `estate-window-12/records/w12-r1-record.json`, `estate-window-13/records/w13-r1-record.json` |
 | `certsrv.restrict_certificate_manager` | 2 | Qualified; the revision-2 directory-derivation clause ran live (all 16 envelope clauses satisfied), the sheet re-proofed at its real 600 ms delays, clean cleanup with absence confirmed independently, and the CA's `Security` digest stayed byte-identical to window 11's reading. Revision-1 evidence stands unchanged | `estate-window-14/records/w14-r1-record.json` (revision 2); revision-1 evidence at `estate-window-11/records/w11-r2-record.json` (the pre-commit abort that preceded it is at `estate-window-11/records/w11-r1-record.json`) |
+| `gpmc.author_scripts_logon_shutdown` | 4 | Qualified; leaf-exact envelope (no subtree prediction), both scripts.ini files pinned by length and SHA-256 with the expectations themselves pinned to the banked values (enum), both extension lists exact, `>` version relations plus packing; owned-GUID cleanup. Record-schema v3: the invocation (arguments, run-sheet digest, whole setup output) verifies from the record plus the run-sheet bytes | `estate-window-22/records/w22-r1-record.json` (revision 4); superseded revision-3 `estate-window-21/superseded/w21-r1-record.json`; revision-2 `estate-window-20/records/w20-r1-record.json`; revision-1 `estate-window-19/records/w19-r2-record.json` (preceded by the indeterminate `estate-window-19/records/w19-r1-record.json`) |
+| `gpmc.observe_imported_firewall_rules` | 4 | Qualified as an observe-only transaction with an exact, leaf-asserted delta (GptTmpl.inf stub 142 B `07cba636…`, exact relpath lists; versions, extension lists and imported Registry.pol post == pre); bundle digest and expectations pinned to the banked values; owned GUID + owned staging-leaf cleanup under a literal root. Record-schema v3 binds the import step's whole output. Display remains person-reviewed | `estate-window-22/records/w22-r2-record.json` (revision 4); superseded revision-3 `estate-window-21/superseded/w21-r2-record.json`; revision-2 `estate-window-20/records/w20-r2-record.json`; revision-1 `estate-window-19/records/w19-r3-record.json` |
 
 The eight GPO-surface capabilities all have clean lab qualification evidence at
 their current revision. The migration-table capability requalified at revision 2
@@ -62,6 +64,17 @@ tolerated. Had the answer gone the other way, the `decoded_present` require
 clause would have failed with the registry clause passing, and that pair of
 results would itself have been the measurement — which is why both channels
 are read rather than whichever one is convenient.
+
+The two Plan 035 rows (estate window 19, 2026-10-20) were written for
+gpo-studio from a recon pass taken in the same window. `gpmc.author_scripts_logon_shutdown`
+is the first capability to commit on BOTH sides of one GPO in one session, and
+the first to cross from one side to the other inside GPME (the measured
+scope-root route). `gpmc.observe_imported_firewall_rules` is the first
+observe-only row: its only mutating crossing is GPME's own SYSVOL writes
+while browsing (a `GptTmpl.inf` stub when Security Settings opens, and the
+`Machine/Scripts` trigger directories). Revision 1 did not pin those
+writes exactly; revision 2 does (window-19 review, Sol 3). Its review evidence is the full UIA tree saved by the new
+`dump` `save_as` option.
 
 Revision 2 (2026-09-25) extends the certsrv capability and resets its row to
 pending. The revision-1 observer's wrong-CA guard compared the collector's

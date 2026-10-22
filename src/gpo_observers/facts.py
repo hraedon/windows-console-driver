@@ -108,6 +108,12 @@ FACT_CATEGORY_RULES: tuple[tuple[str, FactCategory, VolatileSubcategory | None],
     ("fdeploy.*", "content", None),
     ("fdeploy_marker.present", "content", None),
     ("fdeploy_marker.*", "content", None),
+    # Exact file identity (Plan 035 review): presence, length and SHA-256 of
+    # one named SYSVOL file, for envelopes that must pin a measured file
+    # byte-for-byte rather than through a parsed tree.
+    ("filedigest.*.present", "content", None),
+    ("filedigest.*.bytes", "content", None),
+    ("filedigest.*.sha256", "content", None),
     # Migration table (R1): the GPMC-authored .migtable XML.
     ("migtable.present", "content", None),
     ("migtable.*", "content", None),

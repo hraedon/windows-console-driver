@@ -1,0 +1,1227 @@
+{
+ "action": "uia_dump",
+ "depth": 12,
+ "element_count": 71,
+ "elements": [
+  {
+   "automation_id": "",
+   "class": "MMCMainFrame",
+   "control_type": "Window",
+   "control_type_id": 50032,
+   "depth": 0,
+   "name": "Local Group Policy Editor",
+   "patterns": [
+    "Window",
+    "Transform"
+   ],
+   "rect": {
+    "bottom": 691,
+    "height": 537,
+    "left": 154,
+    "right": 922,
+    "top": 154,
+    "width": 768
+   }
+  },
+  {
+   "automation_id": "59648",
+   "class": "MDIClient",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 683,
+    "height": 446,
+    "left": 162,
+    "right": 914,
+    "top": 237,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "65280",
+   "class": "MMCChildFrm",
+   "control_type": "Window",
+   "control_type_id": 50032,
+   "depth": 0,
+   "name": "zz-studio-evidence-plan035-wp2-r3 [LabDC01.ad.labdomain.dev] Policy\\Computer Configuration\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security - LDAP://CN={0734DD0C-6F06-4200-94CF-EEB4D16A7CAB},CN=POLICIES,CN=SYSTEM,DC=AD,DC=LABDOMAIN,DC=DEV",
+   "patterns": [
+    "Window",
+    "Transform"
+   ],
+   "rect": {
+    "bottom": 691,
+    "height": 485,
+    "left": 154,
+    "right": 922,
+    "top": 206,
+    "width": 768
+   }
+  },
+  {
+   "automation_id": "59648",
+   "class": "MMCViewWindow",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Console Embedded Window",
+   "patterns": [],
+   "rect": {
+    "bottom": 660,
+    "height": 423,
+    "left": 162,
+    "right": 914,
+    "top": 237,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "12789",
+   "class": "MMCOCXViewWindow",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 660,
+    "height": 423,
+    "left": 321,
+    "right": 914,
+    "top": 237,
+    "width": 593
+   }
+  },
+  {
+   "automation_id": "4",
+   "class": "AtlAxWinEx",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 658,
+    "height": 419,
+    "left": 323,
+    "right": 912,
+    "top": 239,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "3",
+   "class": "ATL:00007FFC40F12810",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 658,
+    "height": 419,
+    "left": 323,
+    "right": 912,
+    "top": 239,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "2818078",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 658,
+    "height": 419,
+    "left": 323,
+    "right": 912,
+    "top": 239,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "1442306",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 658,
+    "height": 419,
+    "left": 323,
+    "right": 912,
+    "top": 239,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "3080724",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 658,
+    "height": 419,
+    "left": 323,
+    "right": 912,
+    "top": 239,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "1245736",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 294,
+    "height": 52,
+    "left": 326,
+    "right": 935,
+    "top": 242,
+    "width": 609
+   }
+  },
+  {
+   "automation_id": "1573486",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 294,
+    "height": 52,
+    "left": 326,
+    "right": 935,
+    "top": 242,
+    "width": 609
+   }
+  },
+  {
+   "automation_id": "852486",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Windows Defender Firewall with Advanced Security provides network security for Windows computers.",
+   "patterns": [],
+   "rect": {
+    "bottom": 294,
+    "height": 52,
+    "left": 373,
+    "right": 925,
+    "top": 242,
+    "width": 552
+   }
+  },
+  {
+   "automation_id": "2818588",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 284,
+    "height": 32,
+    "left": 336,
+    "right": 368,
+    "top": 252,
+    "width": 32
+   }
+  },
+  {
+   "automation_id": "4784694",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 883,
+    "height": 581,
+    "left": 333,
+    "right": 928,
+    "top": 302,
+    "width": 595
+   }
+  },
+  {
+   "automation_id": "4981248",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 596,
+    "height": 291,
+    "left": 336,
+    "right": 925,
+    "top": 305,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "2228678",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 330,
+    "height": 24,
+    "left": 337,
+    "right": 924,
+    "top": 306,
+    "width": 587
+   }
+  },
+  {
+   "automation_id": "2163138",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Overview",
+   "patterns": [],
+   "rect": {
+    "bottom": 325,
+    "height": 15,
+    "left": 340,
+    "right": 396,
+    "top": 310,
+    "width": 56
+   }
+  },
+  {
+   "automation_id": "918080",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "5",
+   "patterns": [],
+   "rect": {
+    "bottom": 324,
+    "height": 12,
+    "left": 907,
+    "right": 921,
+    "top": 312,
+    "width": 14
+   }
+  },
+  {
+   "automation_id": "4129262",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 330,
+    "height": 24,
+    "left": 337,
+    "right": 917,
+    "top": 306,
+    "width": 580
+   }
+  },
+  {
+   "automation_id": "1245812",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 595,
+    "height": 265,
+    "left": 337,
+    "right": 917,
+    "top": 330,
+    "width": 580
+   }
+  },
+  {
+   "automation_id": "3670070",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 595,
+    "height": 265,
+    "left": 337,
+    "right": 917,
+    "top": 330,
+    "width": 580
+   }
+  },
+  {
+   "automation_id": "3146250",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 592,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 576,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "6816074",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "[Outbound connections status]",
+   "patterns": [],
+   "rect": {
+    "bottom": 568,
+    "height": 1,
+    "left": 340,
+    "right": 914,
+    "top": 567,
+    "width": 574
+   }
+  },
+  {
+   "automation_id": "7537140",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Windows Defender Firewall state is not configured.",
+   "patterns": [],
+   "rect": {
+    "bottom": 564,
+    "height": 17,
+    "left": 368,
+    "right": 914,
+    "top": 547,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "6488580",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 561,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 545,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "8258060",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Public Profile",
+   "patterns": [],
+   "rect": {
+    "bottom": 539,
+    "height": 16,
+    "left": 343,
+    "right": 911,
+    "top": 523,
+    "width": 568
+   }
+  },
+  {
+   "automation_id": "6947458",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Domain Profile",
+   "patterns": [],
+   "rect": {
+    "bottom": 349,
+    "height": 16,
+    "left": 343,
+    "right": 911,
+    "top": 333,
+    "width": 568
+   }
+  },
+  {
+   "automation_id": "5898884",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 371,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 355,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "721546",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 393,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 377,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "1835654",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Default behavior for outbound connections is not configured.",
+   "patterns": [],
+   "rect": {
+    "bottom": 517,
+    "height": 1,
+    "left": 340,
+    "right": 914,
+    "top": 516,
+    "width": 574
+   }
+  },
+  {
+   "automation_id": "2163350",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 415,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 399,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "328340",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Windows Defender Firewall is on.",
+   "patterns": [],
+   "rect": {
+    "bottom": 374,
+    "height": 17,
+    "left": 368,
+    "right": 914,
+    "top": 357,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "328338",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Inbound connections that do not match a rule are blocked.",
+   "patterns": [],
+   "rect": {
+    "bottom": 396,
+    "height": 17,
+    "left": 368,
+    "right": 914,
+    "top": 379,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "328336",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Outbound connections that do not match a rule are allowed.",
+   "patterns": [],
+   "rect": {
+    "bottom": 418,
+    "height": 17,
+    "left": 368,
+    "right": 914,
+    "top": 401,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "328334",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 510,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 494,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "328332",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Default behavior for outbound connections is not configured.",
+   "patterns": [],
+   "rect": {
+    "bottom": 513,
+    "height": 17,
+    "left": 368,
+    "right": 914,
+    "top": 496,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "2163312",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 488,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 472,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "131736",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Inbound connections that do not match a rule are blocked.",
+   "patterns": [],
+   "rect": {
+    "bottom": 491,
+    "height": 17,
+    "left": 368,
+    "right": 914,
+    "top": 474,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "131738",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 466,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 450,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "131740",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Windows Defender Firewall is on.",
+   "patterns": [],
+   "rect": {
+    "bottom": 469,
+    "height": 17,
+    "left": 368,
+    "right": 914,
+    "top": 452,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "131742",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Private Profile",
+   "patterns": [],
+   "rect": {
+    "bottom": 444,
+    "height": 16,
+    "left": 343,
+    "right": 911,
+    "top": 428,
+    "width": 568
+   }
+  },
+  {
+   "automation_id": "131744",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Private Profile",
+   "patterns": [],
+   "rect": {
+    "bottom": 422,
+    "height": 1,
+    "left": 340,
+    "right": 914,
+    "top": 421,
+    "width": 574
+   }
+  },
+  {
+   "automation_id": "131746",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Windows Defender Firewall Properties",
+   "patterns": [],
+   "rect": {
+    "bottom": 595,
+    "height": 19,
+    "left": 368,
+    "right": 914,
+    "top": 576,
+    "width": 546
+   }
+  },
+  {
+   "automation_id": "131748",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 880,
+    "height": 278,
+    "left": 336,
+    "right": 925,
+    "top": 602,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "131750",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 627,
+    "height": 24,
+    "left": 337,
+    "right": 924,
+    "top": 603,
+    "width": 587
+   }
+  },
+  {
+   "automation_id": "131752",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Getting Started",
+   "patterns": [],
+   "rect": {
+    "bottom": 622,
+    "height": 15,
+    "left": 340,
+    "right": 426,
+    "top": 607,
+    "width": 86
+   }
+  },
+  {
+   "automation_id": "131754",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "5",
+   "patterns": [],
+   "rect": {
+    "bottom": 621,
+    "height": 12,
+    "left": 907,
+    "right": 921,
+    "top": 609,
+    "width": 14
+   }
+  },
+  {
+   "automation_id": "131756",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 627,
+    "height": 24,
+    "left": 337,
+    "right": 917,
+    "top": 603,
+    "width": 580
+   }
+  },
+  {
+   "automation_id": "131758",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 876,
+    "height": 249,
+    "left": 337,
+    "right": 921,
+    "top": 627,
+    "width": 584
+   }
+  },
+  {
+   "automation_id": "131760",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 876,
+    "height": 249,
+    "left": 337,
+    "right": 921,
+    "top": 627,
+    "width": 584
+   }
+  },
+  {
+   "automation_id": "393530",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Authenticate communications between computers",
+   "patterns": [],
+   "rect": {
+    "bottom": 646,
+    "height": 16,
+    "left": 343,
+    "right": 915,
+    "top": 630,
+    "width": 572
+   }
+  },
+  {
+   "automation_id": "393974",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Create connection security rules to specify how and when connections between computers are authenticated and protected by using Internet Protocol security (IPsec).",
+   "patterns": [],
+   "rect": {
+    "bottom": 679,
+    "height": 26,
+    "left": 343,
+    "right": 915,
+    "top": 653,
+    "width": 572
+   }
+  },
+  {
+   "automation_id": "655530",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 720,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 704,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "787184",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Connection Security Rules",
+   "patterns": [],
+   "rect": {
+    "bottom": 717,
+    "height": 13,
+    "left": 368,
+    "right": 918,
+    "top": 704,
+    "width": 550
+   }
+  },
+  {
+   "automation_id": "852722",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Connection Security Rules",
+   "patterns": [],
+   "rect": {
+    "bottom": 727,
+    "height": 1,
+    "left": 340,
+    "right": 918,
+    "top": 726,
+    "width": 578
+   }
+  },
+  {
+   "automation_id": "1245940",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "View and create firewall rules",
+   "patterns": [],
+   "rect": {
+    "bottom": 749,
+    "height": 16,
+    "left": 343,
+    "right": 915,
+    "top": 733,
+    "width": 572
+   }
+  },
+  {
+   "automation_id": "721668",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Outbound Rules",
+   "patterns": [],
+   "rect": {
+    "bottom": 870,
+    "height": 13,
+    "left": 368,
+    "right": 918,
+    "top": 857,
+    "width": 550
+   }
+  },
+  {
+   "automation_id": "1245974",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 873,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 857,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "262930",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Text",
+   "control_type_id": 50020,
+   "depth": 0,
+   "name": "Create firewall rules to allow or block connections to specified programs or ports. You can also allow a connection only if it is authenticated, or if it comes from an authorized user, group, or computer. By default, inbound connections are blocked unless they match a rule that allows them, and outbound connections are allowed unless they match a rule that blocks them.",
+   "patterns": [],
+   "rect": {
+    "bottom": 808,
+    "height": 52,
+    "left": 343,
+    "right": 915,
+    "top": 756,
+    "width": 572
+   }
+  },
+  {
+   "automation_id": "262914",
+   "class": "WindowsForms10.Window.8.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 849,
+    "height": 16,
+    "left": 346,
+    "right": 362,
+    "top": 833,
+    "width": 16
+   }
+  },
+  {
+   "automation_id": "1049370",
+   "class": "WindowsForms10.STATIC.app.0.14ed572_r48_ad3",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "Inbound Rules",
+   "patterns": [],
+   "rect": {
+    "bottom": 846,
+    "height": 13,
+    "left": 368,
+    "right": 918,
+    "top": 833,
+    "width": 550
+   }
+  },
+  {
+   "automation_id": "12785",
+   "class": "SysTreeView32",
+   "control_type": "Tree",
+   "control_type_id": 50023,
+   "depth": 0,
+   "name": "Console Embedded Scope",
+   "patterns": [],
+   "rect": {
+    "bottom": 660,
+    "height": 423,
+    "left": 162,
+    "right": 318,
+    "top": 237,
+    "width": 156
+   }
+  },
+  {
+   "automation_id": "12786",
+   "class": "SysListView32",
+   "control_type": "List",
+   "control_type_id": 50008,
+   "depth": 0,
+   "name": "Console Embedded Window Results",
+   "patterns": [
+    "Grid",
+    "Table"
+   ],
+   "rect": {
+    "bottom": 660,
+    "height": 423,
+    "left": 321,
+    "right": 914,
+    "top": 237,
+    "width": 593
+   }
+  },
+  {
+   "automation_id": "",
+   "class": "SysHeader32",
+   "control_type": "Header",
+   "control_type_id": 50034,
+   "depth": 0,
+   "name": "Console Embedded Results Header",
+   "patterns": [],
+   "rect": {
+    "bottom": 263,
+    "height": 24,
+    "left": 323,
+    "right": 912,
+    "top": 239,
+    "width": 589
+   }
+  },
+  {
+   "automation_id": "4099",
+   "class": "msctls_statusbar32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 683,
+    "height": 23,
+    "left": 162,
+    "right": 914,
+    "top": 660,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "4097",
+   "class": "Static",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 681,
+    "height": 17,
+    "left": 829,
+    "right": 908,
+    "top": 664,
+    "width": 79
+   }
+  },
+  {
+   "automation_id": "13341",
+   "class": "SizeableRebar",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 237,
+    "height": 52,
+    "left": 162,
+    "right": 914,
+    "top": 185,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "4096",
+   "class": "ReBarWindow32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 231,
+    "height": 46,
+    "left": 162,
+    "right": 914,
+    "top": 185,
+    "width": 752
+   }
+  },
+  {
+   "automation_id": "4098",
+   "class": "ToolbarWindow32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 231,
+    "height": 22,
+    "left": 164,
+    "right": 914,
+    "top": 209,
+    "width": 750
+   }
+  },
+  {
+   "automation_id": "4097",
+   "class": "ToolbarWindow32",
+   "control_type": "Pane",
+   "control_type_id": 50033,
+   "depth": 0,
+   "name": "",
+   "patterns": [],
+   "rect": {
+    "bottom": 207,
+    "height": 22,
+    "left": 164,
+    "right": 914,
+    "top": 185,
+    "width": 750
+   }
+  }
+ ],
+ "hwnd": 1900636,
+ "notes": [],
+ "ok": true,
+ "truncated": false
+}
