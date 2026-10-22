@@ -19,19 +19,26 @@ import pytest
 TOOLS_DIR = ps_scripts.REPO_ROOT / "tools"
 BRINGUP = TOOLS_DIR / "estate_bringup.ps1"
 TEARDOWN = TOOLS_DIR / "estate_teardown.ps1"
+REVERT = TOOLS_DIR / "estate_revert_member.ps1"
 
 
-@pytest.mark.parametrize("tool", [BRINGUP, TEARDOWN], ids=["bringup", "teardown"])
+@pytest.mark.parametrize(
+    "tool", [BRINGUP, TEARDOWN, REVERT], ids=["bringup", "teardown", "revert"]
+)
 def test_tool_parses_under_windows_powershell_51(tool: Path) -> None:
     ps_scripts.parse_check(tool)
 
 
-@pytest.mark.parametrize("tool", [BRINGUP, TEARDOWN], ids=["bringup", "teardown"])
+@pytest.mark.parametrize(
+    "tool", [BRINGUP, TEARDOWN, REVERT], ids=["bringup", "teardown", "revert"]
+)
 def test_tool_is_pure_ascii(tool: Path) -> None:
     ps_scripts.assert_ascii_only(tool)
 
 
-@pytest.mark.parametrize("tool", [BRINGUP, TEARDOWN], ids=["bringup", "teardown"])
+@pytest.mark.parametrize(
+    "tool", [BRINGUP, TEARDOWN, REVERT], ids=["bringup", "teardown", "revert"]
+)
 def test_tool_takes_the_disposable_guest_name_guard(tool: Path) -> None:
     text = tool.read_text(encoding="ascii")
     assert "^[Ll]ab[A-Za-z0-9]{1,12}$" in text
@@ -79,3 +86,42 @@ def test_teardown_shuts_down_guest_initiated_not_stop_vm_force() -> None:
     code = re.sub(r"<#.*?#>", "", text, flags=re.DOTALL)  # drop comment-based help
     assert "shutdown.exe /s" in code
     assert "Stop-VM" not in code
+
+
+def test_revert_tool_restores_headless_then_syncs_the_clock_then_verifies() -> None:
+    """Window 19: a revert brings back the checkpoint era's clock and nothing
+    on the lab re-syncs it; the tool's time sync must follow the restore and
+    precede the read-only secure-channel verification."""
+    text = REVERT.read_text(encoding="ascii")
+    restore = text.index("Restore-VMSnapshot -VMSnapshot $s -Confirm:$false")
+    sync = text.index("Set-Date -Date ($hostUtc + $offset)")
+    verify = text.index('"secure_channel=$(Test-ComputerSecureChannel)"')
+    assert restore < sync < verify
+    # Verification is read-only: the tool never repairs on its own.
+    assert "-Repair" not in text.replace("Test-ComputerSecureChannel -Repair (estate", "")
+
+
+def test_revert_tool_refuses_a_checkpoint_older_than_the_machine_password() -> None:
+    text = REVERT.read_text(encoding="ascii")
+    precheck = text.index("CompareOrdinal($pwdLastSet, $created)")
+    assert precheck < text.index("Restore-VMSnapshot -VMSnapshot $s -Confirm:$false")
+    assert "[switch] $Force" in text
+    assert "GetEnvironmentVariable($estateTable['password_env'])" in text
+
+
+def test_bringup_reports_the_machine_key_fault_instead_of_waiting_it_out() -> None:
+    text = BRINGUP.read_text(encoding="ascii")
+    assert "'credential_invalid'" in text
+    assert "$invalidStreak -ge 3" in text
+    assert "machine-key fault" in text
+
+
+def test_revert_tool_requires_rotation_disabled_unless_forced() -> None:
+    """Round-2 review (Sol N1): observing DisablePasswordChange is not enough;
+    the normal path refuses a member with rotation on."""
+    text = REVERT.read_text(encoding="ascii")
+    refusal = text.index("if ($disable -ne '1')")
+    assert refusal < text.index("Restore-VMSnapshot -VMSnapshot $s -Confirm:$false")
+    assert "machine-password rotation is enabled on the member" in text
+    # The comment no longer claims a DC guard the code does not have.
+    assert "never the DC" not in text

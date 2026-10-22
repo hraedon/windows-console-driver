@@ -240,12 +240,23 @@ function Invoke-GuestScript {
 function Wait-GuestPsDirect {
     param([string] $Vm, [int] $TimeoutSec)
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $invalidStreak = 0
     while ($true) {
         Start-Sleep -Seconds 20
         try {
             $probe = Invoke-GuestScript -Vm $Vm -ScriptText '"up=$([DateTime]::UtcNow.ToString("u"))"'
             return (($probe | Where-Object { $_ -like 'up=*' }) -join '')
         } catch {
+            # Window 19: after a checkpoint revert, a member whose machine key
+            # is older than AD's refuses EVERY account with "The credential is
+            # invalid". That is not a boot blackout -- waiting cannot fix it --
+            # so report it at once instead of burning the boot timeout.
+            # Three consecutive refusals (about a minute), so a guest still
+            # finishing its boot is not misread.
+            if ("$($_.Exception.Message)" -match 'credential is invalid') {
+                $invalidStreak++
+                if ($invalidStreak -ge 3) { return 'credential_invalid' }
+            } else { $invalidStreak = 0 }
             if ((Get-Date) -ge $deadline) { return $null }
         }
     }
@@ -293,7 +304,11 @@ try {
             Write-Output "[1/7] dc-boot: $DcVm already Running"
         }
         $up = Wait-GuestPsDirect -Vm $DcVm -TimeoutSec $BootTimeoutSec
-        if (-not $up) {
+        if ($up -eq 'credential_invalid') {
+            Write-Output "fail: $DcVm refuses every account over PowerShell Direct ('The credential is invalid'): after a checkpoint revert this is the machine-key fault (AD pwdLastSet newer than the checkpoint), not a boot delay -- repair the secure channel (estate window 19 NOTES) or re-mint the checkpoint"
+            $failed = $true
+            $up = $null
+        } elseif (-not $up) {
             Write-Output "fail: $DcVm never answered PowerShell Direct within $BootTimeoutSec s"
             $failed = $true
         } else {
@@ -377,7 +392,11 @@ Start-Sleep -Seconds 15
             Write-Output "[3/7] member-boot: $ConsoleVm already Running"
         }
         $up = Wait-GuestPsDirect -Vm $ConsoleVm -TimeoutSec $BootTimeoutSec
-        if (-not $up) {
+        if ($up -eq 'credential_invalid') {
+            Write-Output "fail: $ConsoleVm refuses every account over PowerShell Direct ('The credential is invalid'): after a checkpoint revert this is the machine-key fault (AD pwdLastSet newer than the checkpoint), not a boot delay -- repair the secure channel (estate window 19 NOTES) or re-mint the checkpoint"
+            $failed = $true
+            $up = $null
+        } elseif (-not $up) {
             Write-Output "fail: $ConsoleVm never answered PowerShell Direct within $BootTimeoutSec s"
             $failed = $true
         } else {

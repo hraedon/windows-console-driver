@@ -50,7 +50,10 @@ state, the DC locator, Kerberos health — the DC's rootDSE clock read
 (authenticated, via Get-ADRootDSE) compared against the guest at the
 measured MaxClockSkew, plus a fresh `klist` ticket mint, because clock
 skew kills GPMC's Kerberos path while every NTLM probe stays green —
-the helper task, the console session), one
+the helper task, the console session, the member clock against the host,
+and the member's AD machine `pwdLastSet` against the recovery checkpoint
+with rotation disabled -- a checkpoint older than the last machine-password
+change cannot take a Kerberos logon after a revert, estate window 19), one
 precise line per check, fail closed — exit 0 green, 3 when any check failed. It is
 an operator tool; the default suite tests its logic against scripted fakes
 and never touches a live host.
@@ -62,7 +65,12 @@ host UTC, `nltest /dsregdns`, NetLogon restart), member boot, member
 clock (the same restore trap on the console VM — a revert-based lane
 resets it too, window 12; Set-Date only, no service restarts), member
 locator health, the CAD key-injection console logon, and the helper
-two-hop deploy with a context smoke. `tools/estate_teardown.ps1` is the
+two-hop deploy with a context smoke. `tools/estate_revert_member.ps1`
+reverts the member to its checkpoint the safe way: it refuses a checkpoint
+older than the member's last machine-password change, restores headless
+(`-Confirm:$false`), re-syncs the guest clock from the host the moment
+PowerShell Direct answers, and verifies the secure channel read-only.
+`tools/estate_teardown.ps1` is the
 leave-as-found companion (guest-initiated shutdown, never `Stop-VM`).
 Both read the same estate file and the same named environment secrets,
 both refuse non-disposable VM names, and both are operator tools -- the

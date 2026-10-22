@@ -30,6 +30,19 @@ costs one probe, not five timeouts):
                          guest check rides NTLM or DNS, which stay green
                          under clock skew while GPMC dies -- this is the
                          check that does not.
+- ``member_clock``    -- the guest clock is within MaxClockSkew of the
+                         Hyper-V host's UTC. A checkpoint revert restores the
+                         checkpoint era's clock (30 days stale in estate window
+                         19) and nothing on the lab syncs it back.
+- ``machine_password`` -- the member's AD ``pwdLastSet`` is not newer than the
+                         recovery checkpoint's creation, and machine-password
+                         rotation is disabled (``DisablePasswordChange=1``).
+                         The KDC encrypts tickets with the CURRENT machine key
+                         only, so a revert to a checkpoint older than the last
+                         rotation leaves the member unable to take any Kerberos
+                         logon -- PSDirect answers "The credential is invalid"
+                         for every account (window 19). Rotation left enabled
+                         makes every checkpoint go stale within 30 days.
 - ``helper_task``     -- the console helper's scheduled task exists.
 - ``console_session`` -- an active console session is present (quser facts
                          only; the helper is not probed here).
@@ -102,6 +115,31 @@ $kout = @(klist get "krbtgt/$domain" 2>&1 | ForEach-Object { "$_" })
 @($kout | Where-Object { $_ -and $_.Trim() }) | Select-Object -First 3
 """
 
+_HOST_UTC_SCRIPT = "[DateTime]::UtcNow.ToString('o')"
+
+_MEMBER_CLOCK_SCRIPT = r"""
+param([string]$HostUtc)
+# A separate name: PowerShell variables are case-insensitive, so assigning
+# the parsed value to $hostUtc would coerce it back into the [string] param
+# (measured live, window 20's first canary run).
+$hostTime = [DateTime]::Parse($HostUtc, $null, [Globalization.DateTimeStyles]::RoundtripKind)
+"member_clock_delta_s=$([int]([DateTime]::UtcNow - $hostTime.ToUniversalTime()).TotalSeconds)"
+"""
+
+_CHECKPOINT_CREATED_SCRIPT = r"""
+$s = @(Get-VMSnapshot -VMName $args[0] -Name $args[1] -ErrorAction SilentlyContinue)
+if ($s.Count -ne 1) { "checkpoint_created=unreadable" }
+else { "checkpoint_created=$($s[0].CreationTime.ToUniversalTime().ToString('o'))" }
+"""
+
+_MACHINE_PASSWORD_SCRIPT = r"""
+$ErrorActionPreference = 'Stop'
+$c = Get-ADComputer -Identity $env:COMPUTERNAME -Properties pwdLastSet
+"pwd_last_set=$([DateTime]::FromFileTimeUtc([Int64]$c.pwdLastSet).ToString('o'))"
+$p = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters'
+"disable_password_change=$($p.DisablePasswordChange)"
+"""
+
 _HELPER_TASK_SCRIPT = (
     "$t = Get-ScheduledTask -TaskName $args[0] -ErrorAction SilentlyContinue; "
     "if ($null -eq $t) { 'present=0' } else { \"present=1 state=$($t.State)\" }"
@@ -158,6 +196,8 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
             "domain_account",
             "dc_locator",
             "kerberos",
+            "member_clock",
+            "machine_password",
             "helper_task",
             "console_session",
         ):
@@ -204,8 +244,39 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
         except Exception as exc:
             record("checkpoint", False, f"checkpoint probe failed: {_short(exc)}")
 
+    checkpoint_created: str | None = None
+    if estate.checkpoint_name:
+        try:
+            out = transport.host(
+                _CHECKPOINT_CREATED_SCRIPT,
+                [estate.vm_name, estate.checkpoint_name],
+                timeout=_HOST_TIMEOUT_S,
+            )
+            value = _line_value(out, "checkpoint_created")
+            checkpoint_created = None if value in ("", "unreadable") else value
+        except Exception:
+            checkpoint_created = None
+
     if not guest_available:
-        for name in ("domain_account", "dc_locator", "kerberos", "helper_task", "console_session"):
+        for name in (
+            "domain_account",
+            "dc_locator",
+            "kerberos",
+            "member_clock",
+            "machine_password",
+            "helper_task",
+            "console_session",
+        ):
+            if name == "machine_password" and checkpoint_created is not None:
+                record(
+                    name,
+                    False,
+                    "skipped: guest PSDirect unavailable -- if every account is refused "
+                    "with 'The credential is invalid' right after a checkpoint revert, "
+                    "the member's machine key is older than AD's (window 19; repair: "
+                    "cached-credential session, Test-ComputerSecureChannel -Repair)",
+                )
+                continue
             record(name, False, "skipped: guest PSDirect unavailable")
         return CanaryReport(checks=tuple(checks))
 
@@ -296,6 +367,73 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
     except Exception as exc:
         record("kerberos", False, f"kerberos probe failed: {_short(exc)}")
 
+    # -- member clock against the host (the post-revert trap) -------------------------
+    try:
+        host_utc = transport.host(_HOST_UTC_SCRIPT, timeout=_HOST_TIMEOUT_S).strip()
+        host_utc = host_utc.splitlines()[-1].strip() if host_utc else ""
+        out = transport.guest(_MEMBER_CLOCK_SCRIPT, [host_utc], timeout=_GUEST_TIMEOUT_S)
+        raw = _line_value(out, "member_clock_delta_s")
+        try:
+            member_delta: int | None = int(float(raw))
+        except ValueError:
+            member_delta = None
+        if member_delta is None:
+            record("member_clock", False, "member clock unreadable against the host (fail closed)")
+        elif abs(member_delta) > _MAX_CLOCK_SKEW_S:
+            direction = "ahead of" if member_delta > 0 else "behind"
+            record(
+                "member_clock",
+                False,
+                f"member clock is {abs(member_delta)}s {direction} the host (MaxClockSkew "
+                f"{_MAX_CLOCK_SKEW_S}s): a checkpoint revert restores its era's clock and "
+                "nothing on the lab re-syncs it -- Set-Date from host UTC (estate_bringup "
+                "step 4)",
+            )
+        else:
+            record("member_clock", True, f"member clock within {abs(member_delta)}s of the host")
+    except Exception as exc:
+        record("member_clock", False, f"member clock probe failed: {_short(exc)}")
+
+    # -- machine password vs the recovery checkpoint ---------------------------------
+    try:
+        out = transport.guest(_MACHINE_PASSWORD_SCRIPT, timeout=_GUEST_TIMEOUT_S)
+        pwd_last_set = _line_value(out, "pwd_last_set")
+        disable = _line_value(out, "disable_password_change")
+        if not pwd_last_set or checkpoint_created is None:
+            record(
+                "machine_password",
+                False,
+                "machine pwdLastSet or the checkpoint creation time is unreadable "
+                f"(pwdLastSet={pwd_last_set or 'unreadable'}, "
+                f"checkpoint={checkpoint_created or 'unreadable'}); fail closed",
+            )
+        elif _utc_key(pwd_last_set) > _utc_key(checkpoint_created):
+            record(
+                "machine_password",
+                False,
+                f"machine pwdLastSet {pwd_last_set} is NEWER than checkpoint "
+                f"{estate.checkpoint_name!r} ({checkpoint_created}): a revert restores a "
+                "machine key the KDC no longer uses and every Kerberos logon to the "
+                "member fails -- re-mint the checkpoint (rotation disabled first)",
+            )
+        elif disable != "1":
+            record(
+                "machine_password",
+                False,
+                f"machine-password rotation is enabled (DisablePasswordChange="
+                f"{disable or 'unset'}): checkpoint {estate.checkpoint_name!r} goes stale "
+                "at the next rotation -- set DisablePasswordChange=1 and re-mint",
+            )
+        else:
+            record(
+                "machine_password",
+                True,
+                f"pwdLastSet {pwd_last_set} predates checkpoint {checkpoint_created}; "
+                "rotation disabled",
+            )
+    except Exception as exc:
+        record("machine_password", False, f"machine password probe failed: {_short(exc)}")
+
     # -- helper task -----------------------------------------------------------------
     try:
         out = transport.guest(
@@ -340,6 +478,16 @@ def run_estate_canary(transport: SessionTransport, estate: EstateConfig) -> Cana
         record("console_session", False, f"console probe failed: {_short(exc)}")
 
     return CanaryReport(checks=tuple(checks))
+
+
+def _utc_key(value: str) -> str:
+    """A comparable key for the round-trip ('o') UTC timestamps both probes emit.
+
+    Both sides are produced by .NET ``ToString('o')`` on a UTC DateTime, so
+    the fixed-width ``yyyy-MM-ddTHH:mm:ss.fffffffZ`` text orders exactly like
+    the instants it names.
+    """
+    return value.strip()
 
 
 def _line_value(out: str, key: str) -> str:
