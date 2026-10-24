@@ -59,6 +59,15 @@ def _default_transport(estate: EstateConfig) -> SessionTransport:
     return SessionTransport(estate, repl_path=default_repl_path())
 
 
+def _start_transport(estate: EstateConfig, diagnostic: str) -> SessionTransport | None:
+    """Start the CLI transport or emit one determinate startup refusal."""
+    try:
+        return _default_transport(estate)
+    except (OSError, TransportError) as exc:
+        print(f"{diagnostic} error: transport would not start: {exc}", file=sys.stderr)
+        return None
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="wcd", description=__doc__)
     parser.add_argument(
@@ -140,7 +149,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.verb == "console-state":
-        transport = _default_transport(estate)
+        transport = _start_transport(estate, "console")
+        if transport is None:
+            return 2
         try:
             state = console_ops.lock_state(transport)
             _emit_json(
@@ -157,7 +168,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.verb == "ensure-console":
-        transport = _default_transport(estate)
+        transport = _start_transport(estate, "console")
+        if transport is None:
+            return 2
         try:
             if args.no_unlock:
                 state = console_ops.lock_state(transport)
@@ -187,10 +200,8 @@ def main(argv: list[str] | None = None) -> int:
             transport.close()
 
     if args.verb == "estate-canary":
-        try:
-            transport = _default_transport(estate)
-        except (OSError, TransportError) as exc:
-            print(f"canary error: transport would not start: {exc}", file=sys.stderr)
+        transport = _start_transport(estate, "canary")
+        if transport is None:
             return 2
         try:
             report = run_estate_canary(transport, estate)
@@ -307,7 +318,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"capability error: {exc}", file=sys.stderr)
             return 2
 
-        transport = _default_transport(estate)
+        transport = _start_transport(estate, "transaction")
+        if transport is None:
+            return 2
         try:
             record = execute_transaction(
                 capability=capability,
