@@ -30,6 +30,7 @@ from __future__ import annotations
 import io
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,7 @@ from wcd.estate import EstateConfig
 from wcd.estate_canary import CanaryCheck, CanaryReport
 from wcd.exec_transaction import ExecTransactionError
 from wcd.profiles import ProfileInvalid
+from wcd.transport import TransportError
 
 # Synthetic-estate identifiers only: zz- placeholders per the project
 # convention. Nothing here names a real host, domain, user, or path, and the
@@ -225,6 +227,47 @@ def _patch_console_ops(
 
 def _stdin(monkeypatch: pytest.MonkeyPatch, text: str) -> None:
     monkeypatch.setattr(sys, "stdin", io.StringIO(text))
+
+
+def _transport_startup_argv(verb: str, estate_path: Path) -> list[str]:
+    argv = ["--estate", str(estate_path), verb]
+    if verb == "ensure-console-no-unlock":
+        argv[-1:] = ["ensure-console", "--no-unlock"]
+    return argv
+
+
+def _prepare_transport_startup_case(
+    monkeypatch: pytest.MonkeyPatch, verb: str
+) -> list[str]:
+    """Make every post-startup operation observable without invoking one."""
+    calls: list[str] = []
+
+    def record(name: str) -> Callable[..., object]:
+        def operation(*_args: object, **_kwargs: object) -> object:
+            calls.append(name)
+            raise AssertionError(f"{name} ran after a transport startup refusal")
+
+        return operation
+
+    monkeypatch.setattr(console_ops, "lock_state", record("lock_state"))
+    monkeypatch.setattr(
+        console_ops, "wait_console_unlocked", record("wait_console_unlocked")
+    )
+    monkeypatch.setattr(console_ops, "read_lock_audit", record("read_lock_audit"))
+    monkeypatch.setattr(console_ops, "reboot_readiness", record("reboot_readiness"))
+    monkeypatch.setattr(cli, "execute_transaction", record("execute_transaction"))
+    if verb == "exec-transaction":
+        _stdin(monkeypatch, _stdin_plan())
+    return calls
+
+
+def _install_failing_transport(
+    monkeypatch: pytest.MonkeyPatch, startup_error: Exception
+) -> None:
+    def broken_build(_estate: EstateConfig) -> FakeCliTransport:
+        raise startup_error
+
+    monkeypatch.setattr(cli, "_default_transport", broken_build)
 
 
 # --- subcommand parsing and error exits ---------------------------------------------
@@ -733,21 +776,90 @@ def test_estate_canary_red_exits_3_with_the_failing_line(
     assert payload["checks"][1]["ok"] is False
 
 
+@pytest.mark.parametrize(
+    "startup_error_type",
+    [
+        pytest.param(OSError, id="os-error"),
+        pytest.param(TransportError, id="transport-error"),
+    ],
+)
 def test_estate_canary_refuses_a_transport_that_will_not_start(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    startup_error_type: type[Exception],
 ) -> None:
     monkeypatch.setenv("WCD_LAB_PASSWORD", SECRET)
-
-    def broken_build(estate: EstateConfig) -> object:
-        raise OSError("zz: pwsh not found")
-
-    monkeypatch.setattr(cli, "_default_transport", broken_build)
+    startup_error = startup_error_type("zz: transport startup refused")
+    _install_failing_transport(monkeypatch, startup_error)
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "estate-canary"])
 
     assert code == 2
-    assert "canary error" in capsys.readouterr().err
-    assert capsys.readouterr().out == ""
+    captured = capsys.readouterr()
+    assert captured.err == f"canary error: transport would not start: {startup_error}\n"
+    assert captured.out == ""
+
+
+@pytest.mark.parametrize(
+    ("verb", "diagnostic"),
+    [
+        ("console-state", "console error"),
+        ("ensure-console", "console error"),
+        ("ensure-console-no-unlock", "console error"),
+        ("exec-transaction", "transaction error"),
+    ],
+)
+@pytest.mark.parametrize(
+    "startup_error_type",
+    [
+        pytest.param(OSError, id="os-error"),
+        pytest.param(TransportError, id="transport-error"),
+    ],
+)
+def test_transport_startup_refusal_is_a_clean_exit_before_any_operation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    verb: str,
+    diagnostic: str,
+    startup_error_type: type[Exception],
+) -> None:
+    calls = _prepare_transport_startup_case(monkeypatch, verb)
+    startup_error = startup_error_type("zz: transport startup refused")
+    _install_failing_transport(monkeypatch, startup_error)
+
+    code = cli.main(_transport_startup_argv(verb, _estate_file(tmp_path)))
+
+    assert code == 2
+    captured = capsys.readouterr()
+    assert captured.err == f"{diagnostic}: transport would not start: {startup_error}\n"
+    assert captured.out == ""
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "verb",
+    ["console-state", "ensure-console", "ensure-console-no-unlock", "exec-transaction"],
+)
+def test_transport_startup_preserves_unrelated_exceptions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    verb: str,
+) -> None:
+    calls = _prepare_transport_startup_case(monkeypatch, verb)
+    unrelated = RuntimeError("zz: unrelated factory defect")
+    _install_failing_transport(monkeypatch, unrelated)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        cli.main(_transport_startup_argv(verb, _estate_file(tmp_path)))
+
+    assert excinfo.value is unrelated
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert captured.out == ""
+    assert calls == []
 
 
 def test_a_determinate_pre_setup_refusal_exits_2_with_no_record(
