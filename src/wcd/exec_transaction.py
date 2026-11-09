@@ -852,9 +852,18 @@ def execute_transaction(
 
     # -- 1b. ensure-console ----------------------------------------------------
     console_state = console_ops.wait_console_unlocked(transport, estate)
-    provenance.console["state"] = console_state.state
+    provenance.console["state"] = console_state.state.value
     provenance.console["helper_responds"] = console_state.helper_responds
-    if console_state.state != "unlocked":
+    if console_state.state is console_ops.ConsolePhase.NO_SESSION:
+        # Fail fast with the honest verdict: no session exists to wake or
+        # unlock, so no amount of polling would have reached unlocked.
+        abort_indeterminate(
+            "no interactive console session on the guest; establish the "
+            "session (logon) before the transaction -- wake/unlock cannot "
+            "create one"
+        )
+        return finish(None)
+    if console_state.state is not console_ops.ConsolePhase.UNLOCKED:
         abort_indeterminate(
             f"console never reached unlocked: {console_state.state} (notes: {console_state.notes})"
         )

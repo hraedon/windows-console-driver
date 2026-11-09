@@ -8,9 +8,12 @@ mechanism, never interpretation: the ops return facts and state
 classifications, and the caller decides.
 
 - :func:`lock_state` -- classify the console: ``unlocked`` / ``locked`` /
-  ``display_blanked`` / ``no_session`` / ``unknown``, from LogonUI presence
-  and the console session's state (PSDirect side), plus the helper's own
-  foreground read when the session is up.
+  ``no_session`` / ``unknown``, from LogonUI presence and the console
+  session's state (PSDirect side), plus the helper's own foreground read
+  when the session is up. (``display_blanked`` was documented historically
+  but never produced: a blank display classifies ``unknown`` -- which is
+  exactly the state the blank-display remedy, :func:`wake_display`, is
+  dispatched on.)
 - :func:`wake_display` -- host-side ``Msvm_Keyboard`` NumLock tap to bring a
   blanked display back (measured: the display blanks before the lock fires).
 - :func:`unlock_console` -- the credential path that never touches the
@@ -21,22 +24,27 @@ classifications, and the caller decides.
   or a log -- an unmappable character aborts with its INDEX, never the
   character, because a throw message becomes a response line and can reach
   provenance.
-- :func:`wait_console_unlocked` -- poll :func:`lock_state` until unlocked;
-  timeout is reported as data (``unknown``), never a retry loop past it.
+- :func:`wait_console_unlocked` -- poll :func:`lock_state` until unlocked.
+  ``no_session`` returns at once: there is no console session to wake or
+  unlock, and waiting cannot create one -- callers that require an
+  interactive console treat it as failure. Timeout is reported as data
+  (``unknown``), never a retry loop past it.
 - :func:`read_lock_audit` -- the 4800/4801 (workstation lock/unlock) trail,
   read once to explain the re-lock pattern; auditing was armed in the first
   window.
 - :func:`reboot_readiness` -- the measured PSDirect-blackout gate: after a
   guest reboot, PowerShell Direct answers nothing for a long window
   (measured 25-60 minutes in the first estate window). The gate reports
-  pending-reboot markers and classifies an unreachable guest as
-  ``booting_blackout`` (wait patiently) rather than an error to retry.
+  pending-reboot markers and classifies an unprobeable guest as
+  ``booting_blackout`` with ``reachable=False`` (wait patiently) rather
+  than an error to retry.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from enum import StrEnum
 
 from .estate import EstateConfig
 from .transport import SessionTransport
@@ -188,11 +196,26 @@ Press 0x0D; Release 0x0D
 # resolution change). Anything else is reported, not retried, here.
 
 
+class ConsolePhase(StrEnum):
+    """The four classifications :func:`lock_state` can actually produce.
+
+    ``display_blanked`` was documented for years but never produced: a
+    blanked display has a session, no LogonUI, and a helper that will not
+    answer -- which classifies ``unknown`` here, and ``unknown`` is the state
+    the wake-display remedy is dispatched on.
+    """
+
+    UNLOCKED = "unlocked"
+    LOCKED = "locked"
+    NO_SESSION = "no_session"
+    UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True, slots=True)
 class ConsoleState:
     """One console classification, with the facts it was derived from."""
 
-    state: str  # unlocked | locked | display_blanked | no_session | unknown
+    state: ConsolePhase
     logonui_running: bool
     console_session_active: bool
     helper_responds: bool
@@ -218,13 +241,13 @@ def lock_state(t: SessionTransport, *, probe_helper: bool = True) -> ConsoleStat
         except Exception as exc:
             notes.append(f"helper context failed: {exc}")
     if not console_active:
-        state = "no_session"
+        state = ConsolePhase.NO_SESSION
     elif logonui:
-        state = "locked"
+        state = ConsolePhase.LOCKED
     elif helper_responds or not probe_helper:
-        state = "unlocked"
+        state = ConsolePhase.UNLOCKED
     else:
-        state = "unknown"
+        state = ConsolePhase.UNKNOWN
     return ConsoleState(
         state=state,
         logonui_running=logonui,
@@ -251,22 +274,28 @@ def wait_console_unlocked(
     timeout_s: float = LOCK_TIMEOUT_DEFAULT_S,
     poll_s: float = 8.0,
 ) -> ConsoleState:
-    """Wake/unlock as needed, then verify; returns the final ConsoleState."""
+    """Wake/unlock as needed, then verify; returns the final ConsoleState.
+
+    ``no_session`` is a failure for every caller that needs an interactive
+    console (exec-transaction, ensure-console), and it cannot be waited out:
+    there is no session to wake or unlock, and neither remedy creates one.
+    So it returns at once with the honest classification instead of burning
+    the poll budget -- the caller aborts with a verdict that names the fix
+    (establish the session).
+    """
     import time
 
     deadline = time.monotonic() + timeout_s
     while True:
         state = lock_state(t)
-        if state.state in ("unlocked", "no_session"):
+        if state.state is ConsolePhase.UNLOCKED or state.state is ConsolePhase.NO_SESSION:
             return state
-        if state.state == "locked":
+        if state.state is ConsolePhase.LOCKED:
             unlock_console(t, estate)
             time.sleep(6.0)
-        elif state.state == "unknown":
+        elif state.state is ConsolePhase.UNKNOWN:
             wake_display(t)
             time.sleep(4.0)
-        else:
-            time.sleep(poll_s)
         if time.monotonic() >= deadline:
             return lock_state(t)
 
@@ -288,6 +317,18 @@ def read_lock_audit(t: SessionTransport) -> LockAudit:
     return LockAudit(count=int(payload.get("count", 0)), events=tuple(events))
 
 
+class RebootPhase(StrEnum):
+    """The reboot gate's classifications. An unprobeable guest is
+    ``BOOTING_BLACKOUT`` with ``reachable=False`` (a blackout is
+    indistinguishable from any other refusal to answer, and the measured
+    remedy is patience either way); a distinct ``unreachable`` value was
+    documented historically but never produced."""
+
+    READY = "ready"
+    REBOOT_PENDING = "reboot_pending"
+    BOOTING_BLACKOUT = "booting_blackout"
+
+
 @dataclass(frozen=True, slots=True)
 class RebootReadiness:
     """Pending-reboot facts and the PSDirect-blackout classification."""
@@ -296,7 +337,7 @@ class RebootReadiness:
     reboot_pending: bool
     reasons: tuple[str, ...]
     last_boot: str
-    classification: str  # ready | reboot_pending | booting_blackout | unreachable
+    classification: RebootPhase
 
 
 def reboot_readiness(t: SessionTransport) -> RebootReadiness:
@@ -309,7 +350,7 @@ def reboot_readiness(t: SessionTransport) -> RebootReadiness:
             reboot_pending=False,
             reasons=(),
             last_boot="",
-            classification="booting_blackout",
+            classification=RebootPhase.BOOTING_BLACKOUT,
         )
     pending = bool(payload.get("reboot_pending"))
     reasons = tuple(payload.get("reasons") or ())
@@ -319,5 +360,5 @@ def reboot_readiness(t: SessionTransport) -> RebootReadiness:
         reboot_pending=pending,
         reasons=reasons,
         last_boot=boot,
-        classification="reboot_pending" if pending else "ready",
+        classification=RebootPhase.REBOOT_PENDING if pending else RebootPhase.READY,
     )

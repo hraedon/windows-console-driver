@@ -145,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
             state = console_ops.lock_state(transport)
             _emit_json(
                 {
-                    "state": state.state,
+                    "state": state.state.value,
                     "logonui_running": state.logonui_running,
                     "console_session_active": state.console_session_active,
                     "helper_responds": state.helper_responds,
@@ -164,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 state = console_ops.wait_console_unlocked(transport, estate)
             payload: dict[str, object] = {
-                "state": state.state,
+                "state": state.state.value,
                 "logonui_running": state.logonui_running,
                 "console_session_active": state.console_session_active,
                 "helper_responds": state.helper_responds,
@@ -176,13 +176,13 @@ def main(argv: list[str] | None = None) -> int:
                 payload["lock_audit_count"] = audit.count
             readiness = console_ops.reboot_readiness(transport)
             payload["reboot"] = {
-                "classification": readiness.classification,
+                "classification": readiness.classification.value,
                 "reboot_pending": readiness.reboot_pending,
                 "reasons": list(readiness.reasons),
                 "last_boot": readiness.last_boot,
             }
             _emit_json(payload)
-            return 0 if state.state == "unlocked" else 3
+            return 0 if state.state is console_ops.ConsolePhase.UNLOCKED else 3
         finally:
             transport.close()
 

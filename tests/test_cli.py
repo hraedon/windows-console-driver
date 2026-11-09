@@ -36,7 +36,7 @@ from typing import Any
 import pytest
 
 from wcd import cli, console_ops
-from wcd.console_ops import ConsoleState, LockAudit, RebootReadiness
+from wcd.console_ops import ConsolePhase, ConsoleState, LockAudit, RebootPhase, RebootReadiness
 from wcd.estate import EstateConfig
 from wcd.estate_canary import CanaryCheck, CanaryReport
 from wcd.exec_transaction import ExecTransactionError
@@ -287,7 +287,9 @@ def test_console_state_emits_classification_and_closes_transport(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     built = _install_transport(monkeypatch)
-    _patch_console_ops(monkeypatch, ConsoleState("unlocked", False, True, True, ("zz-note",)))
+    _patch_console_ops(
+        monkeypatch, ConsoleState(ConsolePhase.UNLOCKED, False, True, True, ("zz-note",))
+    )
 
     code = cli.main(["--estate", str(_estate_file(tmp_path)), "console-state"])
 
@@ -316,14 +318,14 @@ def test_ensure_console_no_unlock_reports_audit_and_reboot_and_exits_zero(
     calls: dict[str, bool] = {}
     _patch_console_ops(
         monkeypatch,
-        ConsoleState("unlocked", False, True, True, ()),
+        ConsoleState(ConsolePhase.UNLOCKED, False, True, True, ()),
         audit=LockAudit(count=2, events=({"id": 4800}, {"id": 4801})),
         readiness=RebootReadiness(
             reachable=True,
             reboot_pending=False,
             reasons=(),
             last_boot="2026-09-01T10:00:00.0000000Z",
-            classification="ready",
+            classification=RebootPhase.READY,
         ),
         calls=calls,
     )
@@ -355,13 +357,13 @@ def test_ensure_console_locked_state_takes_the_wait_path_and_exits_3(
     calls: dict[str, bool] = {}
     _patch_console_ops(
         monkeypatch,
-        ConsoleState("locked", True, True, True, ()),
+        ConsoleState(ConsolePhase.LOCKED, True, True, True, ()),
         readiness=RebootReadiness(
             reachable=True,
             reboot_pending=True,
             reasons=("PendingFileRenameOperations",),
             last_boot="2026-09-01T10:00:00.0000000Z",
-            classification="reboot_pending",
+            classification=RebootPhase.REBOOT_PENDING,
         ),
         calls=calls,
     )
