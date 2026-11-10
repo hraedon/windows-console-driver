@@ -42,8 +42,26 @@ def _load_script_policy() -> ModuleType | None:
 
 SCRIPT_POLICY = _load_script_policy()
 
+# The cross-check binds to the INI-parsing API gpo_studio has since retired
+# (8940fd68, 2026-10-07 operator rulings: the pre-R2 INI pair went away and
+# script_policy became model classes with no file parser). A sibling checkout
+# that has moved past that commit is importable but carries no partner API,
+# which used to surface as four AttributeError failures; skip on it instead.
+_RETIRED_PARTNER = SCRIPT_POLICY is not None and not hasattr(
+    SCRIPT_POLICY, "parse_script_policy_ini"
+)
+_MISSING_PARTNER_REASON = (
+    "gpo_studio.script_policy no longer provides parse_script_policy_ini "
+    "(retired upstream 8940fd68, 2026-10-07); cross-check has no partner API"
+)
+
 pytestmark = pytest.mark.skipif(
-    SCRIPT_POLICY is None, reason="gpo_studio is not importable; cross-check skipped"
+    SCRIPT_POLICY is None or _RETIRED_PARTNER,
+    reason=(
+        _MISSING_PARTNER_REASON
+        if _RETIRED_PARTNER
+        else "gpo_studio is not importable; cross-check skipped"
+    ),
 )
 
 _BOOL_TRUE = {"1", "true", "yes"}
